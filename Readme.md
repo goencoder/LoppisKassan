@@ -32,3 +32,8 @@ För att bygga och köra detta projekt krävs Oracle Java 1.8, eftersom det är 
 **Noteringar**:
 Det är viktigt att använda Oracle Java 1.8 eftersom nyare versioner av Java inte längre har JavaFX bundlad. Om du stöter på problem relaterade till JavaFX när du kör applikationen, dubbelkolla att du verkligen använder Oracle Java 1.8.
 
+## Användarmanual
+Manual: [LoppisKassan](https://seteddy.wordpress.com/2016/09/20/loppiskassan/)
+
+Tillägg: [Loppiskassan v1.2](https://seteddy.wordpress.com/2018/01/07/loppiskassan-v1-2/)
+
