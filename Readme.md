@@ -3,6 +3,19 @@
 ## Förutsättningar
 För att bygga och köra detta projekt krävs Oracle Java 1.8, eftersom det är denna version som har JavaFX bundlad.
 
+### Nödvändig mjukvara:
+- [Git](https://git-scm.com/download/mac)
+- [Oracle Java 1.8](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html)
+- [Maven (mvn)](https://maven.apache.org/download.cgi)
+
+## Klona projektet
+För att börja arbeta med projektet, klonar du det först till din lokala dator. Öppna en terminal och kör:
+
+```bash
+git clone https://github.com/goencoder/LoppisKassan.git
+cd LoppisKassan
+```
+
 ## Bygginstruktioner
 
 1. **Installera Oracle Java 1.8**:  
