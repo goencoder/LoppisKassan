@@ -33,7 +33,19 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Created by gengdahl on 2016-09-13.
+ * En kontrollerklass för att hantera historikfliken i användargränssnittet. Klassen tillåter användaren
+ * att visa en historik över sålda varor, utföra utbetalningar, kopiera data till urklipp, radera all data
+ * och importera data från andra källor.
+ * <p>
+ * Historiken kan filtreras baserat på säljare, betalningsmetod och om varan redan har betalats ut eller ej.
+ * Klassen innehåller också hjälpmetoder för att uppdatera gränssnittet baserat på de valda filtren och den
+ * aktuella datan.
+ * </p>
+ * <p>
+ * Notera: Denna klass tillåter endast en instans av sig själv att skapas.
+ * </p>
+ *
+ * @author gengdahl
  */
 public class HistoryTabController {
   private static Stage stage;

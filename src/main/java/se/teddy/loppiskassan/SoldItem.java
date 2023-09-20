@@ -11,7 +11,19 @@ import java.util.UUID;
 /**
  * Created by gengdahl on 2016-08-16.
  */
+/**
+ * Representerar en såld vara inom Loppiskassan-systemet.
+ * <p>
+ * Varje såld vara har en unik identifierare, tidpunkt då den såldes, pris, betalningsmetod m.m.
+ * </p>
+ *
+ * @author gengdahl
+ * @since 2016-08-16
+ */
 public class SoldItem {
+    /**
+     * Konstruktor för att skapa en ny såld vara.
+     */
     public SoldItem(String purchaseId, String itemId, LocalDateTime soldTime, int seller, float price,
                     LocalDateTime collectedBysellerTime, PaymentMethod paymentMethod){
         setPurchaseId(purchaseId);
@@ -23,6 +35,9 @@ public class SoldItem {
         setPaymentMethod(paymentMethod);
 
     }
+    /**
+     * Konstruktor som skapar en såld vara med en genererad unik identifierare och aktuell tidpunkt som säljtid.
+     */
     public SoldItem(int seller, float price, PaymentMethod paymentMethod){
         this(null, UUID.randomUUID().toString(), LocalDateTime.now(), seller, price, null, paymentMethod);
     }
@@ -35,10 +50,20 @@ public class SoldItem {
     private String purchaseId = null;
     private String itemId = null;
 
+    /**
+     * Returnerar den unika identifieraren för varan.
+     *
+     * @return Varans identifierare.
+     */
     public String getItemId() {
         return itemId;
     }
 
+    /**
+     * Ställer in den unika identifieraren för varan.
+     *
+     * @param itemId Den unika identifieraren för varan.
+     */
     public void setItemId(String itemId) {
         this.itemId = itemId;
     }
@@ -99,6 +124,12 @@ public class SoldItem {
         return purchaseId;
 
     }
+    /**
+     * Kontrollerar om två sålda varor är lika baserat på deras unika identifierare.
+     *
+     * @param o Objektet att jämföra med.
+     * @return {@code true} om objekten representerar samma vara, annars {@code false}.
+     */
     @Override
     public boolean equals(Object o){
         if (o == this){
@@ -111,6 +142,11 @@ public class SoldItem {
         SoldItem other = (SoldItem)o;
         return Objects.equals(itemId, other.getItemId());
     }
+    /**
+     * Returnerar en hashkod för den sålda varan baserad på dess unika identifierare.
+     *
+     * @return Hashkoden för den sålda varan.
+     */
     @Override
     public int hashCode(){
         return Objects.hash(itemId);

@@ -9,7 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Created by gengdahl on 2016-08-18.
+ * Hjälpklass för att formatera data mellan CSV-strängar och listor med sålda objekt.
+ *
+ * @author gengdahl
+ * @since 2016-08-18
  */
 public class FormatHelper {
     public static final String LINE_ENDING= System.lineSeparator();
@@ -18,6 +21,12 @@ public class FormatHelper {
       +"säljare"+DELIMITER+"pris"+DELIMITER+"utbetalt"+DELIMITER+"Betalningsmetod";
     private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    /**
+     * Konverterar en lista av sålda objekt till en CSV-sträng.
+     *
+     * @param items Lista av sålda objekt.
+     * @return En CSV-formaterad sträng av sålda objekt.
+     */
     public static String toCVS(List<SoldItem> items) {
         //timestamp, seller, price, paymentType
         StringBuilder stringBuilder = new StringBuilder();
@@ -39,6 +48,13 @@ public class FormatHelper {
         return stringBuilder.toString();
     }
 
+    /**
+     * Konverterar en CSV-sträng till en lista av sålda objekt.
+     *
+     * @param CSV CSV-sträng med sålda objekt.
+     * @param withHeaderLine Om strängen inkluderar en huvudrad.
+     * @return En lista av sålda objekt extraherad från CSV-strängen.
+     */
     public static List<SoldItem> toItems(String CSV, boolean withHeaderLine){
         String[] lines = CSV.split(LINE_ENDING);
         int startIndex=0;
@@ -64,6 +80,12 @@ public class FormatHelper {
         return items;
 
     }
+    /**
+     * Konverterar en LocalDateTime till en sträng.
+     *
+     * @param dateTime LocalDateTime-objekt som ska konverteras.
+     * @return En strängrepresentation av datumet och tiden.
+     */
     public static String dateAndTimeToString(LocalDateTime dateTime){
         if (dateTime == null){
             return "";
@@ -71,6 +93,12 @@ public class FormatHelper {
         return dateTime.format(formatter);
 
     }
+    /**
+     * Konverterar en sträng till en LocalDateTime.
+     *
+     * @param dateText Strängrepresentation av datum och tid.
+     * @return LocalDateTime-objekt baserat på den angivna strängen.
+     */
     public static LocalDateTime stringToDateAndTime(String dateText){
         return LocalDateTime.parse(dateText,formatter);
 

@@ -19,6 +19,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+/**
+ * Huvudklassen för applikationen Loppiskassan.
+ */
 public class Main extends Application {
 
     private HistoryTabController historyTabController;
@@ -26,6 +29,12 @@ public class Main extends Application {
     HistoryTabController historyTabPageController;
 
     @Override
+    /**
+     * Startar applikationen genom att initialisera och visa huvudfönstret.
+     *
+     * @param primaryStage Huvudscenen för applikationen.
+     * @throws Exception Om det uppstår något problem under laddning eller initialisering.
+     */
     public void start(Stage primaryStage) throws Exception{
         FXMLLoader mainLoader = new FXMLLoader(
                 getClass().getResource(
@@ -45,6 +54,12 @@ public class Main extends Application {
     }
     private static boolean loggerCreated = false;
 
+    /**
+     * Skapar en logger för applikationen.
+     * Logger skapas bara en gång, om den redan är skapad görs ingenting.
+     *
+     * @throws IOException Om det uppstår ett problem under skapandet av loggfiler.
+     */
     public static void createLogger() throws IOException {
         if (loggerCreated) {
             return;
@@ -76,6 +91,13 @@ public class Main extends Application {
     }
 
 
+    /**
+     * Huvudmetoden för applikationen.
+     * Skapar de nödvändiga katalogerna, skapar loggern och startar applikationen.
+     *
+     * @param args Kommandoradsparametrar.
+     * @throws IOException Om det uppstår ett problem med filoperationer.
+     */
     public static void main(String[] args) throws IOException {
         FileHelper.createDirectories();
         createLogger();

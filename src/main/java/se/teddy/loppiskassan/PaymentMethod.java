@@ -1,9 +1,18 @@
 package se.teddy.loppiskassan;
 
 /**
- * Created by gengdahl on 2018-01-07.
+ * Representerar de tillgängliga betalningsmetoderna i applikationen Loppiskassan.
+ *
+ * @author gengdahl
+ * @since 2018-01-07
  */
 public enum PaymentMethod {
+  /**
+   * Betalningsmetod som representerar Swish.
+   */
   Swish,
+  /**
+   * Betalningsmetod som representerar kontant betalning.
+   */
   Kontant;
 }

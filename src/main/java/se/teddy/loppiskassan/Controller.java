@@ -14,15 +14,31 @@ import se.teddy.loppiskassan.records.FileHelper;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Huvudkontroller för JavaFX-applikationen.
+ * Denna kontroller hanterar huvudscenen och ett TabPane, vilket ger användaren möjlighet att växla mellan olika flikar.
+ * När en ny flik väljs, initieras motsvarande underkontroller.
+ *
+ * @author gengdahl
+ */
 public class Controller {
     private static Stage stage;
     @FXML
     private TabPane tabPane;
 
 
+    /**
+     * Ställer in huvudscenen för denna kontroller.
+     *
+     * @param stage Huvudscenen.
+     */
     static void setStage(Stage stage) {
         Controller.stage = stage;
     }
+    /**
+     * Initialiserar användargränssnittet för denna kontroller.
+     * Lägger till en lyssnare på TabPane för att initiera andra kontroller när en ny flik väljs.
+     */
     public void initUI() {
 
 

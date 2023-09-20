@@ -13,6 +13,13 @@ import static java.nio.file.StandardCopyOption.*;
 /**
  * Created by gengdahl on 2016-08-18.
  */
+/**
+ * Hjälpklass för att hantera filoperationer relaterade till Loppiskassan.
+ * Erbjuder funktioner för att skapa, läsa, skriva och radera filer.
+ *
+ * @author gengdahl
+ * @since 2016-08-18
+ */
 public class FileHelper {
     private static Logger logger = Logger.getLogger(FileHelper.class.getName());
     private static String baseDir = System.getProperty("user.dir");
@@ -28,6 +35,10 @@ public class FileHelper {
             recordsFileName + ".backup.8",
             recordsFileName + ".backup.9",};
     private static int backupRecordsIndex = Math.abs(new Random(System.currentTimeMillis()).nextInt() % 10);
+    /**
+     * Skapar nödvändiga kataloger för loggning och datalagring.
+     * @throws IOException Om katalogerna inte kunde skapas.
+     */
     public static void createDirectories() throws IOException {
         try {
             Files.createDirectories(getLogFilePath().getParent());
@@ -38,22 +49,40 @@ public class FileHelper {
         }
     }
 
+    /**
+     * Hämtar nästa backup-index.
+     * @return Index för nästa backup.
+     */
     private static int nextBackupIndex(){
         backupRecordsIndex = ++backupRecordsIndex % 10;
         return backupRecordsIndex;
 
     }
+    /**
+     * Hämtar sökvägen till nästa backupfil.
+     * @return Sökvägen till nästa backupfil.
+     */
     public static Path getNextRecordsBackupPath(){
         return Paths.get(baseDir, "data", backupRecordsFileNames[nextBackupIndex()]);
     }
+    /**
+     * Hämtar sökvägen till huvudpostfilen.
+     * @return Sökvägen till huvudpostfilen.
+     */
     public static Path getRecordFilePath(){
         return Paths.get(baseDir, "data", recordsFileName);
 
     }
-    public static Path getLogFilePath(){
+    /**
+     * Hämtar sökvägen till loggfilen.
+     * @return Sökvägen till loggfilen.
+     */    public static Path getLogFilePath(){
         return Paths.get(baseDir, "logs", "loppiskassan.log");
 
     }
+    /**
+     * Kontrollerar om det går att läsa och skriva till huvudpostfilen.
+     */
     public static void assertRecordFileRights(){
         if (Files.notExists(getRecordFilePath())){
             //File does not exist yet, and we do not
@@ -79,6 +108,10 @@ public class FileHelper {
 
     }
 
+    /**
+     * Tar bort huvudpostfilen.
+     * @throws IOException Om filen inte kunde tas bort.
+     */
     public static void deleteFile() throws IOException {
         try{
             if (Files.exists(getRecordFilePath())){
@@ -93,6 +126,11 @@ public class FileHelper {
         }
 
     }
+    /**
+     * Sparar data till huvudpostfilen.
+     * @param csv Data i CSV-format som ska sparas.
+     * @throws IOException Om det inte gick att skriva till filen.
+     */
     public static void saveToFile(String csv) throws IOException {
         try{
             boolean writeHeaders = Files.notExists(getRecordFilePath());
@@ -117,6 +155,10 @@ public class FileHelper {
 
 
     }
+    /**
+     * Skapar en backup av huvudpostfilen.
+     * @throws IOException Om backup inte kunde skapas.
+     */
     public static void createBackupFile() throws IOException {
         if (Files.exists(getRecordFilePath())){
             try{
@@ -131,6 +173,11 @@ public class FileHelper {
             }
         }
     }
+    /**
+     * Läser innehållet från huvudpostfilen.
+     * @return Data från filen i form av en sträng.
+     * @throws IOException Om det inte gick att läsa från filen.
+     */
     public static String readFromFile() throws IOException {
         if (!Files.exists(getRecordFilePath())){
             logger.log(Level.INFO,  "Filen " + getRecordFilePath() + " finns inte");
@@ -139,6 +186,12 @@ public class FileHelper {
         return readFromFile(getRecordFilePath());
 
     }
+    /**
+     * Läser innehållet från en given fil.
+     * @param path Sökväg till filen som ska läsas.
+     * @return Data från filen i form av en sträng.
+     * @throws IOException Om det inte gick att läsa från filen.
+     */
     public static String readFromFile(Path path) throws IOException {
         try {
             InputStream inputStream = Files.newInputStream(path);

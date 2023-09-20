@@ -19,7 +19,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Created by gengdahl on 2016-09-12.
+ * Denna kontroller hanterar funktionaliteten för "Kassörskort"-delen av användargränssnittet.
+ * Den låter användaren lägga till sålda varor, beräkna växel och genomföra transaktioner.
+ *
+ * @author gengdahl
+ * @since 2016-09-12
  */
 public class CashierTabController {
     @FXML
@@ -45,6 +49,9 @@ public class CashierTabController {
 
     private static CashierTabController instance;
 
+    /**
+     * Konstruktor för CashierTabController. Garanterar att endast en instans skapas.
+     */
     public CashierTabController(){
         if (instance != null){
             throw new IllegalArgumentException("Controller already instantiated, only one instance is allowed!");
@@ -63,9 +70,15 @@ public class CashierTabController {
     private ObservableList<SoldItem> items;
 
 
+    /**
+     * Sätter fokus på "pris"-fältet.
+     */
     public void focusOnPrices() {
         prices.requestFocus();
     }
+    /**
+     * Lägger till en artikel baserat på inmatad information.
+     */
     public void addItem() {
         FileHelper.assertRecordFileRights();
 
@@ -138,6 +151,9 @@ public class CashierTabController {
             }
         });
     }
+    /**
+     * Uppdaterar användargränssnittskomponenter baserat på aktuell data.
+     */
     private void updateUIComponents() {
         //Buttons
         if (cashierTable.getItems().isEmpty()){
@@ -170,6 +186,11 @@ public class CashierTabController {
         noItemsLabel.setText(numOfItems + " varor");
 
     }
+    /**
+     * Beräknar den totala summan av de sålda varorna.
+     *
+     * @return den totala summan av de sålda varorna.
+     */
     private float getSum() {
         float sum = 0;
         if (items != null){
