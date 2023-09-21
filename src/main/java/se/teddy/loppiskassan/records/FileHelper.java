@@ -10,9 +10,7 @@ import java.util.logging.Logger;
 
 import static java.nio.file.StandardCopyOption.*;
 
-/**
- * Created by gengdahl on 2016-08-18.
- */
+
 /**
  * Hjälpklass för att hantera filoperationer relaterade till Loppiskassan.
  * Erbjuder funktioner för att skapa, läsa, skriva och radera filer.
