@@ -8,9 +8,7 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * Created by gengdahl on 2016-08-16.
- */
+
 /**
  * Representerar en såld vara inom Loppiskassan-systemet.
  * <p>
