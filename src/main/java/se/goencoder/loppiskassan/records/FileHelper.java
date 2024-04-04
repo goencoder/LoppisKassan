@@ -1,8 +1,9 @@
-package se.teddy.loppiskassan.records;
+package se.goencoder.loppiskassan.records;
 
-import se.teddy.loppiskassan.Popup;
+import se.goencoder.loppiskassan.ui.Popup;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Random;
 import java.util.logging.Level;
@@ -10,9 +11,7 @@ import java.util.logging.Logger;
 
 import static java.nio.file.StandardCopyOption.*;
 
-/**
- * Created by gengdahl on 2016-08-18.
- */
+
 /**
  * Hjälpklass för att hantera filoperationer relaterade till Loppiskassan.
  * Erbjuder funktioner för att skapa, läsa, skriva och radera filer.
@@ -21,10 +20,10 @@ import static java.nio.file.StandardCopyOption.*;
  * @since 2016-08-18
  */
 public class FileHelper {
-    private static Logger logger = Logger.getLogger(FileHelper.class.getName());
-    private static String baseDir = System.getProperty("user.dir");
-    private static String recordsFileName = "loppiskassan.csv";
-    private static String[] backupRecordsFileNames = new String[]{recordsFileName + ".backup.0",
+    private static final Logger logger = Logger.getLogger(FileHelper.class.getName());
+    private static final String baseDir = System.getProperty("user.dir");
+    private static final String recordsFileName = "loppiskassan.csv";
+    private static final String[] backupRecordsFileNames = new String[]{recordsFileName + ".backup.0",
             recordsFileName + ".backup.1",
             recordsFileName + ".backup.2",
             recordsFileName + ".backup.3",
@@ -109,24 +108,6 @@ public class FileHelper {
     }
 
     /**
-     * Tar bort huvudpostfilen.
-     * @throws IOException Om filen inte kunde tas bort.
-     */
-    public static void deleteFile() throws IOException {
-        try{
-            if (Files.exists(getRecordFilePath())){
-                Files.delete(getRecordFilePath());
-                logger.log(Level.INFO, "Tog bort fil " + getRecordFilePath());
-            }
-        }catch(IOException ex){
-            String info = "Misslyckades ta bort datafil";
-            logger.log(Level.SEVERE, info, ex);
-            Popup.ERROR.showAndWait(info, ex);
-            throw ex;
-        }
-
-    }
-    /**
      * Sparar data till huvudpostfilen.
      * @param csv Data i CSV-format som ska sparas.
      * @throws IOException Om det inte gick att skriva till filen.
@@ -141,14 +122,13 @@ public class FileHelper {
             OutputStream outputStream = new BufferedOutputStream(
                     Files.newOutputStream(getRecordFilePath(), StandardOpenOption.CREATE,
                             StandardOpenOption.APPEND));
-            byte[] byteArray = csv.getBytes("UTF-8");
+            byte[] byteArray = csv.getBytes(StandardCharsets.UTF_8);
             outputStream.write(byteArray, 0, byteArray.length);
             outputStream.flush();
             logger.log(Level.INFO, "sparade data: " + csv);
         }catch(IOException ex){
             String title = "Misslyckades spara senast utförda aktivitet till fil";
             logger.log(Level.SEVERE, title + " Data: " + csv, ex);
-            Popup.ERROR.showAndWait(title, ex);
             throw ex;
         }
 
@@ -168,7 +148,6 @@ public class FileHelper {
             }catch(IOException ex){
                 String title = "Misslyckades skapa backupfil";
                 logger.log(Level.SEVERE, title, ex);
-                Popup.ERROR.showAndWait(title, ex);
                 throw ex;
             }
         }
@@ -196,9 +175,9 @@ public class FileHelper {
         try {
             InputStream inputStream = Files.newInputStream(path);
             BufferedReader bufferedReader = new BufferedReader(
-                    new InputStreamReader(inputStream, "UTF-8"));
-            String line = null;
-            StringBuffer stringBuffer = new StringBuffer();
+                    new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+            String line;
+            StringBuilder stringBuffer = new StringBuilder();
             while ((line = bufferedReader.readLine()) != null) {
                 stringBuffer.append(line).append(FormatHelper.LINE_ENDING);
             }
@@ -206,7 +185,6 @@ public class FileHelper {
         }catch (IOException ex){
             String title = "Misslyckades läsa från datafil";
             logger.log(Level.SEVERE, title, ex);
-            Popup.ERROR.showAndWait(title, ex);
             throw ex;
         }
     }

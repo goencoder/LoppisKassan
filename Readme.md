@@ -42,10 +42,9 @@ mvn clean package
 $JAVA_HOME/bin/java -jar target/LoppisKassan-1.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
-**Noteringar**:
-Det är viktigt att använda Oracle Java 1.8 eftersom nyare versioner av Java inte längre har JavaFX bundlad. Om du stöter på problem relaterade till JavaFX när du kör applikationen, dubbelkolla att du verkligen använder Oracle Java 1.8.
 
 ## Användarmanual
+**Notera!** Nedan länkar är till en äldre version av programmet, men funktionaliteten är densamma.
 Manual: [LoppisKassan](https://seteddy.wordpress.com/2016/09/20/loppiskassan/)
 
 Tillägg: [Loppiskassan v1.2](https://seteddy.wordpress.com/2018/01/07/loppiskassan-v1-2/)

@@ -1,4 +1,4 @@
-package se.teddy.loppiskassan;
+package se.goencoder.loppiskassan;
 
 /**
  * Representerar de tillgängliga betalningsmetoderna i applikationen Loppiskassan.
@@ -14,5 +14,5 @@ public enum PaymentMethod {
   /**
    * Betalningsmetod som representerar kontant betalning.
    */
-  Kontant;
+  Kontant
 }
