@@ -1,7 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
-import javax.swing.JFrame;
-import javax.swing.JTabbedPane;
+import javax.swing.*;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,6 +47,13 @@ public class UserInterface extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(900, 600);
         setLocationRelativeTo(null);
+    }
+    static JButton createButton(String text, int width, int height) {
+        JButton button = new JButton(text);
+        button.setPreferredSize(new Dimension(width, height)); // Set the preferred size
+        // You could also set the font here if needed
+        // button.setFont(new Font("Arial", Font.BOLD, 14));
+        return button;
     }
 
     private void initializeTabs() {

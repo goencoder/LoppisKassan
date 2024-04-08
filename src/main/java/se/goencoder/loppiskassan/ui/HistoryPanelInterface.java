@@ -13,7 +13,7 @@ public interface HistoryPanelInterface extends SelectabableTab{
     String getPaymentMethodFilter();
     void clearView();
 
-    boolean isPaidPostsHidden();
+    String getPaidFilter();
     void updateSellerDropdown(Set<String> sellers);
     void enableButton(String buttonName, boolean enable);
 

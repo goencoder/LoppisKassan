@@ -12,6 +12,8 @@ import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
 
+import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
+
 /**
  * Represents the cashier tab in the application, allowing for transaction input and display.
  */
@@ -160,9 +162,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface{
         JPanel buttonPanel = new JPanel(new GridLayout(1, 3));
 
         // Initialize buttons
-        cancelCheckoutButton = new JButton("Avbryt köp");
-        checkoutCashButton = new JButton("Kontant");
-        checkoutSwishButton = new JButton("Swish");
+        cancelCheckoutButton = createButton("Avbryt köp", 150, 50);
+        checkoutCashButton = createButton("Kontant", 150,50);
+        checkoutSwishButton = createButton("Swish", 150,50);
 
         // Add buttons to the panel
         buttonPanel.add(cancelCheckoutButton);

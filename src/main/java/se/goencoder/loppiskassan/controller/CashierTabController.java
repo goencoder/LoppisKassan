@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
+
 /**
  * Controls the cashier tab, handling the sales process, including item management and checkout procedures.
  */
@@ -76,13 +78,14 @@ public class CashierTabController implements CashierControllerInterface {
 
     // Adds an item to the list and recalculates the total.
     public void addItem(Integer sellerId, Integer[] prices) {
-        FileHelper.assertRecordFileRights();
-        for (Integer price : prices) {
-            SoldItem soldItem = new SoldItem(sellerId, price, null);
-            items.add(soldItem);
-            view.addSoldItem(soldItem);
+        if (FileHelper.assertRecordFileRights(LOPPISKASSAN_CSV)) {
+            for (Integer price : prices) {
+                SoldItem soldItem = new SoldItem(sellerId, price, null);
+                items.add(soldItem);
+                view.addSoldItem(soldItem);
+            }
+            reCalculate();
         }
-        reCalculate();
     }
 
     // Handles the checkout process for different payment methods.
@@ -95,11 +98,13 @@ public class CashierTabController implements CashierControllerInterface {
             item.setPurchaseId(purchaseId);
         });
         try {
-            FileHelper.saveToFile(FormatHelper.toCVS(items));
+            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
             items.clear();
             view.clearView();
         } catch (IOException e) {
-            Popup.ERROR.showAndWait("Could not save to file (" + FileHelper.getLogFilePath() + ")", e.getMessage());
+            Popup.ERROR.showAndWait("Kunde inte spara till fil (" +
+                    FileHelper.getRecordFilePath(LOPPISKASSAN_CSV) +
+                    ")", e.getMessage());
         }
     }
 

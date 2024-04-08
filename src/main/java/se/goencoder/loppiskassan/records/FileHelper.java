@@ -11,180 +11,119 @@ import java.util.logging.Logger;
 
 import static java.nio.file.StandardCopyOption.*;
 
-
-/**
- * Hjälpklass för att hantera filoperationer relaterade till Loppiskassan.
- * Erbjuder funktioner för att skapa, läsa, skriva och radera filer.
- *
- * @author gengdahl
- * @since 2016-08-18
- */
 public class FileHelper {
     private static final Logger logger = Logger.getLogger(FileHelper.class.getName());
     private static final String baseDir = System.getProperty("user.dir");
-    private static final String recordsFileName = "loppiskassan.csv";
-    private static final String[] backupRecordsFileNames = new String[]{recordsFileName + ".backup.0",
-            recordsFileName + ".backup.1",
-            recordsFileName + ".backup.2",
-            recordsFileName + ".backup.3",
-            recordsFileName + ".backup.4",
-            recordsFileName + ".backup.5",
-            recordsFileName + ".backup.6",
-            recordsFileName + ".backup.7",
-            recordsFileName + ".backup.8",
-            recordsFileName + ".backup.9",};
+    public static final String LOPPISKASSAN_CSV = "loppiskassan.csv";
+    private static final String[] backupRecordsFileNames = new String[10];
     private static int backupRecordsIndex = Math.abs(new Random(System.currentTimeMillis()).nextInt() % 10);
-    /**
-     * Skapar nödvändiga kataloger för loggning och datalagring.
-     * @throws IOException Om katalogerna inte kunde skapas.
-     */
+
+    static {
+        for (int i = 0; i < backupRecordsFileNames.length; i++) {
+            backupRecordsFileNames[i] = LOPPISKASSAN_CSV + ".backup." + i;
+        }
+    }
+
     public static void createDirectories() throws IOException {
         try {
-            Files.createDirectories(getLogFilePath().getParent());
-            Files.createDirectories(getRecordFilePath().getParent());
+            Files.createDirectories(getFilePath("logs").getParent());
+            Files.createDirectories(getFilePath("data").getParent());
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Misslyckades skapa katalog(er)", e);
+            logger.log(Level.SEVERE, "Failed to create directories", e);
             throw e;
         }
     }
 
-    /**
-     * Hämtar nästa backup-index.
-     * @return Index för nästa backup.
-     */
-    private static int nextBackupIndex(){
+    private static int nextBackupIndex() {
         backupRecordsIndex = ++backupRecordsIndex % 10;
         return backupRecordsIndex;
+    }
 
+    public static Path getNextRecordsBackupPath() {
+        return getFilePath("data/" + backupRecordsFileNames[nextBackupIndex()]);
     }
-    /**
-     * Hämtar sökvägen till nästa backupfil.
-     * @return Sökvägen till nästa backupfil.
-     */
-    public static Path getNextRecordsBackupPath(){
-        return Paths.get(baseDir, "data", backupRecordsFileNames[nextBackupIndex()]);
-    }
-    /**
-     * Hämtar sökvägen till huvudpostfilen.
-     * @return Sökvägen till huvudpostfilen.
-     */
-    public static Path getRecordFilePath(){
-        return Paths.get(baseDir, "data", recordsFileName);
 
+    public static Path getRecordFilePath(String fileName) {
+        return getFilePath("data/" + fileName);
     }
-    /**
-     * Hämtar sökvägen till loggfilen.
-     * @return Sökvägen till loggfilen.
-     */    public static Path getLogFilePath(){
-        return Paths.get(baseDir, "logs", "loppiskassan.log");
 
+    public static Path getLogFilePath() {
+        return getFilePath("logs/loppiskassan.log");
     }
-    /**
-     * Kontrollerar om det går att läsa och skriva till huvudpostfilen.
-     */
-    public static void assertRecordFileRights(){
-        if (Files.notExists(getRecordFilePath())){
-            //File does not exist yet, and we do not
-            //want to create it just yet.
-            //So, let's skip this check until file
-            //is created.
-            return;
+
+    private static Path getFilePath(String relativePath) {
+        return Paths.get(baseDir, relativePath);
+    }
+
+    public static boolean assertRecordFileRights(String fileName) {
+        Path path = getRecordFilePath(fileName);
+        if (Files.notExists(path)) {
+            return true;
         }
-
-        boolean canRead = Files.isReadable(getRecordFilePath());
-        boolean canWrite = Files.isWritable(getRecordFilePath());
-        if(!canWrite || !canRead){
-            String title = "Kan inte skriva till fil";
-            String popUpContent = "Kan inte använda datafil.\n" +
-                    "\nKontrollera läs- och skrivrättigheter samt\n" +
-                    "att inget annat program har filen öppen";
-            String logContent = "Problem med filrättigheter för fil: "
-                    + getRecordFilePath() + ". Skrivbar: " + canWrite +
-                    " Läsbar: " + canRead;
-            logger.warning(logContent);
-            Popup.WARNING.showAndWait (title,popUpContent);
+        boolean canRead = Files.isReadable(path);
+        boolean canWrite = Files.isWritable(path);
+        if (!canWrite || !canRead) {
+            String message = String.format("Cannot read/write file: %s. Writable: %b, Readable: %b", path, canWrite, canRead);
+            logger.warning(message);
+            Popup.WARNING.showAndWait("File Access Error", "Check read/write permissions and ensure no other program is using the file.");
+            return false;
         }
-
+        return true;
     }
 
-    /**
-     * Sparar data till huvudpostfilen.
-     * @param csv Data i CSV-format som ska sparas.
-     * @throws IOException Om det inte gick att skriva till filen.
-     */
-    public static void saveToFile(String csv) throws IOException {
-        try{
-            boolean writeHeaders = Files.notExists(getRecordFilePath());
-            if (writeHeaders){
+    public static void saveToFile(String fileName, String leadingComment, String csv) throws IOException {
+        Path path = getRecordFilePath(fileName);
+        try (OutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND))) {
+            if (Files.notExists(path) || Files.size(path) == 0) {
                 csv = FormatHelper.CVS_HEADERS + FormatHelper.LINE_ENDING + csv;
-
             }
-            OutputStream outputStream = new BufferedOutputStream(
-                    Files.newOutputStream(getRecordFilePath(), StandardOpenOption.CREATE,
-                            StandardOpenOption.APPEND));
             byte[] byteArray = csv.getBytes(StandardCharsets.UTF_8);
-            outputStream.write(byteArray, 0, byteArray.length);
-            outputStream.flush();
-            logger.log(Level.INFO, "sparade data: " + csv);
-        }catch(IOException ex){
-            String title = "Misslyckades spara senast utförda aktivitet till fil";
-            logger.log(Level.SEVERE, title + " Data: " + csv, ex);
+            if (leadingComment != null && !leadingComment.isEmpty()) {
+                byte[] comment = leadingComment.getBytes(StandardCharsets.UTF_8);
+                outputStream.write(comment);
+                outputStream.write(FormatHelper.LINE_ENDING.getBytes(StandardCharsets.UTF_8));
+            }
+            outputStream.write(byteArray);
+        } catch (IOException ex) {
+            logger.log(Level.SEVERE, "Failed to save data to file: " + csv, ex);
             throw ex;
         }
-
-
-
     }
-    /**
-     * Skapar en backup av huvudpostfilen.
-     * @throws IOException Om backup inte kunde skapas.
-     */
+
     public static void createBackupFile() throws IOException {
-        if (Files.exists(getRecordFilePath())){
-            try{
-                Path backupFile = getNextRecordsBackupPath();
-                Files.move(getRecordFilePath(), backupFile, ATOMIC_MOVE, REPLACE_EXISTING);
-                logger.log(Level.INFO, "Skapade backupfil " + backupFile);
-            }catch(IOException ex){
-                String title = "Misslyckades skapa backupfil";
-                logger.log(Level.SEVERE, title, ex);
-                throw ex;
-            }
+        Path source = getRecordFilePath(LOPPISKASSAN_CSV);
+        if (Files.exists(source)) {
+            Path backupFile = getNextRecordsBackupPath();
+            Files.move(source, backupFile, ATOMIC_MOVE, REPLACE_EXISTING);
+            logger.log(Level.INFO, "Created backup file: " + backupFile);
         }
     }
-    /**
-     * Läser innehållet från huvudpostfilen.
-     * @return Data från filen i form av en sträng.
-     * @throws IOException Om det inte gick att läsa från filen.
-     */
-    public static String readFromFile() throws IOException {
-        if (!Files.exists(getRecordFilePath())){
-            logger.log(Level.INFO,  "Filen " + getRecordFilePath() + " finns inte");
+
+    public static String readFromFile(String fileName) throws IOException {
+        Path path = getRecordFilePath(fileName);
+        if (!Files.exists(path)) {
+            logger.log(Level.INFO, "File does not exist: " + path);
+            Popup.INFORMATION.showAndWait("Filen finns inte",
+                    "Filen " + fileName + " finns inte. Har du registrerat några köp?");
             return "";
         }
-        return readFromFile(getRecordFilePath());
-
+        return readFromFile(path);
     }
-    /**
-     * Läser innehållet från en given fil.
-     * @param path Sökväg till filen som ska läsas.
-     * @return Data från filen i form av en sträng.
-     * @throws IOException Om det inte gick att läsa från filen.
-     */
+
     public static String readFromFile(Path path) throws IOException {
-        try {
-            InputStream inputStream = Files.newInputStream(path);
-            BufferedReader bufferedReader = new BufferedReader(
-                    new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(Files.newInputStream(path), StandardCharsets.UTF_8))) {
+            StringBuilder content = new StringBuilder();
             String line;
-            StringBuilder stringBuffer = new StringBuilder();
-            while ((line = bufferedReader.readLine()) != null) {
-                stringBuffer.append(line).append(FormatHelper.LINE_ENDING);
+            while ((line = reader.readLine()) != null) {
+                // if line is a comment, ignore it
+                if (line.startsWith("#")) {
+                    continue;
+                }
+                content.append(line).append(FormatHelper.LINE_ENDING);
             }
-            return stringBuffer.toString();
-        }catch (IOException ex){
-            String title = "Misslyckades läsa från datafil";
-            logger.log(Level.SEVERE, title, ex);
+            return content.toString();
+        } catch (IOException ex) {
+            logger.log(Level.SEVERE, "Failed to read from file", ex);
             throw ex;
         }
     }

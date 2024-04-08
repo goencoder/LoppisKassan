@@ -14,14 +14,20 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
+import static se.goencoder.loppiskassan.records.FileHelper.getRecordFilePath;
+
 public class HistoryTabController implements HistoryControllerInterface {
+    private static final Logger logger = Logger.getLogger(HistoryTabController.class.getName());
     private static final HistoryTabController instance = new HistoryTabController();
     private HistoryPanelInterface view;
     private List<SoldItem> allHistoryItems;
@@ -42,7 +48,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     @Override
     public void loadHistory() {
         try {
-            allHistoryItems = FormatHelper.toItems(FileHelper.readFromFile(), true);
+            allHistoryItems = FormatHelper.toItems(FileHelper.readFromFile(LOPPISKASSAN_CSV), true);
             Set<String> distinctSellers = getDistinctSellers();
             SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
         } catch (IOException e) {
@@ -53,6 +59,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     @Override
     public void filterUpdated() {
         String sellerFilter = view.getSellerFilter();
+        String paidFilter = view.getPaidFilter();
         List<SoldItem> filteredItems = applyFilters();
         view.updateHistoryTable(filteredItems);
         // convert filtered items size to string and call updateNoItemsLabel
@@ -62,6 +69,8 @@ public class HistoryTabController implements HistoryControllerInterface {
         // Determine if the "Betala ut" button should be enabled
         boolean enablePayout = sellerFilter != null && !sellerFilter.equals("Alla") && filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller());
         view.enableButton("Betala ut", enablePayout);
+        boolean enableArchive = paidFilter != null && paidFilter.equals("Ja");
+        view.enableButton("Arkivera visade poster", enableArchive);
     }
 
     @Override
@@ -78,6 +87,9 @@ public class HistoryTabController implements HistoryControllerInterface {
                 break;
             case "Kopiera till urklipp":
                 copyToClipboard();
+                break;
+            case "Arkivera visade poster":
+                archiveFilteredItems();
                 break;
             default:
                 throw new IllegalStateException("Unexpected action: " + actionCommand);
@@ -100,7 +112,8 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void importData() {
-        JFileChooser fileChooser = new JFileChooser();
+        Path defaultPath = FileHelper.getRecordFilePath(LOPPISKASSAN_CSV);
+        JFileChooser fileChooser = new JFileChooser(defaultPath.toFile());
         fileChooser.setDialogTitle("Öppna annan kassa-fil");
         // Optional: Filter for specific file types, e.g., CSV files
         FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV Files", "csv");
@@ -109,17 +122,21 @@ public class HistoryTabController implements HistoryControllerInterface {
         int result = fileChooser.showOpenDialog(null); // Pass your JFrame here if needed
         if (result == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
+            // create a set of item ids for the allHistoryItems list
+            Set<String> allItemIds = allHistoryItems.stream()
+                    .map(SoldItem::getItemId)
+                    .collect(Collectors.toSet());
             try {
                 List<SoldItem> importedItems = FormatHelper.toItems(FileHelper.readFromFile(Paths.get(file.getAbsolutePath())), true);
                 int numberOfImportedItems = 0;
                 for (SoldItem item : importedItems) {
-                    if (!allHistoryItems.contains(item)) {
+                    if (!allItemIds.contains(item.getItemId())) {
                         allHistoryItems.add(item);
                         numberOfImportedItems++;
                     }
                 }
                 FileHelper.createBackupFile();
-                FileHelper.saveToFile(FormatHelper.toCVS(allHistoryItems));
+                FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
                 // Assuming populateHistoryTable() and updateHistoryLabels() are methods that refresh your UI
                 view.clearView();
                 filterUpdated();
@@ -139,6 +156,53 @@ public class HistoryTabController implements HistoryControllerInterface {
             }
         }
     }
+    private void archiveFilteredItems() {
+
+
+
+        // get filtered items, save to a file named "arkiverade_<YY-MM-DD:HH-MM-SS>.csv"
+        // The first row in the file is a comment with the applied filters, eg:
+        // "# Säljare: 12, Betalningsmetod: Swish, Dölj utbetalda poster: Ja"
+        // The following rows are the items in CSV format
+        // Next, remove the filtered items from the allHistoryItems list and save that list to the main file
+        // Finally, update the view with the new list of items
+        List<SoldItem> filteredItems = applyFilters();
+        // if filtered Items contains items that has not been paid out, show an error popup and return
+        if (filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller())) {
+            Popup.ERROR.showAndWait("Fel vid arkivering av poster", "Det går inte att arkivera poster som inte är utbetalda.");
+            return;
+        }
+        // Show a confirmation dialog, and proceed only if the user confirms
+        if (!Popup.CONFIRM.showConfirmDialog("Arkivera visade poster", "Är du säker på att du vill arkivera de visade posterna?")) {
+            return;
+        }
+        String csv = FormatHelper.toCVS(filteredItems);
+        String fileName = "arkiverade_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss")) + ".csv";
+        String comment = "# Säljare: " + (view.getSellerFilter() == null || view.getSellerFilter().isEmpty() ? "Alla" : view.getSellerFilter())
+                + ", Betalningsmetod: " + (view.getPaymentMethodFilter() == null || view.getPaymentMethodFilter().isEmpty() ? "Alla" : view.getPaymentMethodFilter());
+        try {
+            FileHelper.saveToFile(fileName, comment, csv);
+            logger.info("Allitems are " + allHistoryItems.size() + " and filtered items are " + filteredItems.size());
+            // Create a set of item IDs for the filtered items
+            Set<String> filteredItemIds = filteredItems.stream()
+                    .map(SoldItem::getItemId)
+                    .collect(Collectors.toSet());
+            // Remove the filtered items from the allHistoryItems list by filtering out items with IDs in the set
+            // Loop from end and remove as we go to avoid ConcurrentModificationException
+            for (int i = allHistoryItems.size() - 1; i >= 0; i--) {
+                if (filteredItemIds.contains(allHistoryItems.get(i).getItemId())) {
+                    allHistoryItems.remove(i);
+                }
+            }
+            logger.info("Allitems are now " + allHistoryItems.size() + " and filtered items are " + filteredItems.size());
+            FileHelper.createBackupFile();
+            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
+            filterUpdated();
+        } catch (IOException e) {
+            Popup.FATAL.showAndWait("Fel vid arkivering av poster", e.getMessage());
+        }
+
+    }
 
     private void payout() {
         // Get filtered items
@@ -146,15 +210,21 @@ public class HistoryTabController implements HistoryControllerInterface {
         // Iterate over filtered items and mark them as collected by seller (Local date now)
         LocalDateTime now = LocalDateTime.now();
         // Update allHistoryItems with changes made to filteredItems
-        allHistoryItems.forEach(historyItem -> filteredItems.stream()
-                .filter(filteredItem -> filteredItem.getItemId().equals(historyItem.getItemId())) // Assuming getItemId() is your unique identifier method
-                .findFirst()
-                .ifPresent(filteredItem -> historyItem.setCollectedBySellerTime(now)));
+        Set<String> filteredItemIds = filteredItems.stream()
+                .map(SoldItem::getItemId)
+                .collect(Collectors.toSet());
+
+        allHistoryItems.forEach(historyItem -> {
+            if (filteredItemIds.contains(historyItem.getItemId())) {
+                historyItem.setCollectedBySellerTime(now);
+            }
+        });
+
         String csv = FormatHelper.toCVS(allHistoryItems);
         // Write CSV string to file
         try {
             FileHelper.createBackupFile();
-            FileHelper.saveToFile(csv);
+            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", csv);
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid skrivning till fil", e.getMessage());
         }
@@ -215,16 +285,27 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private List<SoldItem> applyFilters() {
-        boolean hidePaidPosts = view.isPaidPostsHidden();
+        String paidFilter = view.getPaidFilter(); // This will be "Ja", "Nej", or "Alla"
         String sellerFilter = view.getSellerFilter();
         String paymentMethodFilter = view.getPaymentMethodFilter();
         return allHistoryItems.stream()
-                // If hidePaidPosts is true, filter out items that have been collected by the seller
-                .filter(item -> !hidePaidPosts || !item.isCollectedBySeller())
+                // Apply the paid filter based on the selected value
+                .filter(item -> {
+                    switch (paidFilter) {
+                        case "Ja":
+                            return item.isCollectedBySeller();
+                        case "Nej":
+                            return !item.isCollectedBySeller();
+                        case "Alla":
+                        default:
+                            return true; // No filtering on paid status
+                    }
+                })
                 // Apply the seller filter if a specific seller is selected (not null and not "Alla")
                 .filter(item -> sellerFilter == null || "Alla".equals(sellerFilter) || Filter.getFilterFunc(Filter.SELLER, sellerFilter).test(item))
                 // Apply the payment method filter if a specific payment method is selected (not null and not "Alla")
                 .filter(item -> paymentMethodFilter == null || "Alla".equals(paymentMethodFilter) || Filter.getFilterFunc(Filter.PAYMENT_METHOD, paymentMethodFilter).test(item))
                 .collect(Collectors.toList());
     }
+
 }

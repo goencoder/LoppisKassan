@@ -41,6 +41,10 @@ public class FormatHelper {
         }
         List<SoldItem> items = new ArrayList<>(lines.length - startIndex);
         for (int i = startIndex; i < lines.length; i++) {
+            // Check if line is a comment or empty
+            if (lines[i].startsWith("#") || lines[i].isEmpty()) {
+                continue;
+            }
             String[] columns = lines[i].split(DELIMITER);
             String collectedTime = columns[5];
             LocalDateTime dateTime = null;

@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
+
 /**
  * Created by gengdahl on 2016-09-20.
  */
@@ -17,7 +19,7 @@ public class TestRunner {
     private final Random random = new Random(System.currentTimeMillis());
     public static void main(String[] args){
         TestRunner tr = new TestRunner();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             tr.testManyEntries();
         }
 
@@ -35,7 +37,9 @@ public class TestRunner {
             }
             purchaseId = UUID.randomUUID().toString();
             try {
-                FileHelper.saveToFile(FormatHelper.toCVS(createRandomSoldItems(paymentMethod,
+                FileHelper.saveToFile(LOPPISKASSAN_CSV,
+                        "",
+                        FormatHelper.toCVS(createRandomSoldItems(paymentMethod,
                   purchaseId)));
             } catch (IOException e) {
                 e.printStackTrace();
