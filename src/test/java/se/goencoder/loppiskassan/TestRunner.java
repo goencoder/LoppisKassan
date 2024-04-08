@@ -1,9 +1,7 @@
-package test.se.teddy.loppiskassan;
+package se.goencoder.loppiskassan;
 
-import se.teddy.loppiskassan.PaymentMethod;
-import se.teddy.loppiskassan.SoldItem;
-import se.teddy.loppiskassan.records.FileHelper;
-import se.teddy.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.records.FileHelper;
+import se.goencoder.loppiskassan.records.FormatHelper;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -12,21 +10,23 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
+import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
+
 /**
  * Created by gengdahl on 2016-09-20.
  */
 public class TestRunner {
-    private Random random = new Random(System.currentTimeMillis());
+    private final Random random = new Random(System.currentTimeMillis());
     public static void main(String[] args){
         TestRunner tr = new TestRunner();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             tr.testManyEntries();
         }
 
     }
     public void testManyEntries(){
         int numberOfCustomers = 10;
-        String purchaseId = UUID.randomUUID().toString();
+        String purchaseId;
         PaymentMethod paymentMethod = PaymentMethod.Swish;
 
         for (int i = 0; i < numberOfCustomers; i++){
@@ -37,7 +37,9 @@ public class TestRunner {
             }
             purchaseId = UUID.randomUUID().toString();
             try {
-                FileHelper.saveToFile(FormatHelper.toCVS(createRandomSoldItems(paymentMethod,
+                FileHelper.saveToFile(LOPPISKASSAN_CSV,
+                        "",
+                        FormatHelper.toCVS(createRandomSoldItems(paymentMethod,
                   purchaseId)));
             } catch (IOException e) {
                 e.printStackTrace();
@@ -48,7 +50,7 @@ public class TestRunner {
     private List<SoldItem> createRandomSoldItems(PaymentMethod paymentMethod,
                                                  String purchaseId){
         int numberOfRecords = (int)(System.currentTimeMillis() % 19 + 1);
-        List<SoldItem> items = new ArrayList<SoldItem>(numberOfRecords);
+        List<SoldItem> items = new ArrayList<>(numberOfRecords);
         for (int i = 0 ; i < numberOfRecords; i++){
             SoldItem item = createRandomSoldItem(paymentMethod, purchaseId);
             item.setSoldTime(LocalDateTime.now());
