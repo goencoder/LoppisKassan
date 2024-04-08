@@ -9,6 +9,7 @@ import java.awt.*;
 import java.util.List;
 import java.util.Set;
 
+import static se.goencoder.loppiskassan.ui.Constants.*;
 import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
 
 public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
@@ -129,9 +130,9 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         // Set a uniform size for all buttons
         Dimension buttonSize = new Dimension(150, 50); // You can adjust width and height as needed
 
-        eraseAllDataButton = createButton("Rensa kassan", buttonSize.width, buttonSize.height);
+        eraseAllDataButton = createButton(BUTTON_ERASE, buttonSize.width, buttonSize.height);
         archiveFilteredButton = createButton("Arkivera filtrerat", buttonSize.width, buttonSize.height);
-        importDataButton = createButton("Importera kassa", buttonSize.width, buttonSize.height);
+        importDataButton = createButton(BUTTON_IMPORT, buttonSize.width, buttonSize.height);
 
         // Wrap buttons individually in panels with FlowLayout to align them to the right
         JPanel erasePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -142,9 +143,9 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         importPanel.add(importDataButton);
 
         // Add action listeners
-        eraseAllDataButton.addActionListener(e -> controller.buttonAction("Rensa kassan"));
-        archiveFilteredButton.addActionListener(e -> controller.buttonAction("Arkivera visade poster"));
-        importDataButton.addActionListener(e -> controller.buttonAction("Importera kassa"));
+        eraseAllDataButton.addActionListener(e -> controller.buttonAction(BUTTON_ERASE));
+        archiveFilteredButton.addActionListener(e -> controller.buttonAction(BUTTON_ARCHIVE));
+        importDataButton.addActionListener(e -> controller.buttonAction(BUTTON_IMPORT));
 
         // Add the individual panels to the main management panel
         managementButtonsPanel.add(erasePanel);
@@ -165,15 +166,15 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         JPanel innerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10)); // added horizontal and vertical gaps
 
         // Assuming button size has already been set with setPreferredSize in createButton method
-        payoutButton = createButton("Betala ut", 150, 50); // width and height adjusted as needed
-        toClipboardButton = createButton("Kopiera till urklipp", 150, 50);
+        payoutButton = createButton(BUTTON_PAY_OUT, 150, 50); // width and height adjusted as needed
+        toClipboardButton = createButton(BUTTON_COPY_TO_CLIPBOARD, 150, 50);
 
         innerPanel.add(payoutButton);
         innerPanel.add(toClipboardButton);
 
         // Add action listeners to buttons
-        payoutButton.addActionListener(e -> controller.buttonAction("Betala ut"));
-        toClipboardButton.addActionListener(e -> controller.buttonAction("Kopiera till urklipp"));
+        payoutButton.addActionListener(e -> controller.buttonAction(BUTTON_PAY_OUT));
+        toClipboardButton.addActionListener(e -> controller.buttonAction(BUTTON_COPY_TO_CLIPBOARD));
 
         // Add innerPanel to the center of actionButtonsPanel to make it stretch across the window
         actionButtonsPanel.add(innerPanel, BorderLayout.CENTER);
@@ -241,19 +242,19 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     public void enableButton(String buttonName, boolean enable) {
         // Directly manipulate button state based on the buttonName argument
         switch (buttonName) {
-            case "Rensa kassan":
+            case BUTTON_ERASE:
                 eraseAllDataButton.setEnabled(enable);
                 break;
-            case "Importera kassa":
+            case BUTTON_IMPORT:
                 importDataButton.setEnabled(enable);
                 break;
-            case "Betala ut":
+            case BUTTON_PAY_OUT:
                 payoutButton.setEnabled(enable);
                 break;
-            case "Kopiera till urklipp":
+            case BUTTON_COPY_TO_CLIPBOARD:
                 toClipboardButton.setEnabled(enable);
                 break;
-            case "Arkivera visade poster":
+            case BUTTON_ARCHIVE:
                 archiveFilteredButton.setEnabled(enable);
                 break;
             default:

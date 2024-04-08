@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
-import static se.goencoder.loppiskassan.records.FileHelper.getRecordFilePath;
+import static se.goencoder.loppiskassan.ui.Constants.*;
 
 public class HistoryTabController implements HistoryControllerInterface {
     private static final Logger logger = Logger.getLogger(HistoryTabController.class.getName());
@@ -68,27 +68,27 @@ public class HistoryTabController implements HistoryControllerInterface {
         view.updateSumLabel(Double.toString(filteredItems.stream().mapToDouble(SoldItem::getPrice).sum()));
         // Determine if the "Betala ut" button should be enabled
         boolean enablePayout = sellerFilter != null && !sellerFilter.equals("Alla") && filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller());
-        view.enableButton("Betala ut", enablePayout);
+        view.enableButton(BUTTON_PAY_OUT, enablePayout);
         boolean enableArchive = paidFilter != null && paidFilter.equals("Ja");
-        view.enableButton("Arkivera visade poster", enableArchive);
+        view.enableButton(BUTTON_ARCHIVE, enableArchive);
     }
 
     @Override
     public void buttonAction(String actionCommand) {
         switch (actionCommand) {
-            case "Rensa kassan":
+            case BUTTON_ERASE:
                 clearData();
                 break;
             case "Importera kassa":
                 importData();
                 break;
-            case "Betala ut":
+            case BUTTON_PAY_OUT:
                 payout();
                 break;
-            case "Kopiera till urklipp":
+            case BUTTON_COPY_TO_CLIPBOARD:
                 copyToClipboard();
                 break;
-            case "Arkivera visade poster":
+            case BUTTON_ARCHIVE:
                 archiveFilteredItems();
                 break;
             default:
@@ -98,7 +98,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void clearData() {
         try {
-            if (Popup.CONFIRM.showConfirmDialog("Rensa kassan", "Är du säker på att du vill rensa kassan?")) {
+            if (Popup.CONFIRM.showConfirmDialog(BUTTON_ERASE, "Är du säker på att du vill rensa kassan?")) {
                 FileHelper.createBackupFile();
                 allHistoryItems.clear();
                 filterUpdated();
@@ -173,7 +173,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             return;
         }
         // Show a confirmation dialog, and proceed only if the user confirms
-        if (!Popup.CONFIRM.showConfirmDialog("Arkivera visade poster", "Är du säker på att du vill arkivera de visade posterna?")) {
+        if (!Popup.CONFIRM.showConfirmDialog(BUTTON_ARCHIVE, "Är du säker på att du vill arkivera de visade posterna?")) {
             return;
         }
         String csv = FormatHelper.toCVS(filteredItems);
