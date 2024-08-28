@@ -1,6 +1,22 @@
 # LoppisKassan
 
-## Förutsättningar
+
+## Installationsmanual
+
+För att installera LoppisKassan, följ vår [installationsmanual](docs/installation.md).
+
+
+## Användarmanual
+**Notera!** Här är länken till den senaste versionen av manualen:
+
+Manual: [LoppisKassan v2.0](docs/manual_v2.md)
+
+**Äldre versioner:**
+- Manual: [LoppisKassan](https://seteddy.wordpress.com/2016/09/20/loppiskassan/)
+- Tillägg: [Loppiskassan v1.2](https://seteddy.wordpress.com/2018/01/07/loppiskassan-v1-2/)
+
+
+## Bygga LoppisKassan från källkod
 För att bygga och köra detta projekt krävs följande 
 - [Git](https://git-scm.com/download/mac)
 - [Java](https://www.oracle.com/java/technologies/downloads/)
@@ -39,17 +55,3 @@ mvn clean package
 ```bash
 $JAVA_HOME/bin/java -jar target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
 ```
-
-## Installationsmanual
-
-För att installera LoppisKassan, följ vår [installationsmanual](docs/installation.md).
-
-
-## Användarmanual
-**Notera!** Här är länken till den senaste versionen av manualen:
-
-Manual: [LoppisKassan v2.0](docs/manual_v2.md)
-
-**Äldre versioner:**
-- Manual: [LoppisKassan](https://seteddy.wordpress.com/2016/09/20/loppiskassan/)
-- Tillägg: [Loppiskassan v1.2](https://seteddy.wordpress.com/2018/01/07/loppiskassan-v1-2/)
