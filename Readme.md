@@ -42,9 +42,10 @@ $JAVA_HOME/bin/java -jar target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
 
 
 ## Användarmanual
-**Notera!** Nedan länkar är till en äldre version av programmet, men funktionaliteten är densamma.
+**Notera!** Här är länken till den senaste versionen av manualen:
 
-Manual: [LoppisKassan](https://seteddy.wordpress.com/2016/09/20/loppiskassan/)
+Manual: [LoppisKassan v2.0](docs/manual_v2.md)
 
-Tillägg: [Loppiskassan v1.2](https://seteddy.wordpress.com/2018/01/07/loppiskassan-v1-2/)
-
+**Äldre versioner:**
+- Manual: [LoppisKassan](https://seteddy.wordpress.com/2016/09/20/loppiskassan/)
+- Tillägg: [Loppiskassan v1.2](https://seteddy.wordpress.com/2018/01/07/loppiskassan-v1-2/)

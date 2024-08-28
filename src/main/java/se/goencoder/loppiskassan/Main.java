@@ -19,7 +19,7 @@ public class Main {
      */
     private static void createAndShowGUI() {
         UserInterface frame = new UserInterface();
-        frame.setTitle("Loppiskassan v2.0 ("+FileHelper.getLogFilePath()+")");
+        frame.setTitle("Loppiskassan v2.0 ("+FileHelper.getRecordFilePath(FileHelper.LOPPISKASSAN_CSV)+")");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Ställ in ramens storlek och gör den synlig
