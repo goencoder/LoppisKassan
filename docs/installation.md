@@ -1,6 +1,6 @@
 # Installationsmanual för LoppisKassan
 
-Den här guiden hjälper dig att installera LoppisKassan på din dator. Du kan antingen ladda ner och köra en `.jar`-fil eller en `.dmg`-fil beroende på ditt operativsystem.
+Den här guiden hjälper dig att installera LoppisKassan på din dator.
 
 ## Installation med `.jar`-fil
 
