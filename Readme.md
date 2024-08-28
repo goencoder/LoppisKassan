@@ -40,6 +40,10 @@ mvn clean package
 $JAVA_HOME/bin/java -jar target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
 ```
 
+## Installationsmanual
+
+För att installera LoppisKassan, följ vår [installationsmanual](docs/installation.md).
+
 
 ## Användarmanual
 **Notera!** Här är länken till den senaste versionen av manualen:
