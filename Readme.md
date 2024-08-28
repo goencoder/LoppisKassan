@@ -55,3 +55,6 @@ mvn clean package
 ```bash
 $JAVA_HOME/bin/java -jar target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
 ```
+## Licens
+
+Detta projekt är licensierat under MIT-licensen – se [LICENSE](LICENSE) för mer information.
