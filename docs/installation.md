@@ -5,7 +5,7 @@ Den här guiden hjälper dig att installera LoppisKassan på din dator. Du kan a
 ## Installation med `.jar`-fil
 
 ### Förutsättningar
-- **Java ** måste vara installerat på din dator. Du kan ladda ner Java från [Oracles officiella webbplats](https://www.oracle.com/java/technologies/downloads/).
+- **Java** måste vara installerat på din dator. Du kan ladda ner Java från [Oracles officiella webbplats](https://www.oracle.com/java/technologies/downloads/).
 
 ### Installation
 1. Ladda ner den senaste versionen av `.jar`-filen från vår [releasesida](https://github.com/goencoder/loppiskassan/releases).
