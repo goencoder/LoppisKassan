@@ -26,8 +26,8 @@ public class FileHelper {
 
     public static void createDirectories() throws IOException {
         try {
-            Files.createDirectories(getFilePath("logs").getParent());
-            Files.createDirectories(getFilePath("data").getParent());
+            Files.createDirectories(getFilePath("logs"));
+            Files.createDirectories(getFilePath("data"));
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to create directories", e);
             throw e;
