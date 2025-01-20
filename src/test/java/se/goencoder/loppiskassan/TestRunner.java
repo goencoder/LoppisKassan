@@ -49,7 +49,7 @@ public class TestRunner {
     }
     private List<SoldItem> createRandomSoldItems(PaymentMethod paymentMethod,
                                                  String purchaseId){
-        int numberOfRecords = (int)(System.currentTimeMillis() % 19 + 1);
+        int numberOfRecords = random.nextInt(19) + 1;
         List<SoldItem> items = new ArrayList<>(numberOfRecords);
         for (int i = 0 ; i < numberOfRecords; i++){
             SoldItem item = createRandomSoldItem(paymentMethod, purchaseId);
@@ -63,17 +63,15 @@ public class TestRunner {
                                           String purchaseId){
         int seller = Math.abs(random.nextInt() % 9) + 1;
         int price = Math.abs(random.nextInt() % 20) +1 ;
-        int priceAlt = Math.abs(random.nextInt() % 20) + 1;
-        if (price > priceAlt){
-            price = priceAlt;
-        }
+
         return new SoldItem(purchaseId,
-          UUID.randomUUID().toString(),
-          LocalDateTime.now(),
-          seller,
-          price,
-          null,
-          paymentMethod);
+                UUID.randomUUID().toString(),
+                LocalDateTime.now(),
+                seller,
+                price,
+                null,
+                paymentMethod,
+                false);
     }
 
 }

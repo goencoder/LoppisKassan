@@ -1,14 +1,20 @@
 package se.goencoder.loppiskassan.controller;
 
+import se.goencoder.iloppis.invoker.ApiException;
+import se.goencoder.iloppis.model.CreateSoldItems;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+
 import javax.swing.*;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,45 +30,44 @@ public class CashierTabController implements CashierControllerInterface {
     private final List<SoldItem> items = new ArrayList<>();
     private CashierPanelInterface view;
 
-    // Private constructor to enforce singleton pattern.
+
     private CashierTabController() {}
 
-    // Returns the singleton instance of this controller.
     public static CashierControllerInterface getInstance() {
         return instance;
     }
 
-    // Sets up the button for cash checkout.
+    // --- Button setup methods ---
+    @Override
     public void setupCheckoutCashButtonAction(JButton checkoutCashButton) {
         checkoutCashButton.addActionListener(e -> checkout(PaymentMethod.Kontant));
     }
 
-    // Sets up the button for Swish (digital) checkout.
+    @Override
     public void setupCheckoutSwishButtonAction(JButton checkoutSwishButton) {
         checkoutSwishButton.addActionListener(e -> checkout(PaymentMethod.Swish));
     }
 
-    // Sets up the button to cancel the checkout process.
+    @Override
     public void setupCancelCheckoutButtonAction(JButton cancelCheckoutButton) {
         cancelCheckoutButton.addActionListener(e -> cancelCheckout());
     }
 
-    // Configures the action for the prices text field.
     @Override
     public void setupPricesTextFieldAction(JTextField pricesTextField) {
         pricesTextField.addActionListener(e -> {
-            Map<Integer,Integer[]> prices = view.getAndClearSellerPrices();
+            Map<Integer, Integer[]> prices = view.getAndClearSellerPrices();
             prices.forEach(this::addItem);
             view.setFocusToSellerField();
         });
     }
 
-    // Registers the interface of the cashier panel view with this controller.
+    @Override
     public void registerView(CashierPanelInterface view) {
         this.view = view;
     }
 
-    // Removes a sold item by its ID and recalculates the total.
+    // --- Item operations ---
     @Override
     public void deleteItem(String itemId) {
         items.removeIf(item -> item.getItemId().equals(itemId));
@@ -76,7 +81,6 @@ public class CashierTabController implements CashierControllerInterface {
         view.updateChangeCashField(change);
     }
 
-    // Adds an item to the list and recalculates the total.
     public void addItem(Integer sellerId, Integer[] prices) {
         if (FileHelper.assertRecordFileRights(LOPPISKASSAN_CSV)) {
             for (Integer price : prices) {
@@ -88,38 +92,43 @@ public class CashierTabController implements CashierControllerInterface {
         }
     }
 
-    // Handles the checkout process for different payment methods.
+    // --- Checkout process ---
     public void checkout(PaymentMethod paymentMethod) {
         LocalDateTime now = LocalDateTime.now();
         String purchaseId = UUID.randomUUID().toString();
-        items.forEach(item -> {
-            item.setSoldTime(now);
-            item.setPaymentMethod(paymentMethod);
-            item.setPurchaseId(purchaseId);
-        });
+
+        // 1) Prepare items
+        prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
+
+        // 2) Save to web
         try {
-            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
+            saveItemsToWeb(items);
+        } catch (Exception e) {
+            Popup.ERROR.showAndWait("Kunde inte spara till webb", e.getMessage());
+        }
+
+        // 3) Save to file & clear
+        try {
+            saveItemsToFile(items);
             items.clear();
             view.clearView();
         } catch (IOException e) {
             Popup.ERROR.showAndWait("Kunde inte spara till fil (" +
-                    FileHelper.getRecordFilePath(LOPPISKASSAN_CSV) +
-                    ")", e.getMessage());
+                    FileHelper.getRecordFilePath(LOPPISKASSAN_CSV) + ")", e.getMessage());
         }
     }
 
-    // Cancels the checkout, clearing the items and view.
     public void cancelCheckout() {
         items.clear();
         view.clearView();
     }
 
-    // Recalculates and updates the total sum and item count displayed.
     private void reCalculate() {
         int totalSum = getSum();
-        int roundedSum = (totalSum + 99) / 100 * 100; // Round up to the nearest 100.
+        int roundedSum = (totalSum + 99) / 100 * 100; // Round up to the nearest 100
         int change = roundedSum - totalSum;
 
+        // Update the view
         view.clearView();
         items.forEach(view::addSoldItem);
         view.updateSumLabel(String.valueOf(totalSum));
@@ -127,11 +136,51 @@ public class CashierTabController implements CashierControllerInterface {
         view.updateChangeCashField(change);
         view.updatePayedCashField(roundedSum);
         view.setFocusToSellerField();
-        view.enableCheckoutButtons(items.size() > 0);
+        view.enableCheckoutButtons(!items.isEmpty());
     }
 
-    // Calculates the total sum of sold items.
     private int getSum() {
         return items.stream().mapToInt(SoldItem::getPrice).sum();
+    }
+
+    // --- Helper methods to break up checkout() logic ---
+    private void prepareItemsForCheckout(List<SoldItem> items, String purchaseId,
+                                         PaymentMethod paymentMethod, LocalDateTime now) {
+        items.forEach(item -> {
+            item.setSoldTime(now);
+            item.setPaymentMethod(paymentMethod);
+            item.setPurchaseId(purchaseId);
+        });
+    }
+
+    private void saveItemsToWeb(List<SoldItem> items) throws ApiException {
+        CreateSoldItems createSoldItems = new CreateSoldItems();
+        for (SoldItem item : items) {
+            // Convert to the API’s SoldItem type
+            se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
+            apiItem.setCashierAlias("test");
+            apiItem.setSeller(item.getSeller());
+            apiItem.setItemId(item.getItemId());
+            apiItem.setPrice(item.getPrice());
+            apiItem.setPaymentMethod(
+                    item.getPaymentMethod() == PaymentMethod.Kontant
+                            ? se.goencoder.iloppis.model.PaymentMethod.KONTANT
+                            : se.goencoder.iloppis.model.PaymentMethod.SWISH
+            );
+            OffsetDateTime soldTime = OffsetDateTime.of(item.getSoldTime(),
+                    OffsetDateTime.now().getOffset());
+            apiItem.setSoldTime(soldTime);
+
+            createSoldItems.addItemsItem(apiItem);
+        }
+        // Send to web service
+        ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
+                ConfigurationStore.EVENT_ID_STR.get(),
+                createSoldItems
+                );
+    }
+
+    private void saveItemsToFile(List<SoldItem> items) throws IOException {
+        FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
     }
 }

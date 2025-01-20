@@ -194,7 +194,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface{
     @Override
     public void addSoldItem(SoldItem item) {
         DefaultTableModel model = (DefaultTableModel) cashierTable.getModel();
-        model.addRow(new Object[]{item.getSeller(), item.getPrice(), item.getItemId()});
+        model.insertRow(0, new Object[]{item.getSeller(), item.getPrice(), item.getItemId()});
     }
 
     @Override

@@ -12,7 +12,7 @@ public class FormatHelper {
     public static final String LINE_ENDING = System.lineSeparator();
     private static final String DELIMITER = ",";
     public static final String CVS_HEADERS = "Köp-id" + DELIMITER + "Varu-id" + DELIMITER + "tidsstämpel" + DELIMITER
-            + "säljare" + DELIMITER + "pris" + DELIMITER + "utbetalt" + DELIMITER + "Betalningsmetod";
+            + "säljare" + DELIMITER + "pris" + DELIMITER + "utbetalt" + DELIMITER + "Betalningsmetod" + DELIMITER + "uppladdad";
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public static String toCVS(List<SoldItem> items) {
@@ -28,7 +28,8 @@ public class FormatHelper {
                     .append(item.getSeller()).append(DELIMITER)
                     .append(item.getPrice()).append(DELIMITER)
                     .append(collectedTime).append(DELIMITER)
-                    .append(item.getPaymentMethod().name()).append(LINE_ENDING);
+                    .append(item.getPaymentMethod().name()).append(DELIMITER)
+                    .append(item.isUploaded() ? "true" : "false").append(LINE_ENDING);
         }
         return stringBuilder.toString();
     }
@@ -51,13 +52,23 @@ public class FormatHelper {
             if (!collectedTime.equals("Nej")) {
                 dateTime = stringToDateAndTime(collectedTime);
             }
+            boolean uploaded;
+            // If we have  coumn seven, we have uploaded status, else we default to false
+            if (columns.length > 6) {
+                uploaded = Boolean.parseBoolean(columns[6]);
+            } else {
+                uploaded = false;
+            }
+
+
             items.add(new SoldItem(columns[0],
                     columns[1],
                     stringToDateAndTime(columns[2]),
                     Integer.parseInt(columns[3]),
                     Integer.parseInt(columns[4]),
                     dateTime,
-                    PaymentMethod.valueOf(columns[6])));
+                    PaymentMethod.valueOf(columns[6]),
+                    uploaded));
         }
         return items;
     }

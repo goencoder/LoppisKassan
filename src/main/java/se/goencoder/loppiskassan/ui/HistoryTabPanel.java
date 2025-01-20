@@ -44,6 +44,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
 
         controller.registerView(this);
     }
+
     private JTable initializeTable() {
         String[] columnNames = {"Säljare", "Pris", "Sålt", "Utbetalt", "Betalningsmetod"};
         DefaultTableModel model = new DefaultTableModel(null, columnNames);
@@ -51,56 +52,55 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         return historyTable;
     }
 
+    /**
+     * Helper method to create a label + combobox in the filter panel
+     * and place them in the given GridBagConstraints row.
+     */
+    private void addFilterRow(JPanel panel, GridBagConstraints gbc,
+                              String labelText, JComboBox<String> comboBox, String[] comboItems) {
+        // Label
+        gbc.gridx = 0;
+        panel.add(new JLabel(labelText), gbc);
+        // Combobox
+        gbc.gridx++;
+        comboBox.setModel(new DefaultComboBoxModel<>(comboItems));
+        panel.add(comboBox, gbc);
+        // Move to the next row
+        gbc.gridy++;
+        gbc.gridx = 0;
+    }
+
     private JPanel initializeFilterPanel() {
         JPanel filterPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.insets = new Insets(2, 2, 2, 2);
+        gbc.weightx = 0;
+        gbc.gridy = 0;
+        gbc.gridx = 0;
 
-        gbc.anchor = GridBagConstraints.NORTHWEST; // Anchor components to the top-left corner
-        gbc.insets = new Insets(2, 2, 2, 2); // Standard padding
-        gbc.weightx = 0;  // Do not stretch components horizontally
+        // Paid filter
+        paidFilterDropdown = new JComboBox<>();
+        addFilterRow(filterPanel, gbc, "Utbetalt", paidFilterDropdown,
+                new String[]{"Alla", "Ja", "Nej"});
 
+        // Seller filter
+        sellerFilterDropdown = new JComboBox<>();
+        addFilterRow(filterPanel, gbc, "Säljnummer", sellerFilterDropdown,
+                new String[]{"Alla"});
 
-        gbc.gridy = 0; // Start at the first row
-        gbc.gridx = 0; // Column 0 for the label
-        JLabel paidLabel = new JLabel("Utbetalt");
-        filterPanel.add(paidLabel, gbc);
+        // Payment method filter
+        paymentTypeFilterDropdown = new JComboBox<>();
+        addFilterRow(filterPanel, gbc, "Betalningsmedel", paymentTypeFilterDropdown,
+                new String[]{"Alla", "Swish", "Kontant"});
 
-        gbc.gridx = 1; // Column 1 for the dropdown
-        paidFilterDropdown = new JComboBox<>(new String[]{ "Alla", "Ja", "Nej"});
-        filterPanel.add(paidFilterDropdown, gbc);
-
-        // Seller Filter Dropdown
-        gbc.gridx = 0; // Reset to first column for the label
-        gbc.gridy++; // Next row
-        gbc.gridwidth = 1; // Reset to one column span for the label
-        JLabel sellerLabel = new JLabel("Säljnummer");
-        filterPanel.add(sellerLabel, gbc);
-
-        gbc.gridx++; // Move to next column for the dropdown
-        sellerFilterDropdown = new JComboBox<>(new String[]{"Alla"});
-        filterPanel.add(sellerFilterDropdown, gbc);
-
-        // Payment Type Filter Dropdown
-        gbc.gridx = 0; // Reset to first column for the label
-        gbc.gridy++; // Next row
-        JLabel paymentLabel = new JLabel("Betalningsmedel");
-        filterPanel.add(paymentLabel, gbc);
-
-        gbc.gridx++; // Move to next column for the dropdown
-        paymentTypeFilterDropdown = new JComboBox<>(new String[]{"Alla", "Swish", "Kontant"});
-        filterPanel.add(paymentTypeFilterDropdown, gbc);
-
-        // Add "glue" to absorb all remaining horizontal space
-        gbc.gridx++; // Next column after the dropdowns
-        gbc.weightx = 1;  // This component will absorb all extra horizontal space
-        gbc.gridwidth = GridBagConstraints.REMAINDER; // This component fills the rest of the row
+        // Add horizontal "glue"
+        gbc.weightx = 1;
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
         filterPanel.add(Box.createHorizontalGlue(), gbc);
-
-        // Add "glue" component to push everything to the top
-        gbc.gridy++; // Row after the last component
-        gbc.gridx = 0; // Start from the first column
-        gbc.weighty = 1;  // Occupy all vertical space at the end
-        gbc.gridwidth = GridBagConstraints.REMAINDER; // Span all columns
+        gbc.gridy++;
+        gbc.gridx = 0;
+        gbc.weighty = 1;
         filterPanel.add(Box.createVerticalGlue(), gbc);
 
         // Register filter update handlers
@@ -111,7 +111,6 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         return filterPanel;
     }
 
-
     private JPanel initializeSummaryPanel() {
         JPanel summaryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         itemsCountLabel = new JLabel("Antal varor: 0");
@@ -121,66 +120,58 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         return summaryPanel;
     }
 
-
     private JPanel initializeManagementButtons() {
-        // Same vertical BoxLayout as before
         JPanel managementButtonsPanel = new JPanel();
         managementButtonsPanel.setLayout(new BoxLayout(managementButtonsPanel, BoxLayout.PAGE_AXIS));
 
-        // Set a uniform size for all buttons
-        Dimension buttonSize = new Dimension(150, 50); // You can adjust width and height as needed
+        Dimension buttonSize = new Dimension(150, 50);
 
+        // Create buttons
         eraseAllDataButton = createButton(BUTTON_ERASE, buttonSize.width, buttonSize.height);
         archiveFilteredButton = createButton("Arkivera filtrerat", buttonSize.width, buttonSize.height);
         importDataButton = createButton(BUTTON_IMPORT, buttonSize.width, buttonSize.height);
 
-        // Wrap buttons individually in panels with FlowLayout to align them to the right
-        JPanel erasePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        erasePanel.add(eraseAllDataButton);
-        JPanel archivePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        archivePanel.add(archiveFilteredButton);
-        JPanel importPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        importPanel.add(importDataButton);
+        // Wrap each button in its own FlowLayout panel
+        managementButtonsPanel.add(createFlowRightPanel(eraseAllDataButton));
+        managementButtonsPanel.add(createFlowRightPanel(archiveFilteredButton));
+        managementButtonsPanel.add(createFlowRightPanel(importDataButton));
 
         // Add action listeners
         eraseAllDataButton.addActionListener(e -> controller.buttonAction(BUTTON_ERASE));
         archiveFilteredButton.addActionListener(e -> controller.buttonAction(BUTTON_ARCHIVE));
         importDataButton.addActionListener(e -> controller.buttonAction(BUTTON_IMPORT));
 
-        // Add the individual panels to the main management panel
-        managementButtonsPanel.add(erasePanel);
-        managementButtonsPanel.add(archivePanel);
-        managementButtonsPanel.add(importPanel);
-
+        // Wrap the vertical panel with a border layout panel
         JPanel wrapperPanel = new JPanel(new BorderLayout());
         wrapperPanel.add(managementButtonsPanel, BorderLayout.NORTH);
 
         return wrapperPanel;
     }
 
+    /**
+     * Small helper to create a FlowLayout RIGHT-aligned panel containing one button.
+     */
+    private JPanel createFlowRightPanel(JButton button) {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panel.add(button);
+        return panel;
+    }
+
     private JPanel initializeActionButtons() {
-        // Action buttons panel that stretches across the window
         JPanel actionButtonsPanel = new JPanel(new BorderLayout());
+        JPanel innerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
 
-        // Inner panel with flow layout centers the buttons
-        JPanel innerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10)); // added horizontal and vertical gaps
-
-        // Assuming button size has already been set with setPreferredSize in createButton method
-        payoutButton = createButton(BUTTON_PAY_OUT, 150, 50); // width and height adjusted as needed
+        payoutButton = createButton(BUTTON_PAY_OUT, 150, 50);
         toClipboardButton = createButton(BUTTON_COPY_TO_CLIPBOARD, 150, 50);
 
         innerPanel.add(payoutButton);
         innerPanel.add(toClipboardButton);
 
-        // Add action listeners to buttons
         payoutButton.addActionListener(e -> controller.buttonAction(BUTTON_PAY_OUT));
         toClipboardButton.addActionListener(e -> controller.buttonAction(BUTTON_COPY_TO_CLIPBOARD));
 
-        // Add innerPanel to the center of actionButtonsPanel to make it stretch across the window
         actionButtonsPanel.add(innerPanel, BorderLayout.CENTER);
-
-        // Add some padding if needed
-        actionButtonsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // top, left, bottom, right padding
+        actionButtonsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         return actionButtonsPanel;
     }
@@ -189,10 +180,18 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     public void updateHistoryTable(List<SoldItem> items) {
         DefaultTableModel model = (DefaultTableModel) historyTable.getModel();
         model.setRowCount(0);
-        items.forEach(item -> model.addRow(new Object[]{
-                item.getSeller(), item.getPrice() + " SEK", item.getSoldTime().toString(),
-                item.isCollectedBySeller() ? "Ja" : "Nej", item.getPaymentMethod().toString()
-        }));
+        // Iterate backwards to add the latest items first
+        for (int i = items.size() - 1; i >= 0; i--) {
+            SoldItem item = items.get(i);
+            model.addRow(new Object[]{
+                    item.getSeller(),
+                    item.getPrice() + " SEK",
+                    item.getSoldTime().toString(),
+                    item.isCollectedBySeller() ? "Ja" : "Nej",
+                    item.getPaymentMethod().toString()
+            });
+        }
+
     }
 
     @Override
@@ -204,18 +203,24 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     public void updateNoItemsLabel(String noItems) {
         itemsCountLabel.setText("Antal varor: " + noItems);
     }
+
     @Override
     public String getPaidFilter() {
         return (String) paidFilterDropdown.getSelectedItem();
     }
+
     @Override
     public String getSellerFilter() {
-        return sellerFilterDropdown.getSelectedIndex() == 0 ? null : (String) sellerFilterDropdown.getSelectedItem();
+        return sellerFilterDropdown.getSelectedIndex() == 0
+                ? null
+                : (String) sellerFilterDropdown.getSelectedItem();
     }
 
     @Override
     public String getPaymentMethodFilter() {
-        return paymentTypeFilterDropdown.getSelectedIndex() == 0 ? null : (String) paymentTypeFilterDropdown.getSelectedItem();
+        return paymentTypeFilterDropdown.getSelectedIndex() == 0
+                ? null
+                : (String) paymentTypeFilterDropdown.getSelectedItem();
     }
 
     @Override
@@ -224,12 +229,10 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         model.setRowCount(0);
         itemsCountLabel.setText("Antal varor: 0");
         totalSumLabel.setText("Summa: 0 SEK");
-        // Reset filter dropdowns
         sellerFilterDropdown.setSelectedIndex(0);
         paymentTypeFilterDropdown.setSelectedIndex(0);
         paidFilterDropdown.setSelectedIndex(0);
     }
-
 
     @Override
     public void updateSellerDropdown(Set<String> sellers) {
@@ -240,7 +243,6 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
 
     @Override
     public void enableButton(String buttonName, boolean enable) {
-        // Directly manipulate button state based on the buttonName argument
         switch (buttonName) {
             case BUTTON_ERASE:
                 eraseAllDataButton.setEnabled(enable);
