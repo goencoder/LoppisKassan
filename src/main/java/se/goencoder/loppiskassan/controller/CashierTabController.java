@@ -100,11 +100,15 @@ public class CashierTabController implements CashierControllerInterface {
         // 1) Prepare items
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
 
-        // 2) Save to web
-        try {
-            saveItemsToWeb(items);
-        } catch (Exception e) {
-            Popup.ERROR.showAndWait("Kunde inte spara till webb", e.getMessage());
+        // 2) Save to web if not in offline mode
+        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        if (!isOffline) {
+            try {
+                saveItemsToWeb(items);
+            } catch (Exception e) {
+                Popup.ERROR.showAndWait("Kunde inte spara till webb", e.getMessage());
+                return;
+            }
         }
 
         // 3) Save to file & clear

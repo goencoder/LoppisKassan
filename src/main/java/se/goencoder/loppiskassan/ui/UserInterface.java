@@ -1,5 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
+import se.goencoder.loppiskassan.config.ConfigurationStore;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
@@ -41,6 +43,26 @@ public class UserInterface extends JFrame {
         tabPane.addChangeListener(e -> {
             // This method is called whenever the selected tab changes
             SELECTABLE_TABS selectedTab = SELECTABLE_TABS.fromIndex(tabPane.getSelectedIndex());
+            if (selectedTab != SELECTABLE_TABS.DISCOVERY) {
+                // If we are attempting to select a tab other than
+                // The one selecting which loppis to manage, we need to check if a loppis has been selected or not.
+                if (ConfigurationStore.EVENT_ID_STR.get() == null) {
+                    tabPane.setSelectedIndex(SELECTABLE_TABS.DISCOVERY.getIndex());
+                    Popup.ERROR.showAndWait(
+                            "Ingen loppis vald",
+                            "Vänligen välj en loppis att öppna en kassa för först.");
+                    return;
+                }
+            } else if (selectedTab == SELECTABLE_TABS.DISCOVERY) {
+                // If we already configured a loppis, we can not change until we clear the
+                // registered items. In that case, show a popup that says.
+                // För att byta loppis, vänligen rensa kassan i historik-fliken först.
+                if (ConfigurationStore.EVENT_ID_STR.get() != null) {
+                    Popup.ERROR.showAndWait(
+                            "Kassan är inte tom",
+                            "För att byta loppis, vänligen rensa kassan i historik-fliken först.");
+                }
+            }
             selectabableTabs.get(selectedTab.getIndex()).selected();
         });
 
@@ -60,7 +82,7 @@ public class UserInterface extends JFrame {
 
     private void initializeTabs() {
         DiscoveryTabPanel discoveryTabPanel = new DiscoveryTabPanel();
-        tabPane.addTab("Konfiguration", null, discoveryTabPanel, "Upptäck event och ställ in kassa");
+        tabPane.addTab("Inställningar", null, discoveryTabPanel, "Välj vilken loppis du vill öppna en kassa för");
         selectabableTabs.add(discoveryTabPanel);
 
         CashierTabPanel cashierTabPanel = new CashierTabPanel();

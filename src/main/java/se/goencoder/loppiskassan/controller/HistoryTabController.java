@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.loppiskassan.Filter;
 import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
@@ -105,6 +106,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                 FileHelper.createBackupFile();
                 allHistoryItems.clear();
                 filterUpdated();
+                ConfigurationStore.reset();
             }
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid rensning av kassa", e);

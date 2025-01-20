@@ -1,8 +1,5 @@
 package se.goencoder.loppiskassan.rest;
-import se.goencoder.iloppis.api.ApiKeyServiceApi;
-import se.goencoder.iloppis.api.EventServiceApi;
-import se.goencoder.iloppis.api.SoldItemsServiceApi; // ERROR: Cannot resolve symbol 'iloppis'
-import se.goencoder.iloppis.api.VendorApplicationServiceApi;
+import se.goencoder.iloppis.api.*;
 import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 
@@ -19,6 +16,7 @@ public enum ApiHelper {
     private final ApiKeyServiceApi apiKeyServiceApi;
     private final EventServiceApi eventServiceApi;
     private final VendorApplicationServiceApi vendorApplicationServiceApi;
+    private final ApprovedMarketServiceApi approvedMarketServiceApi;
 
     ApiHelper(String host, int port) {
         this.apiClient = new ApiClient();
@@ -30,6 +28,7 @@ public enum ApiHelper {
         this.apiKeyServiceApi = new ApiKeyServiceApi(apiClient);
         this.eventServiceApi = new EventServiceApi(apiClient);
         this.vendorApplicationServiceApi = new VendorApplicationServiceApi(apiClient);
+        this.approvedMarketServiceApi = new ApprovedMarketServiceApi(apiClient);
 
 
     }
@@ -45,6 +44,9 @@ public enum ApiHelper {
     }
     public VendorApplicationServiceApi getVendorApplicationServiceApi() {
         return INSTANCE.vendorApplicationServiceApi;
+    }
+    public ApprovedMarketServiceApi getApprovedMarketServiceApi() {
+        return INSTANCE.approvedMarketServiceApi;
     }
 
     public void setCurrentApiKey(String apiKey) {
