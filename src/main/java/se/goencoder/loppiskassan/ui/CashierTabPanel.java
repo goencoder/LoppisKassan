@@ -231,6 +231,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface{
             Popup.WARNING.showAndWait("Felaktigt säljnummer", "Säljnummer måste vara ett heltal");
             return null;
         }
+        if (!CashierTabController.getInstance().isSellerApproved(sellerId)) {
+            Popup.WARNING.showAndWait("Säljare ej godkänd", "Säljaren är inte godkänd för detta event");
+            return null;
+        }
         // attempt to parse prices. The prices are separated by space (or any whitespace characters), so we split first and then parse
         String prices = this.pricesField.getText();
         String[] priceStrings = prices.split("\\s+");

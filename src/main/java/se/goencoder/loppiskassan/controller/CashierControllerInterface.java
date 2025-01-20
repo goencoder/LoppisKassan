@@ -17,4 +17,6 @@ public interface CashierControllerInterface {
     void deleteItem(String itemId);
 
     void calculateChange(int payedAmount);
+
+    boolean isSellerApproved(int sellerId);
 }

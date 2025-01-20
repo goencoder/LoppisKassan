@@ -238,7 +238,13 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     public void updateSellerDropdown(Set<String> sellers) {
         sellerFilterDropdown.removeAllItems();
         sellerFilterDropdown.addItem("Alla");
-        sellers.forEach(sellerFilterDropdown::addItem);
+        // iterate sellers, sort them numerical, and add them
+        // Sort the sellers numerically and add them to the dropdown
+        sellers.stream()
+                .map(Integer::parseInt)
+                .sorted()
+                .map(String::valueOf)
+                .forEach(sellerFilterDropdown::addItem);
     }
 
     @Override

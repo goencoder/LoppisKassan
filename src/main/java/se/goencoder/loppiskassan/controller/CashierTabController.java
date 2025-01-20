@@ -1,5 +1,6 @@
 package se.goencoder.loppiskassan.controller;
 
+import org.json.JSONObject;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.CreateSoldItems;
 import se.goencoder.loppiskassan.PaymentMethod;
@@ -79,6 +80,21 @@ public class CashierTabController implements CashierControllerInterface {
         int totalSum = getSum();
         int change = payedAmount - totalSum;
         view.updateChangeCashField(change);
+    }
+
+    @Override
+    public boolean isSellerApproved(int sellerId) {
+        if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+            return true;
+        } else {
+            // TODO, make this more efficient...
+            String approvedSellersJson = ConfigurationStore.APPROVED_SELLERS_JSON.get();
+            // convert to JSON Object
+            JSONObject jsonObject = new JSONObject(approvedSellersJson);
+            // get the array of approved sellers
+            return jsonObject.getJSONArray("approvedSellers").toList().contains(sellerId);
+        }
+
     }
 
     public void addItem(Integer sellerId, Integer[] prices) {
