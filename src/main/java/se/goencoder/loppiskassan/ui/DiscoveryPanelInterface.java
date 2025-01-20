@@ -98,4 +98,20 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
 
     // Show or hide "Kassakod" label + field
     void showCashierCode(boolean show);
+    /**
+     * Switches the UI to "active event" mode if true,
+     * or back to "normal selection" mode if false.
+     */
+    void setRegisterOpened(boolean opened);
+
+    /**
+     * Displays basic info about the active event in the UI,
+     * e.g. name, address, etc.
+     */
+    void showActiveEventInfo(String eventName, String description, String address);
+
+    /**
+     * Called by the controller to show/hide the "Change event" button.
+     */
+    void setChangeEventButtonVisible(boolean visible);
 }

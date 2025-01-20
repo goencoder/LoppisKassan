@@ -53,15 +53,6 @@ public class UserInterface extends JFrame {
                             "Vänligen välj en loppis att öppna en kassa för först.");
                     return;
                 }
-            } else if (selectedTab == SELECTABLE_TABS.DISCOVERY) {
-                // If we already configured a loppis, we can not change until we clear the
-                // registered items. In that case, show a popup that says.
-                // För att byta loppis, vänligen rensa kassan i historik-fliken först.
-                if (ConfigurationStore.EVENT_ID_STR.get() != null) {
-                    Popup.ERROR.showAndWait(
-                            "Kassan är inte tom",
-                            "För att byta loppis, vänligen rensa kassan i historik-fliken först.");
-                }
             }
             selectabableTabs.get(selectedTab.getIndex()).selected();
         });

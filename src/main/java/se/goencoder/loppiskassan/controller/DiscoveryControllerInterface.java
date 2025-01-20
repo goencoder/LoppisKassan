@@ -48,4 +48,9 @@ public interface DiscoveryControllerInterface {
      * Init UI state
      */
     void initUIState();
+
+    /**
+     * Called when the user clicks "Ändra event".
+     */
+    void changeEventRequested();
 }

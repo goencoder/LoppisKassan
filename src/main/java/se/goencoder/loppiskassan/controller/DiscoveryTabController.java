@@ -20,7 +20,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     private DiscoveryPanelInterface view;
     private List<Event> eventList;
 
-    private DiscoveryTabController() {}
+    private DiscoveryTabController() {
+    }
 
     public static DiscoveryTabController getInstance() {
         return instance;
@@ -76,50 +77,89 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             return;
         }
 
-        // If user tries to fetch a token for "offline", no real meaning, but let's allow it to do nothing
+        // Check if the event is offline
+        boolean isOffline = "offline".equalsIgnoreCase(eventId);
 
-        if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
-            Popup.INFORMATION.showAndWait("Offline-läge", "Kassan är i offline-läge.");
+        if (isOffline) {
+            // 1) Mark offline in config
             ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(true);
             ConfigurationStore.EVENT_ID_STR.set("offline");
-            return;
-        }
 
-        try {
-            ApiKeyServiceApi apiKeyServiceApi = ApiHelper.INSTANCE.getApiKeyServiceApi();
-            GetApiKeyResponse response = apiKeyServiceApi.apiKeyServiceGetApiKey(eventId, cashierCode);
+            // 2) Show a small info popup (optional)
+            Popup.INFORMATION.showAndWait("Offline-läge", "Kassan är i offline-läge.");
 
-            // If success, store key
-            ApiHelper.INSTANCE.setCurrentApiKey(response.getApiKey());
-            ConfigurationStore.EVENT_ID_STR.set(eventId);
-            ConfigurationStore.API_KEY_STR.set(response.getApiKey());
+            // 3) Switch the UI to "active event" mode
+            view.setRegisterOpened(true);
 
-            // Also fetch and store approved sellers for info:
-            ListVendorApplicationsResponse res = ApiHelper.INSTANCE.getVendorApplicationServiceApi()
-                    .vendorApplicationServiceListVendorApplications(ConfigurationStore.EVENT_ID_STR.get(), 500, "");
-            // Collect approved sellers
-            Set<Integer> approvedSellers = new HashSet<>();
-            List<VendorApplication> applications = res.getApplications();
-            assert applications != null;
-            for (VendorApplication application : applications) {
-                if ("APPROVED".equalsIgnoreCase(application.getStatus())) {
-                    approvedSellers.add(application.getSellerNumber());
-                }
+            // 4) Find the "event" in our eventList if you want to display name/desc
+            //    (In your code, you may have a special offline object.)
+            Event event = fromId("offline");
+            // If it doesn't exist, build it
+            if (event == null) {
+                event = new Event();
+                event.setId("offline");
+                event.setName("Offline-loppis");
+                event.setDescription("Ingen beskrivning (offline-läge)");
+                event.setAddressStreet("(ingen gata)");
+                event.setAddressCity("(ingen stad)");
             }
-            // Convert to JSON
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("approvedSellers", new JSONArray(approvedSellers));
-            ConfigurationStore.APPROVED_SELLERS_JSON.set(jsonObject.toString());
+            // 5) Show it in the active-event panel
+            view.showActiveEventInfo(
+                    event.getName(),
+                    event.getDescription(),
+                    event.getAddressStreet() + ", " + event.getAddressCity()
+            );
+            // 6) Possibly let them change again (by default we keep it visible).
+            view.setChangeEventButtonVisible(true);
 
-            Popup.INFORMATION.showAndWait("Ok!", "Kassan är redo att användas.");
-            view.setCashierButtonEnabled(false);
-            view.clearCashierCodeField();
+        } else {
+            // -------------- ONLINE --------------
+            try {
+                // 1) Call the API to get the cashier token
+                ApiKeyServiceApi apiKeyServiceApi = ApiHelper.INSTANCE.getApiKeyServiceApi();
+                GetApiKeyResponse response = apiKeyServiceApi.apiKeyServiceGetApiKey(eventId, cashierCode);
 
-        } catch (Exception ex) {
-            if (ex instanceof ApiException) {
-                Popup.ERROR.showAndWait("Kunde inte hämta token", ex);
-            } else {
-                Popup.ERROR.showAndWait("Ett fel uppstod", ex);
+                // 2) If success, store key
+                ApiHelper.INSTANCE.setCurrentApiKey(response.getApiKey());
+                ConfigurationStore.EVENT_ID_STR.set(eventId);
+                ConfigurationStore.API_KEY_STR.set(response.getApiKey());
+
+                // 3) Also fetch and store approved sellers for info:
+                ListVendorApplicationsResponse res = ApiHelper.INSTANCE.getVendorApplicationServiceApi()
+                        .vendorApplicationServiceListVendorApplications(eventId, 500, "");
+                Set<Integer> approvedSellers = new HashSet<>();
+                for (VendorApplication application : res.getApplications()) {
+                    if ("APPROVED".equalsIgnoreCase(application.getStatus())) {
+                        approvedSellers.add(application.getSellerNumber());
+                    }
+                }
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("approvedSellers", new JSONArray(approvedSellers));
+                ConfigurationStore.APPROVED_SELLERS_JSON.set(jsonObject.toString());
+
+                // 4) Show success
+                Popup.INFORMATION.showAndWait("Ok!", "Kassan är redo att användas.");
+
+                // 5) Switch the UI to "active event" mode
+                view.setCashierButtonEnabled(false);
+                view.clearCashierCodeField();
+                view.setRegisterOpened(true);
+
+                // 6) Show the event's info
+                Event event = fromId(eventId);
+                view.showActiveEventInfo(
+                        event.getName(),
+                        event.getDescription(),
+                        event.getAddressStreet() + ", " + event.getAddressCity()
+                );
+                view.setChangeEventButtonVisible(true);
+
+            } catch (Exception ex) {
+                if (ex instanceof ApiException) {
+                    Popup.ERROR.showAndWait("Kunde inte hämta token", ex);
+                } else {
+                    Popup.ERROR.showAndWait("Ett fel uppstod", ex);
+                }
             }
         }
     }
@@ -134,17 +174,13 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     public void eventSelected(String eventId) {
         view.showDetailForm(true);
 
-        Event selectedEvent = null;
+
         // Common setup for both real and offline events
-        for (Event event : eventList) {
-            if (event.getId().equals(eventId)) {
-                view.setEventName(event.getName());
-                view.setEventDescription(event.getDescription());
-                view.setEventAddress(event.getAddressStreet() + ", " + event.getAddressCity());
-                selectedEvent = event;
-                break;
-            }
-        }
+        Event selectedEvent = fromId(eventId);
+        view.setEventName(selectedEvent.getName());
+        view.setEventDescription(selectedEvent.getDescription());
+        view.setEventAddress(selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity());
+
         boolean isOffline = "offline".equalsIgnoreCase(eventId);
         view.setOfflineMode(isOffline);
         ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(isOffline);
@@ -166,7 +202,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
             view.setEventName(selectedEvent.getName());
             view.setEventDescription(selectedEvent.getDescription());
-            view.setEventAddress(selectedEvent.getAddressStreet() + ", "+ selectedEvent.getAddressCity());
+            view.setEventAddress(selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity());
             view.setRevenueSplit(moSplit, vSplit, pSplit);
 
 
@@ -210,17 +246,57 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         // Also populate the form with the details
         // And disable the cashier button
         if (eventId != null && !eventId.isEmpty()) {
-            for (Event event : eventList) {
-                if (event.getId().equals(eventId)) {
-                    view.setEventName(event.getName());
-                    view.setEventDescription(event.getDescription());
-                    view.setEventAddress(event.getAddressStreet() + ", " + event.getAddressCity());
-                    view.setCashierButtonEnabled(false);
-                    break;
-                }
-            }
+            Event event = fromId(eventId);
+            view.setEventName(event.getName());
+            view.setEventDescription(event.getDescription());
+            view.setEventAddress(event.getAddressStreet() + ", " + event.getAddressCity());
+            view.setCashierButtonEnabled(false);
         } else {
             view.setCashierButtonEnabled(true);
         }
+    }
+
+    @Override
+    public void changeEventRequested() {
+        // 1) Show a confirm dialog: "All local records for this register will be thrown away..."
+        boolean confirm = Popup.CONFIRM.showConfirmDialog(
+                "Byt event?",
+                "Alla dina lokala registerposter kommer att raderas.\n" +
+                        "Om du är offline, går de förlorade för alltid.\n" +
+                        "Om du är online, eventuella ej uppladdade poster går förlorade.\n\n" +
+                        "Vill du fortsätta?"
+        );
+        if (!confirm) {
+            return;
+        }
+
+        // 2) Clear local data. For example, we can do:
+        //    - Reset configuration store
+        //    - Possibly ask HistoryTabController or CashierTabController to erase everything
+        //    - Then revert the UI to the normal "discoveryMode"
+
+        // Reset the config
+        ConfigurationStore.reset();
+
+
+        // Potentially we also have the HistoryTabController clear local CSV? Or user must do that?
+        // Up to you. Possibly:
+        // HistoryTabController.getInstance().clearAllDataButWeNeedToAddMethod();
+
+        // 3) Update the UI back to normal
+        view.clearEventsTable();      // Clears table
+        view.setRegisterOpened(false);// Switch card back to discovery
+        view.showDetailForm(false);   // If we want the “no selection” detail
+        view.setCashierButtonEnabled(true);
+        // Possibly re-enable "Öppna kassa" button etc.
+    }
+
+    private Event fromId(String eventId) {
+        for (Event event : eventList) {
+            if (event.getId().equals(eventId)) {
+                return event;
+            }
+        }
+        return null;
     }
 }

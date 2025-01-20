@@ -6,7 +6,6 @@ import se.goencoder.loppiskassan.controller.DiscoveryTabController;
 
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDate;
@@ -15,42 +14,77 @@ import java.util.List;
 
 public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface {
 
-    private final JTextField dateFromField;
-    private final JButton discoverButton;
-    private final JTable eventsTable;
-
-    // For the detail area, we use a CardLayout:
-    private final JPanel detailCardPanel;
-    private final CardLayout detailCardLayout;
-
-    // "No selection" card
-    private final JLabel noSelectionLabel;
-
-    // "Detail form" card
-    private final JPanel detailFormPanel;
-    private  JTextField eventNameField;
-    private  JTextArea eventDescriptionField;
-    private  JTextField eventAddressField;
-    private  JTextField marketOwnerSplitField;
-    private  JTextField vendorSplitField;
-    private  JTextField platformSplitField;
-    private  JLabel cashierCodeLabel;       // We want to hide this if offline
-    private  JTextField cashierCodeField;   // We want to hide this if offline
-
-    private final JButton getTokenButton;
-
     private final DiscoveryControllerInterface controller;
 
-    public DiscoveryTabPanel() {
-        setLayout(new BorderLayout());
+    // -- Root layout has a CardLayout to toggle between normal "discovery" panel and "active event" panel --
+    private final CardLayout rootCardLayout;
+    private final JPanel rootCardPanel;
 
+    // =========================================
+    // =   Discovery Mode UI (the old stuff)   =
+    // =========================================
+    private JPanel discoveryModePanel;  // The panel with dateFrom, table, detail form, etc.
+    private JTextField dateFromField;
+    private JButton discoverButton;
+    private JTable eventsTable;
+
+    // "Detail" portion inside discovery mode
+    private CardLayout detailCardLayout;
+    private JPanel detailCardPanel;
+    private JLabel noSelectionLabel;
+    private JPanel detailFormPanel;
+
+    // The fields in the detail form
+    private JTextField eventNameField;
+    private JTextArea eventDescriptionField;
+    private JTextField eventAddressField;
+    private JTextField marketOwnerSplitField;
+    private JTextField vendorSplitField;
+    private JTextField platformSplitField;
+    private JLabel cashierCodeLabel;
+    private JTextField cashierCodeField;
+
+    private JButton getTokenButton; // "Öppna kassa" button in discovery mode
+
+    // =========================================
+    // =   Active Event Mode UI                =
+    // =========================================
+    private JPanel activeEventPanel;    // Simple summary of the chosen event
+    private JLabel activeEventNameLabel;
+    private JLabel activeEventDescLabel;
+    private JLabel activeEventAddressLabel;
+    private JButton changeEventButton;
+
+    public DiscoveryTabPanel() {
         // Instantiate the controller
         controller = DiscoveryTabController.getInstance();
         controller.registerView(this);
 
-        // ----------------
-        // TOP: dateFrom + discover
-        // ----------------
+        // The outer layout: CardLayout for root
+        setLayout(new BorderLayout());
+        rootCardLayout = new CardLayout();
+        rootCardPanel = new JPanel(rootCardLayout);
+        add(rootCardPanel, BorderLayout.CENTER);
+
+        // Build both modes:
+        discoveryModePanel = buildDiscoveryModePanel();
+        activeEventPanel   = buildActiveEventPanel();
+
+        // Add them to the rootCardPanel
+        rootCardPanel.add(discoveryModePanel, "discoveryMode");
+        rootCardPanel.add(activeEventPanel,   "activeEvent");
+
+        // Show discovery mode by default
+        rootCardLayout.show(rootCardPanel, "discoveryMode");
+    }
+
+    // -----------------------------
+    // Building the "discoveryMode" UI (the older table approach)
+    // -----------------------------
+    private JPanel buildDiscoveryModePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        // Top panel: "Datum från", "Hämta loppisar"
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         topPanel.add(new JLabel("Datum från:"));
         String dateToday = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -60,39 +94,32 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         discoverButton = new JButton("Hämta loppisar");
         topPanel.add(discoverButton);
 
-        add(topPanel, BorderLayout.NORTH);
+        panel.add(topPanel, BorderLayout.NORTH);
 
-        // ----------------
-        // CENTER SPLIT: top half = events table, bottom half = "detailCardPanel" with CardLayout
-        // ----------------
+        // Center: a split pane with top half = table, bottom half = detailCard
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        splitPane.setResizeWeight(0.5); // half/half
+        splitPane.setResizeWeight(0.5);
 
-        // ============ TOP half: events table
+        // Table
         DefaultTableModel model = new DefaultTableModel(
-                new Object[][]{},
-                new String[]{"ID (hidden)", "Loppis", "Stad", "Öppnar", "Stänger"}
+                new Object[][] {},
+                new String[] {"ID (hidden)", "Loppis", "Stad", "Öppnar", "Stänger"}
         ) {
             @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+            public boolean isCellEditable(int row, int column) { return false; }
         };
-
         eventsTable = new JTable(model);
-        // Hide column 0 from view
+
+        // Hide the first column
         eventsTable.removeColumn(eventsTable.getColumnModel().getColumn(0));
 
-        // Add selection listener
-        eventsTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-            @Override
-            public void valueChanged(ListSelectionEvent e) {
-                if (!e.getValueIsAdjusting()) {
-                    int rowIndex = getSelectedTableRow();
-                    if (rowIndex >= 0) {
-                        String eventId = getEventIdForRow(rowIndex);
-                        controller.eventSelected(eventId);
-                    }
+        // Table selection listener
+        eventsTable.getSelectionModel().addListSelectionListener((ListSelectionEvent e) -> {
+            if (!e.getValueIsAdjusting()) {
+                int rowIndex = getSelectedTableRow();
+                if (rowIndex >= 0) {
+                    String eventId = getEventIdForRow(rowIndex);
+                    controller.eventSelected(eventId);
                 }
             }
         });
@@ -100,53 +127,48 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         JScrollPane tableScroll = new JScrollPane(eventsTable);
         splitPane.setTopComponent(tableScroll);
 
-        // ============ BOTTOM half: detailCardPanel with CardLayout
+        // The bottom half: another CardLayout for detail/noSelection
         detailCardLayout = new CardLayout();
-        detailCardPanel = new JPanel(detailCardLayout);
+        detailCardPanel  = new JPanel(detailCardLayout);
 
-        // 1) "noSelection" card: just a label
+        // 1) A label for "no selection"
         noSelectionLabel = new JLabel("Välj ett event i listan ovan …", SwingConstants.CENTER);
         JPanel cardLabel = new JPanel(new BorderLayout());
         cardLabel.add(noSelectionLabel, BorderLayout.CENTER);
 
-        // 2) "detailForm" card
-        detailFormPanel = createDetailFormPanel();
+        // 2) The detail form
+        detailFormPanel = buildDetailFormPanel();
 
-        detailCardPanel.add(cardLabel, "noSelection");
-        detailCardPanel.add(detailFormPanel, "detailForm");
-
-        // Start with "noSelection" visible
+        detailCardPanel.add(cardLabel,      "noSelection");
+        detailCardPanel.add(detailFormPanel,"detailForm");
         detailCardLayout.show(detailCardPanel, "noSelection");
 
         splitPane.setBottomComponent(detailCardPanel);
-        add(splitPane, BorderLayout.CENTER);
 
-        // ----------------
-        // BOTTOM: "Öppna kassa" (getTokenButton)
-        // ----------------
+        panel.add(splitPane, BorderLayout.CENTER);
+
+        // Bottom: "Öppna kassa" button
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         getTokenButton = new JButton("Öppna Kassa");
         bottomPanel.add(getTokenButton);
-        add(bottomPanel, BorderLayout.SOUTH);
+        panel.add(bottomPanel, BorderLayout.SOUTH);
 
-        // ----------------
-        // Add Listeners
-        // ----------------
+        // Add listeners
         discoverButton.addActionListener(e -> {
             String dateFrom = dateFromField.getText().trim();
             controller.discoverEvents(dateFrom);
         });
-
         getTokenButton.addActionListener(e -> {
             int rowIndex = getSelectedTableRow();
             String eventId = getEventIdForRow(rowIndex);
-            String code = getCashierCode();
+            String code    = getCashierCode();
             controller.openRegister(eventId, code);
         });
+
+        return panel;
     }
 
-    /** Builds the "detailFormPanel" card with GridBagLayout. */
-    private JPanel createDetailFormPanel() {
+    private JPanel buildDetailFormPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -212,43 +234,76 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         gbc.gridx = 0; gbc.gridy++;
         cashierCodeLabel = new JLabel("Kassakod:");
         panel.add(cashierCodeLabel, gbc);
-
         gbc.gridx++;
         cashierCodeField = new JTextField("", 8);
         panel.add(cashierCodeField, gbc);
 
-        // Add action listeners for these splits if needed
-        marketOwnerSplitField.addActionListener(e -> updateOfflineSplitsIfOffline());
-        vendorSplitField.addActionListener(e -> updateOfflineSplitsIfOffline());
-        platformSplitField.addActionListener(e -> updateOfflineSplitsIfOffline());
+        return panel;
+    }
+
+    // -----------------------------
+    // Building the "activeEvent" UI
+    // -----------------------------
+    private JPanel buildActiveEventPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+        // Title label
+        JLabel titleLabel = new JLabel("Aktivt Event - Kassa Öppen");
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(titleLabel);
+
+        // Event name
+        activeEventNameLabel = new JLabel("Eventnamn: ???");
+        activeEventNameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(activeEventNameLabel);
+
+        // Event desc
+        activeEventDescLabel = new JLabel("Beskrivning: ???");
+        activeEventDescLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(activeEventDescLabel);
+
+        // Event address
+        activeEventAddressLabel = new JLabel("Adress: ???");
+        activeEventAddressLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(activeEventAddressLabel);
+
+        // "Change event" button
+        panel.add(Box.createVerticalStrut(10));
+        changeEventButton = new JButton("Byt event");
+        changeEventButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        changeEventButton.addActionListener(e -> controller.changeEventRequested());
+        panel.add(changeEventButton);
 
         return panel;
     }
 
-    private void updateOfflineSplitsIfOffline() {
-        // Only call controller if the splits are editable => offline
-        if (marketOwnerSplitField.isEditable()) {
-            int mo = parseOrDefault(marketOwnerSplitField.getText(), 0);
-            int ve = parseOrDefault(vendorSplitField.getText(), 0);
-            int pl = parseOrDefault(platformSplitField.getText(), 0);
-            controller.setRevenueSplitFromUI(mo, ve, pl);
-        }
-    }
-
-    private int parseOrDefault(String text, int defaultValue) {
-        try {
-            return Integer.parseInt(text.trim());
-        } catch (NumberFormatException ex) {
-            return defaultValue;
-        }
-    }
-
-    // ----- DiscoveryPanelInterface methods -----
+    // --------------------------------------------------------------------
+    // Implementation of DiscoveryPanelInterface
+    // (some existing methods remain the same as your original code)
+    // --------------------------------------------------------------------
 
     @Override
+    public void showDetailForm(boolean show) {
+        if (show) {
+            detailCardLayout.show(detailCardPanel, "detailForm");
+        } else {
+            detailCardLayout.show(detailCardPanel, "noSelection");
+        }
+    }
+
+    @Override
+    public void showCashierCode(boolean show) {
+        cashierCodeLabel.setVisible(show);
+        cashierCodeField.setVisible(show);
+    }
+
+    // Called once an event is selected
+    @Override
     public void clearEventsTable() {
-        ((DefaultTableModel) eventsTable.getModel()).setRowCount(0);
-        // Also revert to "noSelection" card whenever we clear
+        DefaultTableModel model = (DefaultTableModel) eventsTable.getModel();
+        model.setRowCount(0);
+        // Also revert to "noSelection" in the detail area
         detailCardLayout.show(detailCardPanel, "noSelection");
     }
 
@@ -275,8 +330,6 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     @Override
     public String getEventIdForRow(int rowIndex) {
         if (rowIndex < 0) return null;
-        // Because we removed the first column from the *view*,
-        // we still have it in the model at index 0
         DefaultTableModel model = (DefaultTableModel) eventsTable.getModel();
         return (String) model.getValueAt(rowIndex, 0);
     }
@@ -284,23 +337,6 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     @Override
     public String getCashierCode() {
         return cashierCodeField.getText().trim();
-    }
-
-    // Show or hide the detail form card
-    @Override
-    public void showDetailForm(boolean show) {
-        if (show) {
-            detailCardLayout.show(detailCardPanel, "detailForm");
-        } else {
-            detailCardLayout.show(detailCardPanel, "noSelection");
-        }
-    }
-
-    // Hide the cashier code label + field if offline
-    @Override
-    public void showCashierCode(boolean show) {
-        cashierCodeLabel.setVisible(show);
-        cashierCodeField.setVisible(show);
     }
 
     @Override
@@ -320,8 +356,6 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     @Override
     public void setOfflineMode(boolean offline) {
-        // In a simpler UI, we could do something like setting a label: "OFFLINE MODE"
-        // but here let's do nothing except maybe show/hide cashier code:
         showCashierCode(!offline);
     }
 
@@ -364,8 +398,39 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         cashierCodeField.setText("******");
     }
 
+    // The new methods for toggling between discovery vs. active event
+    @Override
+    public void setRegisterOpened(boolean opened) {
+        if (opened) {
+            rootCardLayout.show(rootCardPanel, "activeEvent");
+        } else {
+            rootCardLayout.show(rootCardPanel, "discoveryMode");
+        }
+    }
+
+    @Override
+    public void showActiveEventInfo(String eventName, String description, String address) {
+        activeEventNameLabel.setText("Eventnamn: " + (eventName == null ? "" : eventName));
+        activeEventDescLabel.setText("Beskrivning: " + (description == null ? "" : description));
+        activeEventAddressLabel.setText("Adress: " + (address == null ? "" : address));
+    }
+
+    @Override
+    public void setChangeEventButtonVisible(boolean visible) {
+        changeEventButton.setVisible(visible);
+    }
+
     @Override
     public void selected() {
         controller.initUIState();
+    }
+
+    // Utility
+    private int parseOrDefault(String text, int defaultValue) {
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException ex) {
+            return defaultValue;
+        }
     }
 }
