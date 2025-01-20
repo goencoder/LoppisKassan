@@ -271,6 +271,11 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     }
 
     @Override
+    public void setImportButtonText(String text) {
+        importDataButton.setText(text);
+    }
+
+    @Override
     public void selected() {
         controller.loadHistory();
     }

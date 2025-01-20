@@ -16,6 +16,8 @@ public interface HistoryPanelInterface extends SelectabableTab{
     String getPaidFilter();
     void updateSellerDropdown(Set<String> sellers);
     void enableButton(String buttonName, boolean enable);
+    void setImportButtonText(String text);
+
 
 
 }

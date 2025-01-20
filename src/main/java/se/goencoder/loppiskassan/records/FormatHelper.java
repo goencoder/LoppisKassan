@@ -41,34 +41,51 @@ public class FormatHelper {
             startIndex = 1;
         }
         List<SoldItem> items = new ArrayList<>(lines.length - startIndex);
+
         for (int i = startIndex; i < lines.length; i++) {
             // Check if line is a comment or empty
             if (lines[i].startsWith("#") || lines[i].isEmpty()) {
                 continue;
             }
+
             String[] columns = lines[i].split(DELIMITER);
+            // columns:
+            //   0 -> purchaseId
+            //   1 -> itemId
+            //   2 -> soldTime
+            //   3 -> seller
+            //   4 -> price
+            //   5 -> collectedTime or "Nej"
+            //   6 -> paymentMethod
+            //   7 -> uploaded
+
             String collectedTime = columns[5];
             LocalDateTime dateTime = null;
             if (!collectedTime.equals("Nej")) {
                 dateTime = stringToDateAndTime(collectedTime);
             }
-            boolean uploaded;
-            // If we have  coumn seven, we have uploaded status, else we default to false
-            if (columns.length > 6) {
-                uploaded = Boolean.parseBoolean(columns[6]);
-            } else {
-                uploaded = false;
+
+            // Parse PaymentMethod from columns[6]
+            PaymentMethod pm = PaymentMethod.valueOf(columns[6]);
+
+            // Parse uploaded from columns[7] (if present)
+            boolean uploaded = false;
+            if (columns.length > 7) {
+                uploaded = Boolean.parseBoolean(columns[7]);
             }
 
-
-            items.add(new SoldItem(columns[0],
-                    columns[1],
-                    stringToDateAndTime(columns[2]),
-                    Integer.parseInt(columns[3]),
-                    Integer.parseInt(columns[4]),
-                    dateTime,
-                    PaymentMethod.valueOf(columns[6]),
-                    uploaded));
+            // Construct new SoldItem
+            SoldItem item = new SoldItem(
+                    columns[0],                     // purchaseId
+                    columns[1],                     // itemId
+                    stringToDateAndTime(columns[2]),// soldTime
+                    Integer.parseInt(columns[3]),   // seller
+                    Integer.parseInt(columns[4]),   // price
+                    dateTime,                       // collectedBySellerTime
+                    pm,                             // PaymentMethod
+                    uploaded                        // uploaded
+            );
+            items.add(item);
         }
         return items;
     }
@@ -82,5 +99,31 @@ public class FormatHelper {
 
     public static LocalDateTime stringToDateAndTime(String dateText) {
         return LocalDateTime.parse(dateText, formatter);
+    }
+    public static SoldItem apiSoldItemToSoldItem(se.goencoder.iloppis.model.SoldItem apiSoldItem, boolean uploaded) {
+        PaymentMethod paymentMethod;
+        switch (apiSoldItem.getPaymentMethod()) {
+            case se.goencoder.iloppis.model.PaymentMethod.KONTANT:
+                paymentMethod = PaymentMethod.Kontant;
+                break;
+            case se.goencoder.iloppis.model.PaymentMethod.SWISH:
+                paymentMethod = PaymentMethod.Swish;
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown payment method: " + apiSoldItem.getPaymentMethod());
+        }
+        LocalDateTime collectedTime = null;
+        if (apiSoldItem.getCollectedTime() != null) {
+            collectedTime = apiSoldItem.getCollectedTime().toLocalDateTime();
+        }
+        return new SoldItem(apiSoldItem.getPurchaseId(),
+                apiSoldItem.getItemId(),
+                apiSoldItem.getSoldTime().toLocalDateTime(),
+                apiSoldItem.getSeller(),
+                apiSoldItem.getPrice(),
+                collectedTime,
+                paymentMethod,
+                uploaded
+        );
     }
 }

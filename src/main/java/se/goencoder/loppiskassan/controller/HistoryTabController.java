@@ -1,10 +1,16 @@
 package se.goencoder.loppiskassan.controller;
 
+import se.goencoder.iloppis.invoker.ApiException;
+import se.goencoder.iloppis.model.CreateSoldItems;
+import se.goencoder.iloppis.model.CreateSoldItemsResponse;
+import se.goencoder.iloppis.model.ListSoldItemsResponse;
 import se.goencoder.loppiskassan.Filter;
+import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
 
@@ -18,12 +24,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import static se.goencoder.iloppis.model.PaidFilter.PAID_FILTER_UNSPECIFIED;
+import static se.goencoder.iloppis.model.PaymentMethodFilter.PAYMENT_METHOD_FILTER_UNSPECIFIED;
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 import static se.goencoder.loppiskassan.ui.Constants.*;
 
@@ -33,12 +44,12 @@ public class HistoryTabController implements HistoryControllerInterface {
     private HistoryPanelInterface view;
     private List<SoldItem> allHistoryItems;
 
-    private HistoryTabController() {}
+    private HistoryTabController() {
+    }
 
     public static HistoryTabController getInstance() {
         return instance;
     }
-
 
 
     @Override
@@ -62,16 +73,31 @@ public class HistoryTabController implements HistoryControllerInterface {
         String sellerFilter = view.getSellerFilter();
         String paidFilter = view.getPaidFilter();
         List<SoldItem> filteredItems = applyFilters();
+
+        // Update the table
         view.updateHistoryTable(filteredItems);
-        // convert filtered items size to string and call updateNoItemsLabel
         view.updateNoItemsLabel(Integer.toString(filteredItems.size()));
-        // Aggregate the total sum of the filtered items and call updateTotalSumLabel
         view.updateSumLabel(Double.toString(filteredItems.stream().mapToDouble(SoldItem::getPrice).sum()));
-        // Determine if the "Betala ut" button should be enabled
-        boolean enablePayout = sellerFilter != null && !sellerFilter.equals("Alla") && filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller());
+
+        // Enable or disable "Betala ut" button
+        boolean enablePayout = sellerFilter != null && !sellerFilter.equals("Alla")
+                && filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller());
         view.enableButton(BUTTON_PAY_OUT, enablePayout);
+
+        // Enable or disable "Arkivera" button
         boolean enableArchive = paidFilter != null && paidFilter.equals("Ja");
         view.enableButton(BUTTON_ARCHIVE, enableArchive);
+
+        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        if (isOffline) {
+            // If offline: text => "Importera kassa"
+            view.setImportButtonText("Importera kassa");
+            view.enableButton(BUTTON_IMPORT, true);
+        } else {
+            // If online: check if ALL items are uploaded
+            view.setImportButtonText("Uppdatera med Web");
+            view.enableButton(BUTTON_IMPORT, true);
+        }
     }
 
     @Override
@@ -80,8 +106,18 @@ public class HistoryTabController implements HistoryControllerInterface {
             case BUTTON_ERASE:
                 clearData();
                 break;
-            case "Importera kassa":
-                importData();
+            case BUTTON_IMPORT:
+                // If offline => old importData()
+                if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+                    importData();
+                } else {
+                    // If online => new updateWithWeb
+                    boolean allUploaded = uploadSoldItems();
+                    if (allUploaded) {
+                        downloadSoldItems();
+                    }
+
+                }
                 break;
             case BUTTON_PAY_OUT:
                 payout();
@@ -96,6 +132,134 @@ public class HistoryTabController implements HistoryControllerInterface {
                 throw new IllegalStateException("Unexpected action: " + actionCommand);
         }
     }
+
+    private void downloadSoldItems() {
+        // Download all sold items from the web, merge with local items, and save to file
+        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+
+        Map<String, SoldItem> fetchedItems = new HashMap<>();
+        try {
+            boolean fetchedAll = false;
+            String pageToken = "";
+            while (!fetchedAll) {
+                ListSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceListSoldItems(
+                        eventId,
+                        PAID_FILTER_UNSPECIFIED.getValue(),
+                        PAYMENT_METHOD_FILTER_UNSPECIFIED.getValue(),
+                        null, false, 500, pageToken);
+                for (se.goencoder.iloppis.model.SoldItem item : result.getItems()) {
+                    SoldItem soldItem = FormatHelper.apiSoldItemToSoldItem(item, true);
+                    fetchedItems.put(soldItem.getItemId(), soldItem);
+                }
+                if (result.getNextPageToken() == null || result.getNextPageToken().isEmpty()) {
+                    fetchedAll = true;
+                } else {
+                    pageToken = result.getNextPageToken();
+                }
+                logger.info("Downloaded " + result.getItems().size() + " items from the web.");
+            }
+        } catch (ApiException e) {
+            throw new RuntimeException(e);
+        }
+        // merge allHistoryItems with fetchedItems so that new items are added and existing items are updated
+        for (SoldItem fetchedItem : fetchedItems.values()) {
+            if (allHistoryItems.stream().noneMatch(item -> item.getItemId().equals(fetchedItem.getItemId()))) {
+                allHistoryItems.add(fetchedItem);
+            } else {
+                SoldItem existingItem = allHistoryItems.stream()
+                        .filter(item -> item.getItemId().equals(fetchedItem.getItemId()))
+                        .findFirst()
+                        .orElseThrow();
+                existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
+                existingItem.setUploaded(fetchedItem.isUploaded());
+            }
+        }
+        try {
+            FileHelper.createBackupFile();
+            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
+            loadHistory();
+        } catch (IOException e) {
+            Popup.FATAL.showAndWait("Fel vid skrivning till fil", e.getMessage());
+        }
+    }
+
+    private boolean uploadSoldItems() {
+        List<SoldItem> unuploaded = allHistoryItems.stream()
+                .filter(item -> !item.isUploaded())
+                .collect(Collectors.toList());
+        boolean allUploaded = true;
+
+        if (unuploaded.isEmpty()) {
+            return allUploaded;
+        }
+
+        try {
+            int index = 0;
+            while (index < unuploaded.size()) {
+                int toIndex = Math.min(index + 100, unuploaded.size());
+                List<SoldItem> batch = unuploaded.subList(index, toIndex);
+
+                // Upload this batch
+                allUploaded = allUploaded && uploadBatch(batch);
+
+                // Mark them as uploaded
+                batch.forEach(item -> item.setUploaded(true));
+
+                index = toIndex;
+            }
+
+            // Save updated list to file
+            FileHelper.createBackupFile();
+            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
+
+            // Refresh filters so the UI updates (button state, table, etc.)
+            filterUpdated();
+
+            Popup.INFORMATION.showAndWait("Klart!", "Uppladdning av " + unuploaded.size() + " varor slutförd.");
+        } catch (Exception e) {
+            Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
+            allUploaded = false;
+        }
+        return allUploaded;
+    }
+
+    /**
+     * Helper to upload a single batch to the web.
+     */
+    private boolean uploadBatch(List<SoldItem> batch) throws ApiException {
+        CreateSoldItems createSoldItems = new CreateSoldItems();
+        for (SoldItem item : batch) {
+            se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
+            apiItem.setCashierAlias("HistoryImport"); // or any alias you want
+            apiItem.setSeller(item.getSeller());
+            apiItem.setItemId(item.getItemId());
+            apiItem.setPrice(item.getPrice());
+            apiItem.setPaymentMethod(
+                    item.getPaymentMethod() == PaymentMethod.Kontant
+                            ? se.goencoder.iloppis.model.PaymentMethod.KONTANT
+                            : se.goencoder.iloppis.model.PaymentMethod.SWISH
+            );
+
+            OffsetDateTime soldTime = OffsetDateTime.of(
+                    item.getSoldTime(),
+                    OffsetDateTime.now().getOffset()
+            );
+            apiItem.setSoldTime(soldTime);
+
+            createSoldItems.addItemsItem(apiItem);
+        }
+
+        // Send this batch to the API
+        CreateSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
+                ConfigurationStore.EVENT_ID_STR.get(),
+                createSoldItems
+        );
+        if (result.getRejectedItems().size() > 0) {
+            return false;
+        }
+        return true;
+    }
+
 
     private void clearData() {
         try {
@@ -158,8 +322,8 @@ public class HistoryTabController implements HistoryControllerInterface {
             }
         }
     }
-    private void archiveFilteredItems() {
 
+    private void archiveFilteredItems() {
 
 
         // get filtered items, save to a file named "arkiverade_<YY-MM-DD:HH-MM-SS>.csv"

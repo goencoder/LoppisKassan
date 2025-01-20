@@ -3,6 +3,7 @@ package se.goencoder.loppiskassan.controller;
 import org.json.JSONObject;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.CreateSoldItems;
+import se.goencoder.iloppis.model.CreateSoldItemsResponse;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
@@ -16,10 +17,9 @@ import javax.swing.*;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.time.ZoneOffset;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 
@@ -122,7 +122,7 @@ public class CashierTabController implements CashierControllerInterface {
             try {
                 saveItemsToWeb(items);
             } catch (Exception e) {
-                Popup.ERROR.showAndWait("Kunde inte spara till webb", e.getMessage());
+                Popup.ERROR.showAndWait("Kunde inte spara till webb.", e.getMessage());
                 return;
             }
         }
@@ -174,11 +174,16 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     private void saveItemsToWeb(List<SoldItem> items) throws ApiException {
+        // Map for quick lookup of local items by itemId
+        Map<String, SoldItem> itemMap = items.stream()
+                .collect(Collectors.toMap(SoldItem::getItemId, item -> item));
+
         CreateSoldItems createSoldItems = new CreateSoldItems();
+        ZoneOffset currentOffset = OffsetDateTime.now().getOffset(); // Corrected to ZoneOffset
+
+        // Convert all items to API items
         for (SoldItem item : items) {
-            // Convert to the API’s SoldItem type
             se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
-            apiItem.setCashierAlias("test");
             apiItem.setSeller(item.getSeller());
             apiItem.setItemId(item.getItemId());
             apiItem.setPrice(item.getPrice());
@@ -187,18 +192,37 @@ public class CashierTabController implements CashierControllerInterface {
                             ? se.goencoder.iloppis.model.PaymentMethod.KONTANT
                             : se.goencoder.iloppis.model.PaymentMethod.SWISH
             );
-            OffsetDateTime soldTime = OffsetDateTime.of(item.getSoldTime(),
-                    OffsetDateTime.now().getOffset());
-            apiItem.setSoldTime(soldTime);
+            apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), currentOffset)); // Corrected to use ZoneOffset
 
             createSoldItems.addItemsItem(apiItem);
         }
+
         // Send to web service
-        ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
+        CreateSoldItemsResponse response = ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
                 ConfigurationStore.EVENT_ID_STR.get(),
                 createSoldItems
-                );
+        );
+
+        // Update `uploaded` status for accepted items
+        if (response.getAcceptedItems() != null) {
+            for (se.goencoder.iloppis.model.SoldItem acceptedItem : response.getAcceptedItems()) {
+                SoldItem localItem = itemMap.get(acceptedItem.getItemId());
+                if (localItem != null) {
+                    localItem.setUploaded(true);
+                }
+            }
+        }
+        if (response.getRejectedItems().size() > 0) {
+            Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp", response.getRejectedItems());
+            for (se.goencoder.iloppis.model.SoldItem rejectedItem : response.getRejectedItems()) {
+                SoldItem localItem = itemMap.get(rejectedItem.getItemId());
+                if (localItem != null) {
+                    localItem.setUploaded(false);
+                }
+            }
+        }
     }
+
 
     private void saveItemsToFile(List<SoldItem> items) throws IOException {
         FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
