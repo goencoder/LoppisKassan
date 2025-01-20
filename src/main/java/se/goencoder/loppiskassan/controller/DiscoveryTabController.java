@@ -8,10 +8,12 @@ import se.goencoder.iloppis.api.EventServiceApi;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
 
+import java.io.IOException;
 import java.util.*;
 
 public class DiscoveryTabController implements DiscoveryControllerInterface {
@@ -288,6 +290,11 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         view.setRegisterOpened(false);// Switch card back to discovery
         view.showDetailForm(false);   // If we want the “no selection” detail
         view.setCashierButtonEnabled(true);
+        try {
+            FileHelper.createBackupFile(); // Backup the old data
+        } catch (IOException e) {
+            Popup.ERROR.showAndWait("Kunde inte rensa kassan", e);
+        }
         // Possibly re-enable "Öppna kassa" button etc.
     }
 

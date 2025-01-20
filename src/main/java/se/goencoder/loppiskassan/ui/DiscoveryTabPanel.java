@@ -20,61 +20,59 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private final CardLayout rootCardLayout;
     private final JPanel rootCardPanel;
 
+
     // =========================================
-    // =   Discovery Mode UI (the old stuff)   =
+    // =   Discovery Mode references
     // =========================================
-    private JPanel discoveryModePanel;  // The panel with dateFrom, table, detail form, etc.
     private JTextField dateFromField;
     private JButton discoverButton;
-    private JTable eventsTable;
+
 
     // "Detail" portion inside discovery mode
     private CardLayout detailCardLayout;
     private JPanel detailCardPanel;
-    private JLabel noSelectionLabel;
-    private JPanel detailFormPanel;
+    private JTable eventsTable;
+    private JPanel detailFormPanel; // The actual panel with eventNameField, etc.
 
-    // The fields in the detail form
-    private JTextField eventNameField;
-    private JTextArea eventDescriptionField;
+    private JTextField eventNameField;     // Single reference
+    private JTextArea  eventDescriptionField;
     private JTextField eventAddressField;
     private JTextField marketOwnerSplitField;
     private JTextField vendorSplitField;
     private JTextField platformSplitField;
-    private JLabel cashierCodeLabel;
+    private JLabel     cashierCodeLabel;
     private JTextField cashierCodeField;
 
-    private JButton getTokenButton; // "Öppna kassa" button in discovery mode
+    private JButton getTokenButton;
 
     // =========================================
-    // =   Active Event Mode UI                =
+    // =   Active Event references
     // =========================================
-    private JPanel activeEventPanel;    // Simple summary of the chosen event
     private JLabel activeEventNameLabel;
     private JLabel activeEventDescLabel;
     private JLabel activeEventAddressLabel;
     private JButton changeEventButton;
 
+
     public DiscoveryTabPanel() {
-        // Instantiate the controller
+        // 1) controller
         controller = DiscoveryTabController.getInstance();
         controller.registerView(this);
 
-        // The outer layout: CardLayout for root
+        // 2) root
         setLayout(new BorderLayout());
         rootCardLayout = new CardLayout();
         rootCardPanel = new JPanel(rootCardLayout);
         add(rootCardPanel, BorderLayout.CENTER);
 
-        // Build both modes:
-        discoveryModePanel = buildDiscoveryModePanel();
-        activeEventPanel   = buildActiveEventPanel();
+        // 3) build the two main cards
+        JPanel discoveryModePanel = buildDiscoveryModePanel();
+        JPanel activeEventPanel   = buildActiveEventPanel();
 
-        // Add them to the rootCardPanel
         rootCardPanel.add(discoveryModePanel, "discoveryMode");
         rootCardPanel.add(activeEventPanel,   "activeEvent");
 
-        // Show discovery mode by default
+        // 4) default
         rootCardLayout.show(rootCardPanel, "discoveryMode");
     }
 
@@ -125,26 +123,22 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         });
 
         JScrollPane tableScroll = new JScrollPane(eventsTable);
+        tableScroll.setPreferredSize(new Dimension(tableScroll.getPreferredSize().width, eventsTable.getRowHeight() * 5));
         splitPane.setTopComponent(tableScroll);
+// Card #1: "no selection" label
+        JLabel noSelectionLabel = new JLabel("Välj ett event …", SwingConstants.CENTER);
+        JPanel noSelectionPanel = new JPanel(new BorderLayout());
+        noSelectionPanel.add(noSelectionLabel, BorderLayout.CENTER);
 
-        // The bottom half: another CardLayout for detail/noSelection
+        // Card #2: the detail form (read-write)
+        detailFormPanel = buildDiscoveryDetailForm();
         detailCardLayout = new CardLayout();
         detailCardPanel  = new JPanel(detailCardLayout);
-
-        // 1) A label for "no selection"
-        noSelectionLabel = new JLabel("Välj ett event i listan ovan …", SwingConstants.CENTER);
-        JPanel cardLabel = new JPanel(new BorderLayout());
-        cardLabel.add(noSelectionLabel, BorderLayout.CENTER);
-
-        // 2) The detail form
-        detailFormPanel = buildDetailFormPanel();
-
-        detailCardPanel.add(cardLabel,      "noSelection");
-        detailCardPanel.add(detailFormPanel,"detailForm");
+        detailCardPanel.add(noSelectionPanel,   "noSelection");
+        detailCardPanel.add(detailFormPanel,    "detailForm");
         detailCardLayout.show(detailCardPanel, "noSelection");
 
         splitPane.setBottomComponent(detailCardPanel);
-
         panel.add(splitPane, BorderLayout.CENTER);
 
         // Bottom: "Öppna kassa" button
@@ -168,112 +162,124 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         return panel;
     }
 
-    private JPanel buildDetailFormPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
+    /**
+     * Build the "detail form" for the discovery mode (read/write).
+     */
+    private JPanel buildDiscoveryDetailForm() {
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(3, 3, 3, 3);
-        gbc.gridx = 0;
-        gbc.gridy = 0;
+        gbc.fill   = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(5,5,5,5);
 
-        // Name
-        panel.add(new JLabel("Namn:"), gbc);
-        gbc.gridx++;
+        // Left: Event Details
+        JPanel eventDetailsPanel = new JPanel(new GridBagLayout());
+        eventDetailsPanel.setBorder(BorderFactory.createTitledBorder("Event Details"));
+        GridBagConstraints edGbc = new GridBagConstraints();
+        edGbc.fill   = GridBagConstraints.HORIZONTAL;
+        edGbc.insets = new Insets(5,5,5,5);
+
+        edGbc.gridx = 0; edGbc.gridy = 0;
+        eventDetailsPanel.add(new JLabel("Name:"), edGbc);
+        edGbc.gridx = 1;
         eventNameField = new JTextField("", 20);
-        eventNameField.setEditable(false);
-        panel.add(eventNameField, gbc);
+        eventNameField.setEditable(true);
+        eventDetailsPanel.add(eventNameField, edGbc);
 
-        // Desc
-        gbc.gridx = 0; gbc.gridy++;
-        panel.add(new JLabel("Beskrivning:"), gbc);
-        gbc.gridx++;
+        edGbc.gridx = 0; edGbc.gridy++;
+        eventDetailsPanel.add(new JLabel("Description:"), edGbc);
+        edGbc.gridx = 1;
         eventDescriptionField = new JTextArea(3, 20);
-        eventDescriptionField.setEditable(false);
         eventDescriptionField.setLineWrap(true);
         eventDescriptionField.setWrapStyleWord(true);
-        eventDescriptionField.setBorder(eventNameField.getBorder());
-        eventDescriptionField.setBackground(eventNameField.getBackground());
-        JScrollPane descriptionScrollPane = new JScrollPane(eventDescriptionField);
-        descriptionScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        descriptionScrollPane.setBorder(BorderFactory.createEmptyBorder());
-        panel.add(descriptionScrollPane, gbc);
+        JScrollPane descScroll = new JScrollPane(eventDescriptionField);
+        eventDetailsPanel.add(descScroll, edGbc);
 
-        // Address
-        gbc.gridx = 0; gbc.gridy++;
-        panel.add(new JLabel("Adress:"), gbc);
-        gbc.gridx++;
+        edGbc.gridx = 0; edGbc.gridy++;
+        eventDetailsPanel.add(new JLabel("Address:"), edGbc);
+        edGbc.gridx = 1;
         eventAddressField = new JTextField("", 20);
-        eventAddressField.setEditable(false);
-        panel.add(eventAddressField, gbc);
+        eventAddressField.setEditable(true);
+        eventDetailsPanel.add(eventAddressField, edGbc);
 
-        // Splits: Loppisägare
-        gbc.gridx = 0; gbc.gridy++;
-        panel.add(new JLabel("Loppisägare (%):"), gbc);
-        gbc.gridx++;
+        // Right: Revenue split
+        JPanel revenueSplitPanel = new JPanel(new GridBagLayout());
+        revenueSplitPanel.setBorder(BorderFactory.createTitledBorder("Revenue Split"));
+        GridBagConstraints rsGbc = new GridBagConstraints();
+        rsGbc.fill   = GridBagConstraints.HORIZONTAL;
+        rsGbc.insets = new Insets(5,5,5,5);
+
+        rsGbc.gridx = 0; rsGbc.gridy = 0;
+        revenueSplitPanel.add(new JLabel("Market Owner (%):"), rsGbc);
+        rsGbc.gridx = 1;
         marketOwnerSplitField = new JTextField("10", 5);
-        marketOwnerSplitField.setEditable(false);
-        panel.add(marketOwnerSplitField, gbc);
+        revenueSplitPanel.add(marketOwnerSplitField, rsGbc);
 
-        // Splits: Säljare
-        gbc.gridx = 0; gbc.gridy++;
-        panel.add(new JLabel("Säljare (%):"), gbc);
-        gbc.gridx++;
+        rsGbc.gridx = 0; rsGbc.gridy++;
+        revenueSplitPanel.add(new JLabel("Vendor (%):"), rsGbc);
+        rsGbc.gridx = 1;
         vendorSplitField = new JTextField("85", 5);
-        vendorSplitField.setEditable(false);
-        panel.add(vendorSplitField, gbc);
+        revenueSplitPanel.add(vendorSplitField, rsGbc);
 
-        // Splits: iLoppis
-        gbc.gridx = 0; gbc.gridy++;
-        panel.add(new JLabel("iLoppis (%):"), gbc);
-        gbc.gridx++;
+        rsGbc.gridx = 0; rsGbc.gridy++;
+        revenueSplitPanel.add(new JLabel("Platform (%):"), rsGbc);
+        rsGbc.gridx = 1;
         platformSplitField = new JTextField("5", 5);
-        platformSplitField.setEditable(false);
-        panel.add(platformSplitField, gbc);
+        revenueSplitPanel.add(platformSplitField, rsGbc);
 
-        // Kassakod
-        gbc.gridx = 0; gbc.gridy++;
-        cashierCodeLabel = new JLabel("Kassakod:");
-        panel.add(cashierCodeLabel, gbc);
-        gbc.gridx++;
+        // Place them side by side
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.weightx = 0.5;
+        gbc.weighty = 1.0;
+        mainPanel.add(eventDetailsPanel, gbc);
+
+        gbc.gridx = 1; // next column
+        gbc.gridy = 0;
+        gbc.weightx = 0.5;
+        gbc.weighty = 1.0;
+        mainPanel.add(revenueSplitPanel, gbc);
+
+        // Cashier code row
+        gbc.gridx = 0; gbc.gridy = 1;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.0;
+        JPanel cashierPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        cashierCodeLabel = new JLabel("Cashier Code:");
         cashierCodeField = new JTextField("", 8);
-        panel.add(cashierCodeField, gbc);
+        cashierPanel.add(cashierCodeLabel);
+        cashierPanel.add(cashierCodeField);
 
-        return panel;
+        mainPanel.add(cashierPanel, gbc);
+
+        return mainPanel;
     }
 
-    // -----------------------------
-    // Building the "activeEvent" UI
-    // -----------------------------
+    // -- Active event panel (READ-ONLY, simpler labels) --
     private JPanel buildActiveEventPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Active Event"));
 
-        // Title label
-        JLabel titleLabel = new JLabel("Aktivt Event - Kassa Öppen");
-        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(titleLabel);
+        // A simpler read-only summary
+        JPanel summaryPanel = new JPanel();
+        summaryPanel.setLayout(new BoxLayout(summaryPanel, BoxLayout.Y_AXIS));
+        activeEventNameLabel    = new JLabel("Event Name: ???");
+        activeEventDescLabel    = new JLabel("Description: ???");
+        activeEventAddressLabel = new JLabel("Address: ???");
+        summaryPanel.add(activeEventNameLabel);
+        summaryPanel.add(activeEventDescLabel);
+        summaryPanel.add(activeEventAddressLabel);
 
-        // Event name
-        activeEventNameLabel = new JLabel("Eventnamn: ???");
-        activeEventNameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(activeEventNameLabel);
+        panel.add(summaryPanel, BorderLayout.CENTER);
 
-        // Event desc
-        activeEventDescLabel = new JLabel("Beskrivning: ???");
-        activeEventDescLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(activeEventDescLabel);
-
-        // Event address
-        activeEventAddressLabel = new JLabel("Adress: ???");
-        activeEventAddressLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(activeEventAddressLabel);
-
-        // "Change event" button
-        panel.add(Box.createVerticalStrut(10));
-        changeEventButton = new JButton("Byt event");
-        changeEventButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // "Change event" button at bottom
+        changeEventButton = new JButton("Change Event");
         changeEventButton.addActionListener(e -> controller.changeEventRequested());
-        panel.add(changeEventButton);
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottomPanel.add(changeEventButton);
+
+        panel.add(bottomPanel, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -410,9 +416,10 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     @Override
     public void showActiveEventInfo(String eventName, String description, String address) {
-        activeEventNameLabel.setText("Eventnamn: " + (eventName == null ? "" : eventName));
-        activeEventDescLabel.setText("Beskrivning: " + (description == null ? "" : description));
-        activeEventAddressLabel.setText("Adress: " + (address == null ? "" : address));
+        // This updates the active-event label panel
+        activeEventNameLabel.setText("Event Name: " + (eventName == null ? "" : eventName));
+        activeEventDescLabel.setText("Description: " + (description == null ? "" : description));
+        activeEventAddressLabel.setText("Address: " + (address == null ? "" : address));
     }
 
     @Override
@@ -433,4 +440,140 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             return defaultValue;
         }
     }
+    /**
+     * Builds a panel containing:
+     * - Event Details (left)
+     * - Revenue Split (right)
+     * - Cashier code (below both)
+     *
+     * @param readOnly If true, fields are not editable and have a 'read-only' visual style
+     * @return The constructed panel
+     */
+    private JPanel buildEventInfoPanel(boolean readOnly) {
+        // --- Outer panel with GridBagLayout ---
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        // region: Event Details (Left)
+        JPanel eventDetailsPanel = new JPanel(new GridBagLayout());
+        eventDetailsPanel.setBorder(BorderFactory.createTitledBorder("Event Details"));
+        GridBagConstraints edGbc = new GridBagConstraints();
+        edGbc.fill = GridBagConstraints.HORIZONTAL;
+        edGbc.insets = new Insets(5, 5, 5, 5);
+
+        edGbc.gridx = 0; edGbc.gridy = 0;
+        eventDetailsPanel.add(new JLabel("Name:"), edGbc);
+        edGbc.gridx = 1;
+        eventNameField = new JTextField("", 20);
+        eventNameField.setEditable(!readOnly);
+        eventDetailsPanel.add(eventNameField, edGbc);
+
+        edGbc.gridx = 0; edGbc.gridy++;
+        eventDetailsPanel.add(new JLabel("Description:"), edGbc);
+        edGbc.gridx = 1;
+        eventDescriptionField = new JTextArea(3, 20);
+        eventDescriptionField.setEditable(!readOnly);
+        eventDescriptionField.setLineWrap(true);
+        eventDescriptionField.setWrapStyleWord(true);
+        JScrollPane descriptionScrollPane = new JScrollPane(eventDescriptionField);
+        descriptionScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        eventDetailsPanel.add(descriptionScrollPane, edGbc);
+
+        edGbc.gridx = 0; edGbc.gridy++;
+        eventDetailsPanel.add(new JLabel("Address:"), edGbc);
+        edGbc.gridx = 1;
+        eventAddressField = new JTextField("", 20);
+        eventAddressField.setEditable(!readOnly);
+        eventDetailsPanel.add(eventAddressField, edGbc);
+
+        // region: Revenue Split (Right)
+        JPanel revenueSplitPanel = new JPanel(new GridBagLayout());
+        revenueSplitPanel.setBorder(BorderFactory.createTitledBorder("Revenue Split Breakdown"));
+        GridBagConstraints rsGbc = new GridBagConstraints();
+        rsGbc.fill = GridBagConstraints.HORIZONTAL;
+        rsGbc.insets = new Insets(5, 5, 5, 5);
+
+        rsGbc.gridx = 0; rsGbc.gridy = 0;
+        revenueSplitPanel.add(new JLabel("Market Owner (%):"), rsGbc);
+        rsGbc.gridx = 1;
+        marketOwnerSplitField = new JTextField("10", 5);
+        marketOwnerSplitField.setEditable(!readOnly);
+        revenueSplitPanel.add(marketOwnerSplitField, rsGbc);
+
+        rsGbc.gridx = 0; rsGbc.gridy++;
+        revenueSplitPanel.add(new JLabel("Vendor (%):"), rsGbc);
+        rsGbc.gridx = 1;
+        vendorSplitField = new JTextField("85", 5);
+        vendorSplitField.setEditable(!readOnly);
+        revenueSplitPanel.add(vendorSplitField, rsGbc);
+
+        rsGbc.gridx = 0; rsGbc.gridy++;
+        revenueSplitPanel.add(new JLabel("Platform (%):"), rsGbc);
+        rsGbc.gridx = 1;
+        platformSplitField = new JTextField("5", 5);
+        platformSplitField.setEditable(!readOnly);
+        revenueSplitPanel.add(platformSplitField, rsGbc);
+
+        // region: Lay them out side by side
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0.5;
+        gbc.weighty = 1.0;
+        mainPanel.add(eventDetailsPanel, gbc);
+
+        gbc.gridx = 1; // next to the eventDetailsPanel
+        gbc.gridy = 0;
+        gbc.weightx = 0.5;
+        gbc.weighty = 1.0;
+        mainPanel.add(revenueSplitPanel, gbc);
+
+        // region: Cashier code panel at the bottom
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 2;  // span both columns
+        gbc.weightx = 1.0;
+        gbc.weighty = 0.0;
+        JPanel cashierPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        cashierCodeLabel = new JLabel("Cashier Code:");
+        cashierCodeField = new JTextField("", 8);
+        cashierCodeField.setEditable(!readOnly);
+        if (readOnly) {
+            // Use a background color that matches the panel background:
+            Color bgColor = UIManager.getColor("Panel.background"); // typical “gray-ish”
+
+            eventNameField.setBackground(bgColor);
+            eventNameField.setBorder(null);   // remove the standard border
+            eventNameField.setOpaque(true);   // ensure background is painted
+
+            eventDescriptionField.setBackground(bgColor);
+            eventDescriptionField.setBorder(null);
+            eventDescriptionField.setOpaque(true);
+
+            eventAddressField.setBackground(bgColor);
+            eventAddressField.setBorder(null);
+            eventAddressField.setOpaque(true);
+
+            marketOwnerSplitField.setBackground(bgColor);
+            marketOwnerSplitField.setBorder(null);
+            marketOwnerSplitField.setOpaque(true);
+
+            // TODO add the same for other fields
+        } else {
+            // restore them to normal
+            eventNameField.setBackground(UIManager.getColor("TextField.background"));
+            eventNameField.setBorder(UIManager.getBorder("TextField.border"));
+            // TODO add the same for other fields
+        }
+
+        cashierPanel.add(cashierCodeLabel);
+        cashierPanel.add(cashierCodeField);
+        mainPanel.add(cashierPanel, gbc);
+
+        return mainPanel;
+    }
+
 }
+
