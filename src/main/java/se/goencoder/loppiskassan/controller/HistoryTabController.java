@@ -2,7 +2,6 @@ package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.CreateSoldItems;
-import se.goencoder.iloppis.model.CreateSoldItemsResponse;
 import se.goencoder.iloppis.model.ListSoldItemsResponse;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
@@ -22,15 +21,11 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -39,19 +34,20 @@ import static se.goencoder.iloppis.model.PaymentMethodFilter.PAYMENT_METHOD_FILT
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 import static se.goencoder.loppiskassan.ui.Constants.*;
 
+/**
+ * Controls the history tab, handling the display, filtering, and management of sold items.
+ */
 public class HistoryTabController implements HistoryControllerInterface {
     private static final Logger logger = Logger.getLogger(HistoryTabController.class.getName());
     private static final HistoryTabController instance = new HistoryTabController();
     private HistoryPanelInterface view;
     private List<SoldItem> allHistoryItems;
 
-    private HistoryTabController() {
-    }
+    private HistoryTabController() {}
 
     public static HistoryTabController getInstance() {
         return instance;
     }
-
 
     @Override
     public void registerView(HistoryPanelInterface view) {
@@ -61,6 +57,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     @Override
     public void loadHistory() {
         try {
+            // Load the history from the local CSV file and populate the seller dropdown with distinct sellers.
             allHistoryItems = FormatHelper.toItems(FileHelper.readFromFile(LOPPISKASSAN_CSV), true);
             Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
             SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
@@ -71,189 +68,48 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     @Override
     public void filterUpdated() {
-        String sellerFilter = view.getSellerFilter();
-        String paidFilter = view.getPaidFilter();
+        // Apply the current filters and update the view accordingly.
         List<SoldItem> filteredItems = applyFilters();
 
-        // Update the table
         view.updateHistoryTable(filteredItems);
-        view.updateNoItemsLabel(Integer.toString(filteredItems.size()));
-        view.updateSumLabel(Double.toString(filteredItems.stream().mapToDouble(SoldItem::getPrice).sum()));
+        view.updateNoItemsLabel(String.valueOf(filteredItems.size()));
+        view.updateSumLabel(String.valueOf(filteredItems.stream().mapToDouble(SoldItem::getPrice).sum()));
 
-        // Enable or disable "Betala ut" button
-        boolean enablePayout = sellerFilter != null && !sellerFilter.equals("Alla")
-                && filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller());
+        boolean enablePayout = isPayoutEnabled(filteredItems);
         view.enableButton(BUTTON_PAY_OUT, enablePayout);
 
-        // Enable or disable "Arkivera" button
-        boolean enableArchive = paidFilter != null && paidFilter.equals("Ja");
+        boolean enableArchive = isArchiveEnabled();
         view.enableButton(BUTTON_ARCHIVE, enableArchive);
 
-        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
-        if (isOffline) {
-            // If offline: text => "Importera kassa"
-            view.setImportButtonText("Importera kassa");
-            view.enableButton(BUTTON_IMPORT, true);
-        } else {
-            // If online: check if ALL items are uploaded
-            view.setImportButtonText("Uppdatera med Web");
-            view.enableButton(BUTTON_IMPORT, true);
-        }
+        updateImportButton();
     }
 
     @Override
     public void buttonAction(String actionCommand) {
         switch (actionCommand) {
-            case BUTTON_ERASE:
-                clearData();
-                break;
-            case BUTTON_IMPORT:
-                // If offline => old importData()
-                if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
-                    importData();
-                } else {
-                    // If online => new updateWithWeb
-                    boolean allUploaded = uploadSoldItems();
-                    if (allUploaded) {
-                        downloadSoldItems();
-                    }
-
-                }
-                break;
-            case BUTTON_PAY_OUT:
-                payout();
-                break;
-            case BUTTON_COPY_TO_CLIPBOARD:
-                copyToClipboard();
-                break;
-            case BUTTON_ARCHIVE:
-                archiveFilteredItems();
-                break;
-            default:
-                throw new IllegalStateException("Unexpected action: " + actionCommand);
+            case BUTTON_ERASE -> clearData();
+            case BUTTON_IMPORT -> handleImportAction();
+            case BUTTON_PAY_OUT -> payout();
+            case BUTTON_COPY_TO_CLIPBOARD -> copyToClipboard();
+            case BUTTON_ARCHIVE -> archiveFilteredItems();
+            default -> throw new IllegalStateException("Unexpected action: " + actionCommand);
         }
     }
 
     private void downloadSoldItems() {
-        // Download all sold items from the web, merge with local items, and save to file
+        // Retrieve all sold items from the web, merge with local items, and save them to the local file.
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        Map<String, SoldItem> fetchedItems = fetchItemsFromWeb(eventId);
 
-        Map<String, SoldItem> fetchedItems = new HashMap<>();
-        try {
-            boolean fetchedAll = false;
-            String pageToken = "";
-            while (!fetchedAll) {
-                ListSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceListSoldItems(
-                        eventId,
-                        PAID_FILTER_UNSPECIFIED.getValue(),
-                        PAYMENT_METHOD_FILTER_UNSPECIFIED.getValue(),
-                        null, false, 500, pageToken);
-                for (se.goencoder.iloppis.model.SoldItem item : result.getItems()) {
-                    SoldItem soldItem = SoldItemUtils.fromApiSoldItem(item, true);
-                    fetchedItems.put(soldItem.getItemId(), soldItem);
-                }
-                if (result.getNextPageToken() == null || result.getNextPageToken().isEmpty()) {
-                    fetchedAll = true;
-                } else {
-                    pageToken = result.getNextPageToken();
-                }
-                logger.info("Downloaded " + result.getItems().size() + " items from the web.");
-            }
-        } catch (ApiException e) {
-            throw new RuntimeException(e);
-        }
-        // merge allHistoryItems with fetchedItems so that new items are added and existing items are updated
-        for (SoldItem fetchedItem : fetchedItems.values()) {
-            if (allHistoryItems.stream().noneMatch(item -> item.getItemId().equals(fetchedItem.getItemId()))) {
-                allHistoryItems.add(fetchedItem);
-            } else {
-                SoldItem existingItem = allHistoryItems.stream()
-                        .filter(item -> item.getItemId().equals(fetchedItem.getItemId()))
-                        .findFirst()
-                        .orElseThrow();
-                existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
-                existingItem.setUploaded(fetchedItem.isUploaded());
-            }
-        }
-        try {
-            FileUtils.saveSoldItems(allHistoryItems);
-            loadHistory();
-        } catch (IOException e) {
-            Popup.FATAL.showAndWait("Fel vid skrivning till fil", e.getMessage());
-        }
+        mergeFetchedItems(fetchedItems);
+        saveHistoryToFile();
+        loadHistory();
     }
-
-    private boolean uploadSoldItems() {
-        List<SoldItem> notUploaded = allHistoryItems.stream()
-                .filter(item -> !item.isUploaded())
-                .collect(Collectors.toList());
-        boolean allUploaded = true;
-
-        if (notUploaded.isEmpty()) {
-            return true;
-        }
-
-        try {
-            int index = 0;
-            while (index < notUploaded.size()) {
-                int toIndex = Math.min(index + 100, notUploaded.size());
-                List<SoldItem> batch = notUploaded.subList(index, toIndex);
-
-                // Upload this batch
-                allUploaded = allUploaded && uploadBatch(batch);
-
-                // Mark them as uploaded
-                batch.forEach(item -> item.setUploaded(true));
-
-                index = toIndex;
-            }
-
-            // Save updated list to file
-            FileUtils.saveSoldItems(allHistoryItems);
-
-            // Refresh filters so the UI updates (button state, table, etc.)
-            filterUpdated();
-
-            Popup.INFORMATION.showAndWait("Klart!", "Uppladdning av " + notUploaded.size() + " varor slutförd.");
-        } catch (Exception e) {
-            Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
-            allUploaded = false;
-        }
-        return allUploaded;
-    }
-
-    /**
-     * Helper to upload a single batch to the web.
-     */
-    private boolean uploadBatch(List<SoldItem> batch) throws ApiException {
-        CreateSoldItems createSoldItems = new CreateSoldItems();
-        for (SoldItem item : batch) {
-            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
-
-            OffsetDateTime soldTime = OffsetDateTime.of(
-                    item.getSoldTime(),
-                    OffsetDateTime.now().getOffset()
-            );
-            apiItem.setSoldTime(soldTime);
-
-            createSoldItems.addItemsItem(apiItem);
-        }
-
-        // Send this batch to the API
-        CreateSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
-                ConfigurationStore.EVENT_ID_STR.get(),
-                createSoldItems
-        );
-        return result.getRejectedItems().isEmpty();
-    }
-
 
     private void clearData() {
+        // Clear all local data after user confirmation.
         try {
             if (Popup.CONFIRM.showConfirmDialog(BUTTON_ERASE, "Är du säker på att du vill rensa kassan?")) {
-                FileHelper.createBackupFile();
-                allHistoryItems.clear();
-                filterUpdated();
                 FileHelper.createBackupFile();
                 allHistoryItems.clear();
                 filterUpdated();
@@ -264,178 +120,262 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void importData() {
-        Path defaultPath = FileHelper.getRecordFilePath(LOPPISKASSAN_CSV);
-        JFileChooser fileChooser = new JFileChooser(defaultPath.toFile());
-        fileChooser.setDialogTitle("Öppna annan kassa-fil");
-        // Optional: Filter for specific file types, e.g., CSV files
-        FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV Files", "csv");
-        fileChooser.setFileFilter(filter);
+        // Import sold items from an external file selected by the user.
+        File file = selectFileForImport();
+        if (file == null) return;
 
-        int result = fileChooser.showOpenDialog(null); // Pass your JFrame here if needed
-        if (result == JFileChooser.APPROVE_OPTION) {
-            File file = fileChooser.getSelectedFile();
-            // create a set of item ids for the allHistoryItems list
-            Set<String> allItemIds = allHistoryItems.stream()
-                    .map(SoldItem::getItemId)
-                    .collect(Collectors.toSet());
-            try {
-                List<SoldItem> importedItems = FormatHelper.toItems(FileHelper.readFromFile(Paths.get(file.getAbsolutePath())), true);
-                int numberOfImportedItems = 0;
-                for (SoldItem item : importedItems) {
-                    if (!allItemIds.contains(item.getItemId())) {
-                        allHistoryItems.add(item);
-                        numberOfImportedItems++;
-                    }
-                }
-                FileUtils.saveSoldItems(allHistoryItems);
-                // Assuming populateHistoryTable() and updateHistoryLabels() are methods that refresh your UI
-                view.clearView();
-                filterUpdated();
-
-                // Information dialog
-                JOptionPane.showMessageDialog(null,
-                        "Importerade " + numberOfImportedItems + " av " + importedItems.size() + " poster",
-                        "Import klar!",
-                        JOptionPane.INFORMATION_MESSAGE);
-            } catch (Exception e) {
-                // Error dialog
-                JOptionPane.showMessageDialog(null,
-                        "Importering misslyckades: " + e.getMessage(),
-                        "Importfel",
-                        JOptionPane.ERROR_MESSAGE);
-                logger.log(java.util.logging.Level.SEVERE, "Error importing file", e);
-            }
+        try {
+            importSoldItemsFromFile(file);
+        } catch (Exception e) {
+            Popup.ERROR.showAndWait("Importering misslyckades", e.getMessage());
         }
     }
 
     private void archiveFilteredItems() {
-
-
-        // get filtered items, save to a file named "arkiverade_<YY-MM-DD:HH-MM-SS>.csv"
-        // The first row in the file is a comment with the applied filters, eg:
-        // "# Säljare: 12, Betalningsmetod: Swish, Dölj utbetalda poster: Ja"
-        // The following rows are the items in CSV format
-        // Next, remove the filtered items from the allHistoryItems list and save that list to the main file
-        // Finally, update the view with the new list of items
+        // Archive filtered items to a CSV file and remove them from the history list.
         List<SoldItem> filteredItems = applyFilters();
-        // if filtered Items contains items that has not been paid out, show an error popup and return
+
         if (filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller())) {
             Popup.ERROR.showAndWait("Fel vid arkivering av poster", "Det går inte att arkivera poster som inte är utbetalda.");
             return;
         }
-        // Show a confirmation dialog, and proceed only if the user confirms
+
         if (!Popup.CONFIRM.showConfirmDialog(BUTTON_ARCHIVE, "Är du säker på att du vill arkivera de visade posterna?")) {
             return;
         }
-        String csv = FormatHelper.toCVS(filteredItems);
-        String fileName = "arkiverade_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss")) + ".csv";
-        String comment = "# Säljare: " + (view.getSellerFilter() == null || view.getSellerFilter().isEmpty() ? "Alla" : view.getSellerFilter())
-                + ", Betalningsmetod: " + (view.getPaymentMethodFilter() == null || view.getPaymentMethodFilter().isEmpty() ? "Alla" : view.getPaymentMethodFilter());
-        try {
-            FileHelper.saveToFile(fileName, comment, csv);
-            logger.info("Allitems are " + allHistoryItems.size() + " and filtered items are " + filteredItems.size());
-            // Create a set of item IDs for the filtered items
-            Set<String> filteredItemIds = filteredItems.stream()
-                    .map(SoldItem::getItemId)
-                    .collect(Collectors.toSet());
-            // Remove the filtered items from the allHistoryItems list by filtering out items with IDs in the set
-            // Loop from end and remove as we go to avoid ConcurrentModificationException
-            for (int i = allHistoryItems.size() - 1; i >= 0; i--) {
-                if (filteredItemIds.contains(allHistoryItems.get(i).getItemId())) {
-                    allHistoryItems.remove(i);
-                }
-            }
-            logger.info("Allitems are now " + allHistoryItems.size() + " and filtered items are " + filteredItems.size());
-            FileUtils.saveSoldItems(allHistoryItems);
-            filterUpdated();
-        } catch (IOException e) {
-            Popup.FATAL.showAndWait("Fel vid arkivering av poster", e.getMessage());
-        }
 
+        archiveItemsToFile(filteredItems);
+        removeFilteredItems(filteredItems);
+        saveHistoryToFile();
+        // Refresh UI components
+        updateDistinctSellers();
+        filterUpdated();
+    }
+
+    private void updateDistinctSellers() {
+        Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
+        SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
     }
 
     private void payout() {
-        // Get filtered items
+        // Mark filtered items as paid out and update the history.
         List<SoldItem> filteredItems = applyFilters();
-        // Iterate over filtered items and mark them as collected by seller (Local date now)
         LocalDateTime now = LocalDateTime.now();
-        // Update allHistoryItems with changes made to filteredItems
-        Set<String> filteredItemIds = filteredItems.stream()
-                .map(SoldItem::getItemId)
-                .collect(Collectors.toSet());
 
-        allHistoryItems.forEach(historyItem -> {
-            if (filteredItemIds.contains(historyItem.getItemId())) {
-                historyItem.setCollectedBySellerTime(now);
+        filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
+        saveHistoryToFile();
+        filterUpdated();
+    }
+
+    private void copyToClipboard() {
+        // Copy a summary of filtered items to the system clipboard.
+        List<SoldItem> filteredItems = applyFilters();
+        String summary = generateSummary(filteredItems);
+
+        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(new StringSelection(summary), null);
+    }
+
+    private List<SoldItem> applyFilters() {
+        // Apply the current filters to the history items.
+        return FilterUtils.applyFilters(
+                allHistoryItems,
+                view.getPaidFilter(),
+                view.getSellerFilter(),
+                view.getPaymentMethodFilter()
+        );
+    }
+
+    private void handleImportAction() {
+        if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+            importData();
+        } else {
+            boolean allUploaded = uploadSoldItems();
+            if (allUploaded) {
+                downloadSoldItems();
             }
-        });
+        }
+    }
 
-        String csv = FormatHelper.toCVS(allHistoryItems);
-        // Write CSV string to file
+    private Map<String, SoldItem> fetchItemsFromWeb(String eventId) {
+        // Fetch items from the web service.
+        Map<String, SoldItem> fetchedItems = new HashMap<>();
+        try {
+            String pageToken = "";
+            boolean fetchedAll = false;
+
+            while (!fetchedAll) {
+                ListSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi()
+                        .soldItemsServiceListSoldItems(
+                                eventId,
+                                PAID_FILTER_UNSPECIFIED.getValue(),
+                                PAYMENT_METHOD_FILTER_UNSPECIFIED.getValue(),
+                                null,
+                                false,
+                                500,
+                                pageToken
+                        );
+
+                result.getItems().forEach(item -> {
+                    SoldItem soldItem = SoldItemUtils.fromApiSoldItem(item, true);
+                    fetchedItems.put(soldItem.getItemId(), soldItem);
+                });
+
+                fetchedAll = result.getNextPageToken() == null || result.getNextPageToken().isEmpty();
+                pageToken = result.getNextPageToken();
+            }
+        } catch (ApiException e) {
+            throw new RuntimeException(e);
+        }
+
+        return fetchedItems;
+    }
+
+    private void mergeFetchedItems(Map<String, SoldItem> fetchedItems) {
+        // Merge fetched items with existing items in history.
+        fetchedItems.values().forEach(fetchedItem -> {
+            allHistoryItems.stream()
+                    .filter(item -> item.getItemId().equals(fetchedItem.getItemId()))
+                    .findFirst()
+                    .ifPresentOrElse(
+                            existingItem -> {
+                                existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
+                                existingItem.setUploaded(fetchedItem.isUploaded());
+                            },
+                            () -> allHistoryItems.add(fetchedItem)
+                    );
+        });
+    }
+
+    private void saveHistoryToFile() {
         try {
             FileUtils.saveSoldItems(allHistoryItems);
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid skrivning till fil", e.getMessage());
         }
+    }
+
+    private void archiveItemsToFile(List<SoldItem> filteredItems) {
+        // Save filtered items to an archive file with a timestamped filename.
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss"));
+        String fileName = "arkiverade_" + timestamp + ".csv";
+
+        String comment = "# Säljare: " + (view.getSellerFilter() == null ? "Alla" : view.getSellerFilter()) +
+                ", Betalningsmetod: " + (view.getPaymentMethodFilter() == null ? "Alla" : view.getPaymentMethodFilter());
+
+        try {
+            FileHelper.saveToFile(fileName, comment, FormatHelper.toCVS(filteredItems));
+        } catch (IOException e) {
+            Popup.FATAL.showAndWait("Fel vid arkivering av poster", e.getMessage());
+        }
+    }
+
+    private void removeFilteredItems(List<SoldItem> filteredItems) {
+        // Remove archived items from the history list.
+        Set<String> filteredItemIds = filteredItems.stream()
+                .map(SoldItem::getItemId)
+                .collect(Collectors.toSet());
+
+        allHistoryItems.removeIf(item -> filteredItemIds.contains(item.getItemId()));
+    }
+
+    private String generateSummary(List<SoldItem> filteredItems) {
+        // Generate a summary string for filtered items.
+        int totalItems = filteredItems.size();
+        int totalSum = filteredItems.stream().mapToInt(SoldItem::getPrice).sum();
+        int provision = (int) (0.1 * totalSum);
+
+        StringBuilder summary = new StringBuilder("Säljredovisning:\n");
+        summary.append(totalItems).append(" varor sålda för totalt ").append(totalSum).append(" SEK.\n");
+        summary.append("Provision: ").append(provision).append(" SEK.\n");
+
+        filteredItems.forEach(item -> summary.append(item.toString()).append("\n"));
+
+        return summary.toString();
+    }
+
+    private boolean uploadSoldItems() {
+        // Upload unsynchronized sold items to the web.
+        List<SoldItem> notUploaded = allHistoryItems.stream()
+                .filter(item -> !item.isUploaded())
+                .collect(Collectors.toList());
+
+        if (notUploaded.isEmpty()) return true;
+
+        try {
+            for (int i = 0; i < notUploaded.size(); i += 100) {
+                int end = Math.min(i + 100, notUploaded.size());
+                uploadBatch(notUploaded.subList(i, end));
+            }
+        } catch (Exception e) {
+            Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
+            return false;
+        }
+
+        saveHistoryToFile();
+        return true;
+    }
+
+    private void uploadBatch(List<SoldItem> batch) throws ApiException {
+        // Upload a batch of sold items to the web service.
+        CreateSoldItems createSoldItems = new CreateSoldItems();
+
+        batch.forEach(item -> {
+            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
+            apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), OffsetDateTime.now().getOffset()));
+            createSoldItems.addItemsItem(apiItem);
+        });
+
+        ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
+                ConfigurationStore.EVENT_ID_STR.get(), createSoldItems);
+    }
+
+    private boolean isPayoutEnabled(List<SoldItem> filteredItems) {
+        // Enable payout if there are unpaid items for the selected seller.
+        return filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller());
+    }
+
+    private boolean isArchiveEnabled() {
+        // Enable archive if the "Paid" filter is set to "Yes."
+        return "Ja".equals(view.getPaidFilter());
+    }
+
+    private void updateImportButton() {
+        // Update the import button text and enable it based on the current mode.
+        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        if (isOffline) {
+            view.setImportButtonText("Importera kassa");
+        } else {
+            view.setImportButtonText("Uppdatera med Web");
+        }
+        view.enableButton(BUTTON_IMPORT, true);
+    }
+
+    private File selectFileForImport() {
+        // Open a file chooser dialog to select an external file for import.
+        JFileChooser fileChooser = new JFileChooser(FileHelper.getRecordFilePath(LOPPISKASSAN_CSV).toFile());
+        fileChooser.setDialogTitle("Öppna annan kassa-fil");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
+
+        int result = fileChooser.showOpenDialog(null);
+        return result == JFileChooser.APPROVE_OPTION ? fileChooser.getSelectedFile() : null;
+    }
+
+    private void importSoldItemsFromFile(File file) throws IOException {
+        // Import sold items from the selected file, avoiding duplicates.
+        List<SoldItem> importedItems = FormatHelper.toItems(FileHelper.readFromFile(file.toPath()), true);
+
+        Set<String> existingItemIds = allHistoryItems.stream()
+                .map(SoldItem::getItemId)
+                .collect(Collectors.toSet());
+
+        importedItems.stream()
+                .filter(item -> !existingItemIds.contains(item.getItemId()))
+                .forEach(allHistoryItems::add);
+
+        saveHistoryToFile();
         filterUpdated();
+
+        Popup.INFORMATION.showAndWait("Import klar!", "Poster importerade: " + importedItems.size());
     }
-
-
-    private void copyToClipboard() {
-        // Assuming allHistoryItems is the complete list, and we apply filters similar to your filterUpdated method
-        List<SoldItem> filteredItems = applyFilters();
-        final String NL = System.lineSeparator();
-        int numberOfItems = filteredItems.size();
-        int sum = filteredItems.stream().mapToInt(SoldItem::getPrice).sum();
-        int provision = (int) (0.1 * sum);
-        StringBuilder itemsDetailed = new StringBuilder();
-        int index = 1;
-        for (SoldItem item : filteredItems) {
-            itemsDetailed.append(index++).append(".\t").append(item.getPrice()).append(" SEK ")
-                    .append(item.isCollectedBySeller() ? "Utbetalt" : "Ej utbetalt").append(NL);
-        }
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-        LocalDateTime now = LocalDateTime.now();
-        String formattedDateTime = now.format(formatter);
-
-        StringBuilder header = new StringBuilder();
-        header.append("Säljredovisning för ")
-                .append((view.getSellerFilter() == null || "Alla".equals(view.getSellerFilter())) ? "alla säljare" : "säljare " + view.getSellerFilter())
-                .append(".")
-                .append(NL)
-                .append(numberOfItems)
-                .append(" sålda varor ")
-                .append("för totalt ")
-                .append(sum)
-                .append(" SEK.")
-                .append(NL)
-                .append("Redovisningen omfattar följande betalningsmetoder: ")
-                .append(view.getPaymentMethodFilter() != null ? view.getPaymentMethodFilter() : "Alla")
-                .append("\ngenomförda innan ").append(formattedDateTime)
-                .append('.');
-        if (view.getSellerFilter() != null && !"Alla".equals(view.getSellerFilter())) {
-            header.append(NL).append("Provision: ").append(provision)
-                    .append(" Utbetalas säljare: ").append((sum - provision));
-        }
-
-        header.append(NL).append(NL).append(itemsDetailed);
-
-        // Copy the string to the clipboard
-        StringSelection stringSelection = new StringSelection(header.toString());
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        clipboard.setContents(stringSelection, null);
-    }
-
-    private List<SoldItem> applyFilters() {
-        String paidFilter = view.getPaidFilter(); // This will be "Ja", "Nej", or "Alla"
-        String sellerFilter = view.getSellerFilter();
-        String paymentMethodFilter = view.getPaymentMethodFilter();
-        return FilterUtils.applyFilters(
-                allHistoryItems,
-                paidFilter,
-                sellerFilter,
-                paymentMethodFilter);
-    }
-
 }

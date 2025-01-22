@@ -13,6 +13,7 @@ import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.utils.ConfigurationUtils;
+import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 
 import javax.swing.*;
@@ -33,7 +34,6 @@ public class CashierTabController implements CashierControllerInterface {
     private final List<SoldItem> items = new ArrayList<>();
     private CashierPanelInterface view;
 
-
     private CashierTabController() {}
 
     public static CashierControllerInterface getInstance() {
@@ -43,21 +43,25 @@ public class CashierTabController implements CashierControllerInterface {
     // --- Button setup methods ---
     @Override
     public void setupCheckoutCashButtonAction(JButton checkoutCashButton) {
+        // Assign a listener to handle cash payment checkouts
         checkoutCashButton.addActionListener(e -> checkout(PaymentMethod.Kontant));
     }
 
     @Override
     public void setupCheckoutSwishButtonAction(JButton checkoutSwishButton) {
+        // Assign a listener to handle Swish payment checkouts
         checkoutSwishButton.addActionListener(e -> checkout(PaymentMethod.Swish));
     }
 
     @Override
     public void setupCancelCheckoutButtonAction(JButton cancelCheckoutButton) {
+        // Assign a listener to handle checkout cancellations
         cancelCheckoutButton.addActionListener(e -> cancelCheckout());
     }
 
     @Override
     public void setupPricesTextFieldAction(JTextField pricesTextField) {
+        // Process seller prices when the action is triggered
         pricesTextField.addActionListener(e -> {
             Map<Integer, Integer[]> prices = view.getAndClearSellerPrices();
             prices.forEach(this::addItem);
@@ -73,12 +77,14 @@ public class CashierTabController implements CashierControllerInterface {
     // --- Item operations ---
     @Override
     public void deleteItem(String itemId) {
+        // Remove the item with the matching ID and update the total
         items.removeIf(item -> item.getItemId().equals(itemId));
         reCalculate();
     }
 
     @Override
     public void calculateChange(int payedAmount) {
+        // Calculate the change based on the total amount and update the view
         int totalSum = getSum();
         int change = payedAmount - totalSum;
         view.updateChangeCashField(change);
@@ -86,6 +92,7 @@ public class CashierTabController implements CashierControllerInterface {
 
     @Override
     public boolean isSellerApproved(int sellerId) {
+        // Check if a seller is approved based on the current mode (online/offline)
         if (ConfigurationUtils.isOfflineMode()) {
             return true;
         }
@@ -95,11 +102,10 @@ public class CashierTabController implements CashierControllerInterface {
                 .getJSONArray("approvedSellers")
                 .toList()
                 .contains(sellerId);
-
-
     }
 
     public void addItem(Integer sellerId, Integer[] prices) {
+        // Add items to the list only if the file permissions allow it
         if (FileHelper.assertRecordFileRights(LOPPISKASSAN_CSV)) {
             for (Integer price : prices) {
                 SoldItem soldItem = new SoldItem(sellerId, price, null);
@@ -115,10 +121,10 @@ public class CashierTabController implements CashierControllerInterface {
         LocalDateTime now = LocalDateTime.now();
         String purchaseId = UUID.randomUUID().toString();
 
-        // 1) Prepare items
+        // Prepare items for the current transaction
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
 
-        // 2) Save to web if not in offline mode
+        // Save the transaction to the web if in online mode
         boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
         if (!isOffline) {
             try {
@@ -129,9 +135,9 @@ public class CashierTabController implements CashierControllerInterface {
             }
         }
 
-        // 3) Save to file & clear
+        // Persist the transaction locally and clear the view
         try {
-            saveItemsToFile(items);
+            FileUtils.appendSoldItems(items);
             items.clear();
             view.clearView();
         } catch (IOException e) {
@@ -141,16 +147,17 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     public void cancelCheckout() {
+        // Clear all items and reset the view
         items.clear();
         view.clearView();
     }
 
     private void reCalculate() {
+        // Recalculate the total, rounding it to the nearest 100, and update the UI
         int totalSum = getSum();
-        int roundedSum = (totalSum + 99) / 100 * 100; // Round up to the nearest 100
+        int roundedSum = (totalSum + 99) / 100 * 100;
         int change = roundedSum - totalSum;
 
-        // Update the view
         view.clearView();
         items.forEach(view::addSoldItem);
         view.updateSumLabel(String.valueOf(totalSum));
@@ -162,12 +169,14 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     private int getSum() {
+        // Calculate the total sum of the items
         return items.stream().mapToInt(SoldItem::getPrice).sum();
     }
 
-    // --- Helper methods to break up checkout() logic ---
+    // --- Helper methods ---
     private void prepareItemsForCheckout(List<SoldItem> items, String purchaseId,
                                          PaymentMethod paymentMethod, LocalDateTime now) {
+        // Set relevant details for all items in the current checkout
         items.forEach(item -> {
             item.setSoldTime(now);
             item.setPaymentMethod(paymentMethod);
@@ -181,23 +190,27 @@ public class CashierTabController implements CashierControllerInterface {
                 .collect(Collectors.toMap(SoldItem::getItemId, item -> item));
 
         CreateSoldItems createSoldItems = new CreateSoldItems();
-        ZoneOffset currentOffset = OffsetDateTime.now().getOffset(); // Corrected to ZoneOffset
+        ZoneOffset currentOffset = OffsetDateTime.now().getOffset();
 
-        // Convert all items to API items
+        // Convert all items to API-compatible objects and add them to the batch
         for (SoldItem item : items) {
             se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
             apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), currentOffset));
-
             createSoldItems.addItemsItem(apiItem);
         }
 
-        // Send to web service
+        // Submit the batch to the web service
         CreateSoldItemsResponse response = ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
                 ConfigurationStore.EVENT_ID_STR.get(),
                 createSoldItems
         );
 
-        // Update `uploaded` status for accepted items
+        // Update local items based on the response
+        updateLocalItemsStatus(response, itemMap);
+    }
+
+    private void updateLocalItemsStatus(CreateSoldItemsResponse response, Map<String, SoldItem> itemMap) {
+        // Mark accepted items as uploaded
         if (response.getAcceptedItems() != null) {
             for (se.goencoder.iloppis.model.SoldItem acceptedItem : response.getAcceptedItems()) {
                 SoldItem localItem = itemMap.get(acceptedItem.getItemId());
@@ -206,6 +219,8 @@ public class CashierTabController implements CashierControllerInterface {
                 }
             }
         }
+
+        // Mark rejected items and notify the user
         if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
             Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp", response.getRejectedItems());
             for (se.goencoder.iloppis.model.SoldItem rejectedItem : response.getRejectedItems()) {
@@ -215,10 +230,5 @@ public class CashierTabController implements CashierControllerInterface {
                 }
             }
         }
-    }
-
-
-    private void saveItemsToFile(List<SoldItem> items) throws IOException {
-        FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
     }
 }
