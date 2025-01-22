@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.Filter;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +18,9 @@ public class SoldItemUtils {
                 .collect(Collectors.toSet());
     }
     public static se.goencoder.iloppis.model.SoldItem toApiSoldItem(SoldItem item) {
+        if (item == null) {
+            return null;
+        }
         se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
         apiItem.setSeller(item.getSeller());
         apiItem.setItemId(item.getItemId());
@@ -29,5 +33,26 @@ public class SoldItemUtils {
 
         return apiItem;
     }
+    public static SoldItem fromApiSoldItem(se.goencoder.iloppis.model.SoldItem apiSoldItem, boolean uploaded) {
+        PaymentMethod paymentMethod = switch (apiSoldItem.getPaymentMethod()) {
+            case se.goencoder.iloppis.model.PaymentMethod.KONTANT -> PaymentMethod.Kontant;
+            case se.goencoder.iloppis.model.PaymentMethod.SWISH -> PaymentMethod.Swish;
+            default -> throw new IllegalArgumentException("Unknown payment method: " + apiSoldItem.getPaymentMethod());
+        };
+        LocalDateTime collectedTime = null;
+        if (apiSoldItem.getCollectedTime() != null) {
+            collectedTime = apiSoldItem.getCollectedTime().toLocalDateTime();
+        }
+        return new SoldItem(apiSoldItem.getPurchaseId(),
+                apiSoldItem.getItemId(),
+                apiSoldItem.getSoldTime().toLocalDateTime(),
+                apiSoldItem.getSeller(),
+                apiSoldItem.getPrice(),
+                collectedTime,
+                paymentMethod,
+                uploaded
+        );
+    }
+
 }
 

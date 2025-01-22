@@ -114,24 +114,4 @@ public class FormatHelper {
     public static LocalDateTime stringToDateAndTime(String dateText) {
         return LocalDateTime.parse(dateText, formatter);
     }
-    public static SoldItem apiSoldItemToSoldItem(se.goencoder.iloppis.model.SoldItem apiSoldItem, boolean uploaded) {
-        PaymentMethod paymentMethod = switch (apiSoldItem.getPaymentMethod()) {
-            case se.goencoder.iloppis.model.PaymentMethod.KONTANT -> PaymentMethod.Kontant;
-            case se.goencoder.iloppis.model.PaymentMethod.SWISH -> PaymentMethod.Swish;
-            default -> throw new IllegalArgumentException("Unknown payment method: " + apiSoldItem.getPaymentMethod());
-        };
-        LocalDateTime collectedTime = null;
-        if (apiSoldItem.getCollectedTime() != null) {
-            collectedTime = apiSoldItem.getCollectedTime().toLocalDateTime();
-        }
-        return new SoldItem(apiSoldItem.getPurchaseId(),
-                apiSoldItem.getItemId(),
-                apiSoldItem.getSoldTime().toLocalDateTime(),
-                apiSoldItem.getSeller(),
-                apiSoldItem.getPrice(),
-                collectedTime,
-                paymentMethod,
-                uploaded
-        );
-    }
 }

@@ -4,7 +4,6 @@ import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.CreateSoldItems;
 import se.goencoder.iloppis.model.CreateSoldItemsResponse;
 import se.goencoder.iloppis.model.ListSoldItemsResponse;
-import se.goencoder.loppiskassan.Filter;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
@@ -12,6 +11,8 @@ import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.utils.FileUtils;
+import se.goencoder.loppiskassan.utils.FilterUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 
 import javax.swing.*;
@@ -148,7 +149,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                         PAYMENT_METHOD_FILTER_UNSPECIFIED.getValue(),
                         null, false, 500, pageToken);
                 for (se.goencoder.iloppis.model.SoldItem item : result.getItems()) {
-                    SoldItem soldItem = FormatHelper.apiSoldItemToSoldItem(item, true);
+                    SoldItem soldItem = SoldItemUtils.fromApiSoldItem(item, true);
                     fetchedItems.put(soldItem.getItemId(), soldItem);
                 }
                 if (result.getNextPageToken() == null || result.getNextPageToken().isEmpty()) {
@@ -175,8 +176,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             }
         }
         try {
-            FileHelper.createBackupFile();
-            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
+            FileUtils.saveSoldItems(allHistoryItems);
             loadHistory();
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid skrivning till fil", e.getMessage());
@@ -184,20 +184,20 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private boolean uploadSoldItems() {
-        List<SoldItem> unuploaded = allHistoryItems.stream()
+        List<SoldItem> notUploaded = allHistoryItems.stream()
                 .filter(item -> !item.isUploaded())
                 .collect(Collectors.toList());
         boolean allUploaded = true;
 
-        if (unuploaded.isEmpty()) {
+        if (notUploaded.isEmpty()) {
             return true;
         }
 
         try {
             int index = 0;
-            while (index < unuploaded.size()) {
-                int toIndex = Math.min(index + 100, unuploaded.size());
-                List<SoldItem> batch = unuploaded.subList(index, toIndex);
+            while (index < notUploaded.size()) {
+                int toIndex = Math.min(index + 100, notUploaded.size());
+                List<SoldItem> batch = notUploaded.subList(index, toIndex);
 
                 // Upload this batch
                 allUploaded = allUploaded && uploadBatch(batch);
@@ -209,13 +209,12 @@ public class HistoryTabController implements HistoryControllerInterface {
             }
 
             // Save updated list to file
-            FileHelper.createBackupFile();
-            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
+            FileUtils.saveSoldItems(allHistoryItems);
 
             // Refresh filters so the UI updates (button state, table, etc.)
             filterUpdated();
 
-            Popup.INFORMATION.showAndWait("Klart!", "Uppladdning av " + unuploaded.size() + " varor slutförd.");
+            Popup.INFORMATION.showAndWait("Klart!", "Uppladdning av " + notUploaded.size() + " varor slutförd.");
         } catch (Exception e) {
             Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
             allUploaded = false;
@@ -288,8 +287,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                         numberOfImportedItems++;
                     }
                 }
-                FileHelper.createBackupFile();
-                FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
+                FileUtils.saveSoldItems(allHistoryItems);
                 // Assuming populateHistoryTable() and updateHistoryLabels() are methods that refresh your UI
                 view.clearView();
                 filterUpdated();
@@ -348,8 +346,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                 }
             }
             logger.info("Allitems are now " + allHistoryItems.size() + " and filtered items are " + filteredItems.size());
-            FileHelper.createBackupFile();
-            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(allHistoryItems));
+            FileUtils.saveSoldItems(allHistoryItems);
             filterUpdated();
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid arkivering av poster", e.getMessage());
@@ -376,8 +373,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         String csv = FormatHelper.toCVS(allHistoryItems);
         // Write CSV string to file
         try {
-            FileHelper.createBackupFile();
-            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", csv);
+            FileUtils.saveSoldItems(allHistoryItems);
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid skrivning till fil", e.getMessage());
         }
@@ -435,18 +431,11 @@ public class HistoryTabController implements HistoryControllerInterface {
         String paidFilter = view.getPaidFilter(); // This will be "Ja", "Nej", or "Alla"
         String sellerFilter = view.getSellerFilter();
         String paymentMethodFilter = view.getPaymentMethodFilter();
-        return allHistoryItems.stream()
-                // Apply the paid filter based on the selected value
-                .filter(item -> switch (paidFilter) {
-                    case "Ja" -> item.isCollectedBySeller();
-                    case "Nej" -> !item.isCollectedBySeller();
-                    default -> true; // No filtering on paid status
-                })
-                // Apply the seller filter if a specific seller is selected (not null and not "Alla")
-                .filter(item -> sellerFilter == null || "Alla".equals(sellerFilter) || Filter.getFilterFunc(Filter.SELLER, sellerFilter).test(item))
-                // Apply the payment method filter if a specific payment method is selected (not null and not "Alla")
-                .filter(item -> paymentMethodFilter == null || "Alla".equals(paymentMethodFilter) || Filter.getFilterFunc(Filter.PAYMENT_METHOD, paymentMethodFilter).test(item))
-                .collect(Collectors.toList());
+        return FilterUtils.applyFilters(
+                allHistoryItems,
+                paidFilter,
+                sellerFilter,
+                paymentMethodFilter);
     }
 
 }
