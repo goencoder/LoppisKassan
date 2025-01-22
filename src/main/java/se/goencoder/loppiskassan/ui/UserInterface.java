@@ -23,15 +23,17 @@ public class UserInterface extends JFrame {
             return index;
         }
         static SELECTABLE_TABS fromIndex(int index) {
-            switch (index) {
-                case 0: return DISCOVERY;
-                case 1: return CASHIER;
-                case 2: return HISTORY;
-                default: Popup.FATAL.showAndWait(
-                        "Selected tab out of range",
-                        "The selected tab is out of range. Program will exit!");
-                    return CASHIER; // Dummy, will not reach here after FATAL
-            }
+            return switch (index) {
+                case 0 -> DISCOVERY;
+                case 1 -> CASHIER;
+                case 2 -> HISTORY;
+                default -> {
+                    Popup.FATAL.showAndWait(
+                            "Selected tab out of range",
+                            "The selected tab is out of range. Program will exit!");
+                    yield CASHIER;
+                }
+            };
         }
     }
 

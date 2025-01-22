@@ -12,6 +12,7 @@ import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.utils.EventUtils;
 
 import java.io.IOException;
 import java.util.*;
@@ -41,11 +42,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
         // Add the "offline" synthetic event at the top
         Event offlineEvent = new Event();
-        offlineEvent.setId("offline");
-        offlineEvent.setName("Offline-loppis");
-        offlineEvent.setAddressCity("");   // no city
-        offlineEvent.setStartDate(null);   // no date
-        offlineEvent.setEndDate(null);     // no date
+        EventUtils.populateOfflineEvent(offlineEvent);
 
         eventList = new ArrayList<>();
         eventList.add(offlineEvent);
@@ -59,7 +56,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
             FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
             List<Event> discovered = response.getEvents();
-            eventList.addAll(discovered);
+            eventList.addAll(Objects.requireNonNull(discovered));
 
             view.populateEventsTable(eventList);
         } catch (ApiException ex) {
@@ -78,48 +75,43 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             Popup.WARNING.showAndWait("Ingen rad vald", "Du måste välja ett event först.");
             return;
         }
+        Event event = fromId(eventId);
+
+        ConfigurationStore.EVENT_JSON.set(Objects.requireNonNull(event).toJson());
 
         // Check if the event is offline
         boolean isOffline = "offline".equalsIgnoreCase(eventId);
-
+        RevenueSplit split;
+        try {
+            split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+        } catch (IOException e) {
+            Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e);
+            ConfigurationStore.reset();
+            return;
+        }
         if (isOffline) {
-            // 1) Mark offline in config
+            // Mark offline in config
             ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(true);
             ConfigurationStore.EVENT_ID_STR.set("offline");
 
-            // 2) Show a small info popup (optional)
-            Popup.INFORMATION.showAndWait("Offline-läge", "Kassan är i offline-läge.");
-
-            // 3) Switch the UI to "active event" mode
+            // Switch the UI to "active event" mode
             view.setRegisterOpened(true);
 
-            // 4) Find the "event" in our eventList if you want to display name/desc
-            //    (In your code, you may have a special offline object.)
-            Event event = fromId("offline");
-            // If it doesn't exist, build it
-            if (event == null) {
-                event = new Event();
-                event.setId("offline");
-                event.setName("Offline-loppis");
-                event.setDescription("Ingen beskrivning (offline-läge)");
-                event.setAddressStreet("(ingen gata)");
-                event.setAddressCity("(ingen stad)");
-            }
-            // 5) Show it in the active-event panel
-            view.showActiveEventInfo(
-                    event.getName(),
-                    event.getDescription(),
-                    event.getAddressStreet() + ", " + event.getAddressCity()
-            );
+            view.showActiveEventInfo(event, split);
+
+
             // 6) Possibly let them change again (by default we keep it visible).
             view.setChangeEventButtonVisible(true);
+            view.showActiveEventInfo(event, split);
 
         } else {
             // -------------- ONLINE --------------
+
             try {
                 // 1) Call the API to get the cashier token
                 ApiKeyServiceApi apiKeyServiceApi = ApiHelper.INSTANCE.getApiKeyServiceApi();
                 GetApiKeyResponse response = apiKeyServiceApi.apiKeyServiceGetApiKey(eventId, cashierCode);
+
 
                 // 2) If success, store key
                 ApiHelper.INSTANCE.setCurrentApiKey(response.getApiKey());
@@ -130,7 +122,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 ListVendorApplicationsResponse res = ApiHelper.INSTANCE.getVendorApplicationServiceApi()
                         .vendorApplicationServiceListVendorApplications(eventId, 500, "");
                 Set<Integer> approvedSellers = new HashSet<>();
-                for (VendorApplication application : res.getApplications()) {
+                for (VendorApplication application : Objects.requireNonNull(res.getApplications())) {
                     if ("APPROVED".equalsIgnoreCase(application.getStatus())) {
                         approvedSellers.add(application.getSellerNumber());
                     }
@@ -138,6 +130,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put("approvedSellers", new JSONArray(approvedSellers));
                 ConfigurationStore.APPROVED_SELLERS_JSON.set(jsonObject.toString());
+
 
                 // 4) Show success
                 Popup.INFORMATION.showAndWait("Ok!", "Kassan är redo att användas.");
@@ -148,15 +141,12 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 view.setRegisterOpened(true);
 
                 // 6) Show the event's info
-                Event event = fromId(eventId);
-                view.showActiveEventInfo(
-                        event.getName(),
-                        event.getDescription(),
-                        event.getAddressStreet() + ", " + event.getAddressCity()
-                );
+                view.showActiveEventInfo(event, split);
+
                 view.setChangeEventButtonVisible(true);
 
             } catch (Exception ex) {
+                ConfigurationStore.reset();
                 if (ex instanceof ApiException) {
                     Popup.ERROR.showAndWait("Kunde inte hämta token", ex);
                 } else {
@@ -166,11 +156,6 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         }
     }
 
-    @Override
-    public Set<Integer> getApprovedSellersForEvent(String eventId) {
-        // For now, a dummy example. Potentially parse from config or call an endpoint
-        return new HashSet<>(Collections.singletonList(1));
-    }
 
     @Override
     public void eventSelected(String eventId) {
@@ -179,7 +164,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
         // Common setup for both real and offline events
         Event selectedEvent = fromId(eventId);
-        view.setEventName(selectedEvent.getName());
+        view.setEventName(Objects.requireNonNull(selectedEvent).getName());
         view.setEventDescription(selectedEvent.getDescription());
         view.setEventAddress(selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity());
 
@@ -193,10 +178,23 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             view.setRevenueSplitEditable(true);
 
             // Any existing stored splits? If not, default to 0-0-0
-            int moSplit = ConfigurationStore.REVENUE_SPLIT_MARKET_FLOAT.getIntValueOrDefault(10);
-            int vSplit = ConfigurationStore.REVENUE_SPLIT_VENDOR_FLOAT.getIntValueOrDefault(85);
-            int pSplit = ConfigurationStore.REVENUE_SPLIT_PLATFORM_FLOAT.getIntValueOrDefault(5);
-
+            RevenueSplit split;
+            if (ConfigurationStore.REVENUE_SPLIT_JSON.get() == null) {
+                split = new RevenueSplit();
+                split.setCharityPercentage(0f);
+                split.setMarketOwnerPercentage(85f);
+                split.setVendorPercentage(10f);
+                split.setPlatformProviderPercentage(5f);
+                ConfigurationStore.REVENUE_SPLIT_JSON.set(split.toJson());
+            } else {
+                try {
+                    split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+                } catch (IOException e) {
+                    // should never happen, but if it does, default to 0-0-0
+                    Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e);
+                    split = new RevenueSplit();
+                }
+            }
             // Show in the panel
             selectedEvent.setAddressCity("(ingen stad)");
             selectedEvent.setDescription("Ingen beskrivning (offline-läge)");
@@ -205,7 +203,11 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             view.setEventName(selectedEvent.getName());
             view.setEventDescription(selectedEvent.getDescription());
             view.setEventAddress(selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity());
-            view.setRevenueSplit(moSplit, vSplit, pSplit);
+            //noinspection DataFlowIssue
+            view.setRevenueSplit(
+                    split.getMarketOwnerPercentage(),
+                    split.getVendorPercentage(),
+                    split.getPlatformProviderPercentage());
 
 
         } else {
@@ -219,40 +221,36 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 Popup.WARNING.showAndWait("Kunde inte hämta marknadsinfo", e);
             }
 
-            RevenueSplit revenueSplit = market.getRevenueSplit();
+            RevenueSplit revenueSplit = Objects.requireNonNull(market).getRevenueSplit();
+            //noinspection DataFlowIssue
             float moSplit = revenueSplit.getMarketOwnerPercentage();
+            //noinspection DataFlowIssue
             float vSplit = revenueSplit.getVendorPercentage();
+            //noinspection DataFlowIssue
             float pSplit = revenueSplit.getPlatformProviderPercentage();
             view.setRevenueSplit(moSplit, vSplit, pSplit);
-
-            // Store them in config as well, if you like:
-            ConfigurationStore.REVENUE_SPLIT_MARKET_FLOAT.setFloatValue(moSplit);
-            ConfigurationStore.REVENUE_SPLIT_VENDOR_FLOAT.setFloatValue(vSplit);
-            ConfigurationStore.REVENUE_SPLIT_PLATFORM_FLOAT.setFloatValue(pSplit);
+            ConfigurationStore.REVENUE_SPLIT_JSON.set(revenueSplit.toJson());
         }
     }
 
-    @Override
-    public void setRevenueSplitFromUI(float marketOwner, float vendor, float platform) {
-        // Save to config
-        ConfigurationStore.REVENUE_SPLIT_MARKET_FLOAT.setFloatValue(marketOwner);
-        ConfigurationStore.REVENUE_SPLIT_VENDOR_FLOAT.setFloatValue(vendor);
-        ConfigurationStore.REVENUE_SPLIT_PLATFORM_FLOAT.setFloatValue(platform);
-    }
 
     @Override
     public void initUIState() {
+
+
         // If we have a stored event, fill the form with those details.
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
         // if we have event in the list, select the one matching the stored ID
         // Also populate the form with the details
         // And disable the cashier button
         if (eventId != null && !eventId.isEmpty()) {
-            Event event = fromId(eventId);
-            view.setEventName(event.getName());
-            view.setEventDescription(event.getDescription());
-            view.setEventAddress(event.getAddressStreet() + ", " + event.getAddressCity());
-            view.setCashierButtonEnabled(false);
+            try {
+                Event event = Event.fromJson(ConfigurationStore.EVENT_JSON.get());
+                RevenueSplit split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+                view.showActiveEventInfo(event, split);
+            } catch (IOException e) {
+                Popup.ERROR.showAndWait("Kunde inte ladda sparad event", e);
+            }
         } else {
             view.setCashierButtonEnabled(true);
         }
@@ -263,10 +261,12 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         // 1) Show a confirm dialog: "All local records for this register will be thrown away..."
         boolean confirm = Popup.CONFIRM.showConfirmDialog(
                 "Byt event?",
-                "Alla dina lokala registerposter kommer att raderas.\n" +
-                        "Om du är offline, går de förlorade för alltid.\n" +
-                        "Om du är online, eventuella ej uppladdade poster går förlorade.\n\n" +
-                        "Vill du fortsätta?"
+                """
+                        Alla dina lokala registerposter kommer att raderas.
+                        Om du är offline, går de förlorade för alltid.
+                        Om du är online, eventuella ej uppladdade poster går förlorade.
+                        
+                        Vill du fortsätta?"""
         );
         if (!confirm) {
             return;
@@ -299,11 +299,6 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     }
 
     private Event fromId(String eventId) {
-        for (Event event : eventList) {
-            if (event.getId().equals(eventId)) {
-                return event;
-            }
-        }
-        return null;
+        return EventUtils.findEventById(eventList, eventId);
     }
 }

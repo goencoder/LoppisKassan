@@ -10,7 +10,6 @@ import se.goencoder.loppiskassan.config.ConfigurationStore;
  */
 public enum ApiHelper {
     INSTANCE("127.0.0.1", 8080);
-    private String eventId;
     private final ApiClient apiClient;
     private final SoldItemsServiceApi soldItemsServiceApi;
     private final ApiKeyServiceApi apiKeyServiceApi;

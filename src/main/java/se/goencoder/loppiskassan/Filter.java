@@ -18,16 +18,11 @@ public enum Filter {
      * the lambda function will return true for all SoldItems that has been paid with cash.
      */
     public static FilterFunc getFilterFunc(Filter filter, Object value) {
-        switch (filter) {
-            case COLLECTED_BY_SELLER:
-                return item -> Boolean.parseBoolean(value.toString()) == item.isCollectedBySeller();
-            case PAYMENT_METHOD:
-                return item -> item.getPaymentMethod().name().equals(value);
-            case SELLER:
-                return item -> item.getSeller() == Integer.parseInt(value.toString());
-            default:
-                return item -> true;
-        }
+        return switch (filter) {
+            case COLLECTED_BY_SELLER -> item -> Boolean.parseBoolean(value.toString()) == item.isCollectedBySeller();
+            case PAYMENT_METHOD -> item -> item.getPaymentMethod().name().equals(value);
+            case SELLER -> item -> item.getSeller() == Integer.parseInt(value.toString());
+        };
     }
     // Define FilterFunc as a functional interface using java.util.function.Predicate
     @FunctionalInterface

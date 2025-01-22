@@ -5,7 +5,6 @@ import se.goencoder.iloppis.model.CreateSoldItems;
 import se.goencoder.iloppis.model.CreateSoldItemsResponse;
 import se.goencoder.iloppis.model.ListSoldItemsResponse;
 import se.goencoder.loppiskassan.Filter;
-import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
@@ -13,6 +12,7 @@ import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.utils.SoldItemUtils;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -61,7 +61,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     public void loadHistory() {
         try {
             allHistoryItems = FormatHelper.toItems(FileHelper.readFromFile(LOPPISKASSAN_CSV), true);
-            Set<String> distinctSellers = getDistinctSellers();
+            Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
             SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid inläsning av fil", e.getMessage());
@@ -190,7 +190,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         boolean allUploaded = true;
 
         if (unuploaded.isEmpty()) {
-            return allUploaded;
+            return true;
         }
 
         try {
@@ -229,16 +229,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     private boolean uploadBatch(List<SoldItem> batch) throws ApiException {
         CreateSoldItems createSoldItems = new CreateSoldItems();
         for (SoldItem item : batch) {
-            se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
-            apiItem.setCashierAlias("HistoryImport"); // or any alias you want
-            apiItem.setSeller(item.getSeller());
-            apiItem.setItemId(item.getItemId());
-            apiItem.setPrice(item.getPrice());
-            apiItem.setPaymentMethod(
-                    item.getPaymentMethod() == PaymentMethod.Kontant
-                            ? se.goencoder.iloppis.model.PaymentMethod.KONTANT
-                            : se.goencoder.iloppis.model.PaymentMethod.SWISH
-            );
+            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
 
             OffsetDateTime soldTime = OffsetDateTime.of(
                     item.getSoldTime(),
@@ -254,10 +245,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                 ConfigurationStore.EVENT_ID_STR.get(),
                 createSoldItems
         );
-        if (result.getRejectedItems().size() > 0) {
-            return false;
-        }
-        return true;
+        return result.getRejectedItems().isEmpty();
     }
 
 
@@ -270,7 +258,6 @@ public class HistoryTabController implements HistoryControllerInterface {
                 FileHelper.createBackupFile();
                 allHistoryItems.clear();
                 filterUpdated();
-                ConfigurationStore.reset();
             }
         } catch (IOException e) {
             Popup.FATAL.showAndWait("Fel vid rensning av kassa", e);
@@ -318,7 +305,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                         "Importering misslyckades: " + e.getMessage(),
                         "Importfel",
                         JOptionPane.ERROR_MESSAGE);
-                e.printStackTrace();
+                logger.log(java.util.logging.Level.SEVERE, "Error importing file", e);
             }
         }
     }
@@ -444,28 +431,16 @@ public class HistoryTabController implements HistoryControllerInterface {
         clipboard.setContents(stringSelection, null);
     }
 
-    private Set<String> getDistinctSellers() {
-        return allHistoryItems.stream()
-                .map(item -> String.valueOf(item.getSeller()))
-                .collect(Collectors.toSet());
-    }
-
     private List<SoldItem> applyFilters() {
         String paidFilter = view.getPaidFilter(); // This will be "Ja", "Nej", or "Alla"
         String sellerFilter = view.getSellerFilter();
         String paymentMethodFilter = view.getPaymentMethodFilter();
         return allHistoryItems.stream()
                 // Apply the paid filter based on the selected value
-                .filter(item -> {
-                    switch (paidFilter) {
-                        case "Ja":
-                            return item.isCollectedBySeller();
-                        case "Nej":
-                            return !item.isCollectedBySeller();
-                        case "Alla":
-                        default:
-                            return true; // No filtering on paid status
-                    }
+                .filter(item -> switch (paidFilter) {
+                    case "Ja" -> item.isCollectedBySeller();
+                    case "Nej" -> !item.isCollectedBySeller();
+                    default -> true; // No filtering on paid status
                 })
                 // Apply the seller filter if a specific seller is selected (not null and not "Alla")
                 .filter(item -> sellerFilter == null || "Alla".equals(sellerFilter) || Filter.getFilterFunc(Filter.SELLER, sellerFilter).test(item))

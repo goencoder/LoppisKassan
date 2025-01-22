@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.iloppis.model.Event;
+import se.goencoder.iloppis.model.RevenueSplit;
 
 import java.util.List;
 
@@ -19,24 +20,7 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      */
     void populateEventsTable(List<Event> events);
 
-    /**
-     * Returns the index of the currently selected row in the events table.
-     * @return
-     */
-    int getSelectedTableRow();
 
-    /**
-     * Returns the event ID for the given row in the events table.
-     * @param rowIndex
-     * @return
-     */
-    String getEventIdForRow(int rowIndex);
-
-    /**
-     * Returns the cashier code entered by the user.
-     * @return
-     */
-    String getCashierCode();
 
     /**
      * Sets the name of the event in the UI.
@@ -68,20 +52,6 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      */
     void setRevenueSplit(float marketOwner, float vendor, float platform);
 
-    /**
-     * Returns the user-entered market owner share (if offline).
-     */
-    int getMarketOwnerSplit();
-
-    /**
-     * Returns the user-entered vendor share (if offline).
-     */
-    int getVendorSplit();
-
-    /**
-     * Returns the user-entered platform owner share (if offline).
-     */
-    int getPlatformSplit();
 
     /**
      * Enables/disables the "Öppna Kassa" button.
@@ -96,8 +66,7 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
     // Switch between "noSelection" label and the detail form card
     void showDetailForm(boolean show);
 
-    // Show or hide "Kassakod" label + field
-    void showCashierCode(boolean show);
+
     /**
      * Switches the UI to "active event" mode if true,
      * or back to "normal selection" mode if false.
@@ -108,10 +77,12 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      * Displays basic info about the active event in the UI,
      * e.g. name, address, etc.
      */
-    void showActiveEventInfo(String eventName, String description, String address);
+    void showActiveEventInfo(Event event, RevenueSplit split);
 
     /**
      * Called by the controller to show/hide the "Change event" button.
      */
     void setChangeEventButtonVisible(boolean visible);
+
+
 }

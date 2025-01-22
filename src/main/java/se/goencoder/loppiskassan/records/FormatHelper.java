@@ -1,5 +1,6 @@
 package se.goencoder.loppiskassan.records;
 
+import org.jetbrains.annotations.NotNull;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 
@@ -69,25 +70,38 @@ public class FormatHelper {
             PaymentMethod pm = PaymentMethod.valueOf(columns[6]);
 
             // Parse uploaded from columns[7] (if present)
-            boolean uploaded = false;
-            if (columns.length > 7) {
-                uploaded = Boolean.parseBoolean(columns[7]);
-            }
-
-            // Construct new SoldItem
-            SoldItem item = new SoldItem(
-                    columns[0],                     // purchaseId
-                    columns[1],                     // itemId
-                    stringToDateAndTime(columns[2]),// soldTime
-                    Integer.parseInt(columns[3]),   // seller
-                    Integer.parseInt(columns[4]),   // price
-                    dateTime,                       // collectedBySellerTime
-                    pm,                             // PaymentMethod
-                    uploaded                        // uploaded
-            );
+            SoldItem item = getSoldItem(columns, dateTime, pm);
             items.add(item);
         }
         return items;
+    }
+
+    @NotNull
+    private static SoldItem getSoldItem(String[] columns, LocalDateTime dateTime, PaymentMethod pm) {
+        boolean uploaded = false;
+        if (columns.length > 7) {
+            uploaded = Boolean.parseBoolean(columns[7]);
+        }
+
+        // Construct new SoldItem
+        // purchaseId
+        // itemId
+        // soldTime
+        // seller
+        // price
+        // collectedBySellerTime
+        // PaymentMethod
+        // uploaded
+        return new SoldItem(
+                columns[0],                     // purchaseId
+                columns[1],                     // itemId
+                stringToDateAndTime(columns[2]),// soldTime
+                Integer.parseInt(columns[3]),   // seller
+                Integer.parseInt(columns[4]),   // price
+                dateTime,                       // collectedBySellerTime
+                pm,                             // PaymentMethod
+                uploaded                        // uploaded
+        );
     }
 
     public static String dateAndTimeToString(LocalDateTime dateTime) {
@@ -101,17 +115,11 @@ public class FormatHelper {
         return LocalDateTime.parse(dateText, formatter);
     }
     public static SoldItem apiSoldItemToSoldItem(se.goencoder.iloppis.model.SoldItem apiSoldItem, boolean uploaded) {
-        PaymentMethod paymentMethod;
-        switch (apiSoldItem.getPaymentMethod()) {
-            case se.goencoder.iloppis.model.PaymentMethod.KONTANT:
-                paymentMethod = PaymentMethod.Kontant;
-                break;
-            case se.goencoder.iloppis.model.PaymentMethod.SWISH:
-                paymentMethod = PaymentMethod.Swish;
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown payment method: " + apiSoldItem.getPaymentMethod());
-        }
+        PaymentMethod paymentMethod = switch (apiSoldItem.getPaymentMethod()) {
+            case se.goencoder.iloppis.model.PaymentMethod.KONTANT -> PaymentMethod.Kontant;
+            case se.goencoder.iloppis.model.PaymentMethod.SWISH -> PaymentMethod.Swish;
+            default -> throw new IllegalArgumentException("Unknown payment method: " + apiSoldItem.getPaymentMethod());
+        };
         LocalDateTime collectedTime = null;
         if (apiSoldItem.getCollectedTime() != null) {
             collectedTime = apiSoldItem.getCollectedTime().toLocalDateTime();

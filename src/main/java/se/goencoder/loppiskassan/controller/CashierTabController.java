@@ -12,6 +12,8 @@ import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.utils.ConfigurationUtils;
+import se.goencoder.loppiskassan.utils.SoldItemUtils;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -84,16 +86,16 @@ public class CashierTabController implements CashierControllerInterface {
 
     @Override
     public boolean isSellerApproved(int sellerId) {
-        if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+        if (ConfigurationUtils.isOfflineMode()) {
             return true;
-        } else {
-            // TODO, make this more efficient...
-            String approvedSellersJson = ConfigurationStore.APPROVED_SELLERS_JSON.get();
-            // convert to JSON Object
-            JSONObject jsonObject = new JSONObject(approvedSellersJson);
-            // get the array of approved sellers
-            return jsonObject.getJSONArray("approvedSellers").toList().contains(sellerId);
         }
+
+        String approvedSellersJson = ConfigurationStore.APPROVED_SELLERS_JSON.get();
+        return new JSONObject(approvedSellersJson)
+                .getJSONArray("approvedSellers")
+                .toList()
+                .contains(sellerId);
+
 
     }
 
@@ -183,16 +185,8 @@ public class CashierTabController implements CashierControllerInterface {
 
         // Convert all items to API items
         for (SoldItem item : items) {
-            se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
-            apiItem.setSeller(item.getSeller());
-            apiItem.setItemId(item.getItemId());
-            apiItem.setPrice(item.getPrice());
-            apiItem.setPaymentMethod(
-                    item.getPaymentMethod() == PaymentMethod.Kontant
-                            ? se.goencoder.iloppis.model.PaymentMethod.KONTANT
-                            : se.goencoder.iloppis.model.PaymentMethod.SWISH
-            );
-            apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), currentOffset)); // Corrected to use ZoneOffset
+            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
+            apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), currentOffset));
 
             createSoldItems.addItemsItem(apiItem);
         }
@@ -212,7 +206,7 @@ public class CashierTabController implements CashierControllerInterface {
                 }
             }
         }
-        if (response.getRejectedItems().size() > 0) {
+        if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
             Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp", response.getRejectedItems());
             for (se.goencoder.iloppis.model.SoldItem rejectedItem : response.getRejectedItems()) {
                 SoldItem localItem = itemMap.get(rejectedItem.getItemId());

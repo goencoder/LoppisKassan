@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.controller.HistoryControllerInterface;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 
 import javax.swing.*;
@@ -25,7 +26,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     private JComboBox<String> paymentTypeFilterDropdown;
     private JLabel itemsCountLabel, totalSumLabel;
 
-    private final HistoryTabController controller = HistoryTabController.getInstance();
+    private final HistoryControllerInterface controller = HistoryTabController.getInstance();
 
     public HistoryTabPanel() {
         setLayout(new BorderLayout());

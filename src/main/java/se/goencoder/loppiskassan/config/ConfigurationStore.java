@@ -16,13 +16,12 @@ import java.util.Properties;
  * - Use the setBooleanValue() method to set a boolean value (Enum name has _BOOL).
  */
 public enum ConfigurationStore {
+    EVENT_JSON("event"),
     EVENT_ID_STR("event_id"),
     API_KEY_STR("api_key"),
     APPROVED_SELLERS_JSON("approved_sellers"),
     OFFLINE_EVENT_BOOL("offline_event"),
-    REVENUE_SPLIT_MARKET_FLOAT("revenue_split_market"),
-    REVENUE_SPLIT_VENDOR_FLOAT("revenue_split_vendor"),
-    REVENUE_SPLIT_PLATFORM_FLOAT("revenue_split_platform");
+    REVENUE_SPLIT_JSON("revenue_split");
 
     private final String key;
     private static final Properties properties = new Properties();
@@ -64,21 +63,6 @@ public enum ConfigurationStore {
         properties.setProperty(key, value);
         saveProperties();
     }
-    public int getIntValueOrDefault(int defaultValue) {
-        String value = properties.getProperty(key);
-        if (value == null) {
-            return defaultValue;
-        }
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ex) {
-            return defaultValue;
-        }
-    }
-    public void setIntValue(int value) {
-        properties.setProperty(key, Integer.toString(value));
-        saveProperties();
-    }
 
     public boolean getBooleanValueOrDefault(boolean defaultValue) {
         String value = properties.getProperty(key);
@@ -90,21 +74,6 @@ public enum ConfigurationStore {
 
     public void setBooleanValue(boolean value) {
         properties.setProperty(key, Boolean.toString(value));
-        saveProperties();
-    }
-    public float getFloatValueOrDefault(float defaultValue) {
-        String value = properties.getProperty(key);
-        if (value == null) {
-            return defaultValue;
-        }
-        try {
-            return Float.parseFloat(value);
-        } catch (NumberFormatException ex) {
-            return defaultValue;
-        }
-    }
-    public void setFloatValue(float value) {
-        properties.setProperty(key, Float.toString(value));
         saveProperties();
     }
 
