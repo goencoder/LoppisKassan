@@ -268,16 +268,6 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         return paymentTypeFilterDropdown.getSelectedIndex() == 0 ? null : (String) paymentTypeFilterDropdown.getSelectedItem();
     }
 
-    @Override
-    public void clearView() {
-        DefaultTableModel model = (DefaultTableModel) historyTable.getModel();
-        model.setRowCount(0);
-        itemsCountLabel.setText("Antal varor: 0");
-        totalSumLabel.setText("Summa: 0 SEK");
-        sellerFilterDropdown.setSelectedIndex(0);
-        paymentTypeFilterDropdown.setSelectedIndex(0);
-        paidFilterDropdown.setSelectedIndex(0);
-    }
 
     @Override
     public void updateSellerDropdown(Set<String> sellers) {

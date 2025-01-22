@@ -1,12 +1,10 @@
 package se.goencoder.loppiskassan.utils;
 
-import se.goencoder.loppiskassan.Filter;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 

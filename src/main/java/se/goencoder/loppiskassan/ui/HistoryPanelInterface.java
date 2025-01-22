@@ -11,7 +11,6 @@ public interface HistoryPanelInterface extends SelectabableTab{
     void updateNoItemsLabel(String noItems);
     String getSellerFilter();
     String getPaymentMethodFilter();
-    void clearView();
 
     String getPaidFilter();
     void updateSellerDropdown(Set<String> sellers);

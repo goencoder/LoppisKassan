@@ -38,7 +38,6 @@ import static se.goencoder.loppiskassan.ui.Constants.*;
  * Controls the history tab, handling the display, filtering, and management of sold items.
  */
 public class HistoryTabController implements HistoryControllerInterface {
-    private static final Logger logger = Logger.getLogger(HistoryTabController.class.getName());
     private static final HistoryTabController instance = new HistoryTabController();
     private HistoryPanelInterface view;
     private List<SoldItem> allHistoryItems;
@@ -233,18 +232,16 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void mergeFetchedItems(Map<String, SoldItem> fetchedItems) {
         // Merge fetched items with existing items in history.
-        fetchedItems.values().forEach(fetchedItem -> {
-            allHistoryItems.stream()
-                    .filter(item -> item.getItemId().equals(fetchedItem.getItemId()))
-                    .findFirst()
-                    .ifPresentOrElse(
-                            existingItem -> {
-                                existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
-                                existingItem.setUploaded(fetchedItem.isUploaded());
-                            },
-                            () -> allHistoryItems.add(fetchedItem)
-                    );
-        });
+        fetchedItems.values().forEach(fetchedItem -> allHistoryItems.stream()
+                .filter(item -> item.getItemId().equals(fetchedItem.getItemId()))
+                .findFirst()
+                .ifPresentOrElse(
+                        existingItem -> {
+                            existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
+                            existingItem.setUploaded(fetchedItem.isUploaded());
+                        },
+                        () -> allHistoryItems.add(fetchedItem)
+                ));
     }
 
     private void saveHistoryToFile() {
