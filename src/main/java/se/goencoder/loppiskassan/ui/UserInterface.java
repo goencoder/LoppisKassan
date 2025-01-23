@@ -75,11 +75,11 @@ public class UserInterface extends JFrame {
 
     private void initializeTabs() {
         DiscoveryTabPanel discoveryTabPanel = new DiscoveryTabPanel();
-        tabPane.addTab("Inställningar", null, discoveryTabPanel, "Välj vilken loppis du vill öppna en kassa för");
+        tabPane.addTab("Välj Loppis", null, discoveryTabPanel, "Välj vilken loppis du vill öppna en kassa för");
         selectabableTabs.add(discoveryTabPanel);
 
         CashierTabPanel cashierTabPanel = new CashierTabPanel();
-        tabPane.addTab("Kassa", null, cashierTabPanel, "Hantera kassatransaktioner");
+        tabPane.addTab("Kassahantering", null, cashierTabPanel, "Hantera kassatransaktioner");
         selectabableTabs.add(cashierTabPanel);
 
         HistoryTabPanel historyTabPanel = new HistoryTabPanel();

@@ -103,8 +103,6 @@ public class FileHelper {
         Path path = getRecordFilePath(fileName);
         if (!Files.exists(path)) {
             logger.log(Level.INFO, "File does not exist: " + path);
-            Popup.INFORMATION.showAndWait("Filen finns inte",
-                    "Filen " + fileName + " finns inte. Har du registrerat några köp?");
             return "";
         }
         return readFromFile(path);

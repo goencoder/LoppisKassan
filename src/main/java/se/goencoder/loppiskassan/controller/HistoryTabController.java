@@ -67,6 +67,8 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     @Override
     public void filterUpdated() {
+        updateImportButton();
+
         // Apply the current filters and update the view accordingly.
         List<SoldItem> filteredItems = applyFilters();
 
@@ -80,7 +82,6 @@ public class HistoryTabController implements HistoryControllerInterface {
         boolean enableArchive = isArchiveEnabled();
         view.enableButton(BUTTON_ARCHIVE, enableArchive);
 
-        updateImportButton();
     }
 
     @Override
@@ -305,6 +306,11 @@ public class HistoryTabController implements HistoryControllerInterface {
                 uploadBatch(notUploaded.subList(i, end));
             }
         } catch (Exception e) {
+            // If possibly connect issue, abort and return false
+            // Else, if other issue, try keep count of the number of records not upöloaded, and accumulate this
+            // later to show in the error message how many records that were not uploaded.
+            // and tell user to look in log file for details.
+            // log the error message.
             Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
             return false;
         }

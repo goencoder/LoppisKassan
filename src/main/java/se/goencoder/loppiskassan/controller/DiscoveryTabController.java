@@ -162,6 +162,19 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     }
 
     private Event fromId(String eventId) {
+        // if event list is null or empty, look in Configuration store
+        if (eventList == null || eventList.isEmpty()) {
+            try {
+                Event event = Event.fromJson(ConfigurationStore.EVENT_JSON.get());
+                if (event != null && event.getId().equals(eventId)) {
+                    return event;
+                }
+            } catch (IOException e) {
+                Popup.FATAL.showAndWait("Kunde inte ladda sparad event", e);
+            }
+            return null;
+        }
+
         return EventUtils.findEventById(eventList, eventId);
     }
 

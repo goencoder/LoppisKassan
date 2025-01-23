@@ -159,7 +159,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         detailCardLayout = new CardLayout();
         JPanel panel = new JPanel(detailCardLayout);
 
-        JLabel noSelectionLabel = new JLabel("Välj ett event …", SwingConstants.CENTER);
+        JLabel noSelectionLabel = new JLabel("Välj en loppis i listan …", SwingConstants.CENTER);
         panel.add(noSelectionLabel, "noSelection");
 
         JPanel detailFormPanel = buildDiscoveryDetailForm();
@@ -199,7 +199,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildEventDetailsPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Event Details"));
+        panel.setBorder(BorderFactory.createTitledBorder("Loppisdetaljer"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -233,7 +233,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildRevenueSplitPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Revenue Split"));
+        panel.setBorder(BorderFactory.createTitledBorder("Försäljningsdelning"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -279,7 +279,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
      */
     private JPanel buildActiveEventPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Active Event"));
+        panel.setBorder(BorderFactory.createTitledBorder("Vald Loppis"));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -303,7 +303,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel createEventDetailsPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Event Details"));
+        panel.setBorder(BorderFactory.createTitledBorder("Loppisdetaljer"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -311,7 +311,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Event Name
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("Name:"), gbc);
+        panel.add(new JLabel("Namn:"), gbc);
         gbc.gridx = 1;
         activeEventNameLabel = new JLabel("???");
         panel.add(activeEventNameLabel, gbc);
@@ -319,7 +319,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Event Description
         gbc.gridx = 0;
         gbc.gridy = 1;
-        panel.add(new JLabel("Description:"), gbc);
+        panel.add(new JLabel("Beskrivning:"), gbc);
         gbc.gridx = 1;
         activeEventDescLabel = new JLabel("???");
         panel.add(activeEventDescLabel, gbc);
@@ -337,7 +337,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel createRevenueSplitPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Revenue Split"));
+        panel.setBorder(BorderFactory.createTitledBorder("Försäljningsdelning"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -345,7 +345,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Market Owner Split
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("Market Owner (%):"), gbc);
+        panel.add(new JLabel("Arrangör (%):"), gbc);
         gbc.gridx = 1;
         marketOwnerSplitLabel = new JLabel("???");
         panel.add(marketOwnerSplitLabel, gbc);
@@ -353,7 +353,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Vendor Split
         gbc.gridx = 0;
         gbc.gridy = 1;
-        panel.add(new JLabel("Vendor (%):"), gbc);
+        panel.add(new JLabel("Säljare (%):"), gbc);
         gbc.gridx = 1;
         vendorSplitLabel = new JLabel("???");
         panel.add(vendorSplitLabel, gbc);
@@ -361,7 +361,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Platform Split
         gbc.gridx = 0;
         gbc.gridy = 2;
-        panel.add(new JLabel("Platform (%):"), gbc);
+        panel.add(new JLabel("iLoppis (%):"), gbc);
         gbc.gridx = 1;
         platformSplitLabel = new JLabel("???");
         panel.add(platformSplitLabel, gbc);
@@ -371,7 +371,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel createChangeEventButton() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 100));
-        changeEventButton = new JButton("Change Event");
+        changeEventButton = new JButton("Byt Loppis");
         changeEventButton.addActionListener(e -> controller.changeEventRequested());
         panel.add(changeEventButton);
         return panel;
