@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.rest;
 import se.goencoder.iloppis.api.*;
 import se.goencoder.iloppis.invoker.ApiClient;
+import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 
 
@@ -50,6 +51,20 @@ public enum ApiHelper {
 
     public void setCurrentApiKey(String apiKey) {
         this.apiClient.addDefaultHeader("Authorization", "Bearer " + apiKey);
+    }
+
+    /**
+     * Heuristic to detect a network or connectivity type error.
+     * You can expand this logic depending on how your `ApiException` is structured.
+     */
+    public static boolean isLikelyNetworkError(Throwable e) {
+        if (e instanceof ApiException apiEx) {
+            // code=0 often indicates a connection failure or unknown host
+            return apiEx.getCode() == 0;
+        }
+        // Could be UnknownHostException, SocketTimeoutException, etc.
+        // For brevity, treat everything else as a potential network error.
+        return true;
     }
 
 }

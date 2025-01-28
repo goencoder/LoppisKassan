@@ -2,7 +2,9 @@ package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.CreateSoldItems;
+import se.goencoder.iloppis.model.CreateSoldItemsResponse;
 import se.goencoder.iloppis.model.ListSoldItemsResponse;
+import se.goencoder.iloppis.model.RejectedItem;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
@@ -10,6 +12,7 @@ import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.ui.ProgressDialog;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.FilterUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
@@ -26,6 +29,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -100,10 +104,10 @@ public class HistoryTabController implements HistoryControllerInterface {
         // Retrieve all sold items from the web, merge with local items, and save them to the local file.
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
         Map<String, SoldItem> fetchedItems = fetchItemsFromWeb(eventId);
-
         mergeFetchedItems(fetchedItems);
         saveHistoryToFile();
-        loadHistory();
+        updateDistinctSellers();
+        filterUpdated();
     }
 
     private void clearData() {
@@ -190,10 +194,25 @@ public class HistoryTabController implements HistoryControllerInterface {
         if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
             importData();
         } else {
-            boolean allUploaded = uploadSoldItems();
-            if (allUploaded) {
-                downloadSoldItems();
-            }
+
+            ProgressDialog.runTask(
+                    view.getComponent(),
+                    "Uppdaterar Poster",
+                    "Synkroniserar poster med iLoppis...",
+                    () -> {
+
+                        uploadSoldItems();
+                        downloadSoldItems();
+
+                        return null;
+                    },
+                    _ -> {
+
+                    },
+                    e -> {
+                        Popup.ERROR.showAndWait("Nätverksfel", "Kunde inte hämta poster från iLoppis, men alla Poster är uppladdade");
+                    }
+            );
         }
     }
 
@@ -292,45 +311,123 @@ public class HistoryTabController implements HistoryControllerInterface {
         return summary.toString();
     }
 
+    // TODO: This is not working, if offline with items to upload, message says we failed download - but all items uploaded which is not correct
+    // TODO: If we have incorre t items in the list not uploaded (eg incorrect seller id) and we try to sync - we do not show popup telling that some items could not be uploaded
     private boolean uploadSoldItems() {
-        // Upload unsynchronized sold items to the web.
+        // 1) Hitta alla poster som inte redan är uppladdade
         List<SoldItem> notUploaded = allHistoryItems.stream()
                 .filter(item -> !item.isUploaded())
                 .collect(Collectors.toList());
 
-        if (notUploaded.isEmpty()) return true;
+        if (notUploaded.isEmpty()) {
+            // Inget att ladda upp => returnera true, allt "ok"
+            return true;
+        }
 
-        try {
-            for (int i = 0; i < notUploaded.size(); i += 100) {
-                int end = Math.min(i + 100, notUploaded.size());
-                uploadBatch(notUploaded.subList(i, end));
+        List<RejectedItem> allRejected = new ArrayList<>();
+        boolean networkError = false; // För att särskilja nätverksfel
+
+        // 2) Kör i sub‐batchar om 100 poster
+        for (int i = 0; i < notUploaded.size(); i += 100) {
+            int end = Math.min(i + 100, notUploaded.size());
+            List<SoldItem> subBatch = notUploaded.subList(i, end);
+
+            try {
+                // 2.1) Skicka upp subBatch
+                List<RejectedItem> rejectedItems = uploadBatch(subBatch);
+                // 2.2) Spara eventuella avvisade
+                allRejected.addAll(rejectedItems);
+
+            } catch (ApiException e) {
+                // 3) Skilj på nätverksfel och "riktiga" API-fel
+                if (ApiHelper.isLikelyNetworkError(e)) {
+                    // Avbryt uppladdning helt
+                    networkError = true;
+                    break;
+                } else {
+                    Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
+                    break;
+                }
             }
-        } catch (Exception e) {
-            // If possibly connect issue, abort and return false
-            // Else, if other issue, try keep count of the number of records not upöloaded, and accumulate this
-            // later to show in the error message how many records that were not uploaded.
-            // and tell user to look in log file for details.
-            // log the error message.
-            Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
+        }
+
+        // 4) Spara ner de eventuella lyckade uppladdningar som utfördes *innan* ev. fel
+        saveHistoryToFile();
+
+        // 5) Om vi träffade nätverksfel => visa popup, return false
+        if (networkError) {
+            // Möjligen vill du också räkna hur många sub‐batchar som redan hade laddats upp innan felet.
+            Popup.ERROR.showAndWait(
+                    "Nätverksfel",
+                    "Kunde inte nå servern för att ladda upp fler poster.\n"+
+                            "Vissa batchar kan ha laddats upp innan felet uppstod."
+            );
             return false;
         }
 
-        saveHistoryToFile();
+        // 6) Visa om vi fick avvisade poster p.g.a. API-fel i subBatch (typ fel data)
+        if (!allRejected.isEmpty()) {
+            StringBuilder msg = new StringBuilder("Följande poster avvisades vid uppladdning:\n");
+            for (RejectedItem rejectedItem : allRejected) {
+
+                msg.append("- ")
+                        .append(rejectedItem.getItem().getItemId())
+                        .append(", säljare: ")
+                        .append(rejectedItem.getItem().getSeller())
+                        .append(", pris: ")
+                        .append(rejectedItem.getItem().getPrice())
+                        .append(", betalmetod: ")
+                        .append(rejectedItem.getItem().getPaymentMethod())
+                        .append(", orsak: ")
+                        .append(rejectedItem.getReason())
+                        .append("\n");
+            }
+            Popup.ERROR.showAndWait("Uppladdning misslyckades för vissa varor", msg.toString());
+            // Returnera false => vi vet att allt inte gick igenom
+            return false;
+        }
+
+        // 7) Kommer vi hit har vi varken nätverksfel eller avvisade poster => allt gick bra
         return true;
     }
 
-    private void uploadBatch(List<SoldItem> batch) throws ApiException {
-        // Upload a batch of sold items to the web service.
+    private List<RejectedItem> uploadBatch(List<SoldItem> batch) throws ApiException {
+        // 1. Bygg upp CreateSoldItems-objekt för alla poster i "batch"
         CreateSoldItems createSoldItems = new CreateSoldItems();
-
-        batch.forEach(item -> {
-            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
-            apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), OffsetDateTime.now().getOffset()));
+        for (SoldItem localItem : batch) {
+            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
+            // Sätt tidszon (om nödvändigt) innan du lägger till i createSoldItems
+            apiItem.setSoldTime(OffsetDateTime.of(
+                    localItem.getSoldTime(),
+                    OffsetDateTime.now().getOffset()
+            ));
             createSoldItems.addItemsItem(apiItem);
-        });
+        }
 
-        ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServiceCreateSoldItems(
-                ConfigurationStore.EVENT_ID_STR.get(), createSoldItems);
+        // 2. Anropa API och ta emot resultatet
+        CreateSoldItemsResponse response =
+                ApiHelper.INSTANCE.getSoldItemsServiceApi()
+                        .soldItemsServiceCreateSoldItems(
+                                ConfigurationStore.EVENT_ID_STR.get(),
+                                createSoldItems);
+
+        // 3. Skapa en Map för att lättare hitta rätt objekt i batchen
+        Map<String, SoldItem> localMap = batch.stream()
+                .collect(Collectors.toMap(SoldItem::getItemId, Function.identity()));
+
+        // 4. Hantera acceptedItems:
+        //    Markera dem som uppladdade (isUploaded = true) i de lokala objekten
+        if (response.getAcceptedItems() != null) {
+            for (se.goencoder.iloppis.model.SoldItem accepted : response.getAcceptedItems()) {
+                SoldItem localItem = localMap.get(accepted.getItemId());
+                if (localItem != null) {
+                    localItem.setUploaded(true);
+                    // Uppdatera fler fält om du vill, t.ex. collectedBySellerTime etc.
+                }
+            }
+        }
+        // 5. Hantera rejectedItems:
+    return response.getRejectedItems();
     }
 
     private boolean isPayoutEnabled(List<SoldItem> filteredItems) {
@@ -382,3 +479,4 @@ public class HistoryTabController implements HistoryControllerInterface {
         Popup.INFORMATION.showAndWait("Import klar!", "Poster importerade: " + importedItems.size());
     }
 }
+

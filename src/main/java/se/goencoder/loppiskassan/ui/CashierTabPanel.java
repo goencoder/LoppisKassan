@@ -265,4 +265,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
     public void selected() {
         // No-op for this panel
     }
+
+    @Override
+    public Component getComponent() {
+        return this;
+    }
 }

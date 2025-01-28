@@ -12,20 +12,24 @@ import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.ui.ProgressDialog;
 import se.goencoder.loppiskassan.utils.ConfigurationUtils;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
+import static se.goencoder.loppiskassan.rest.ApiHelper.isLikelyNetworkError;
 
 public class CashierTabController implements CashierControllerInterface {
 
@@ -130,32 +134,54 @@ public class CashierTabController implements CashierControllerInterface {
 
         LocalDateTime now = LocalDateTime.now();
         String purchaseId = UUID.randomUUID().toString();
-
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
 
-        // 1) If we're in normal mode (not offline, not degraded), try to save these to the web
         if (!isOffline && !degradedMode) {
-            try {
-                saveItemsToWeb(items);
-            } catch (Exception e) {
-                // If we detect a network-related failure
-                if (isLikelyNetworkError(e)) {
-                    degradedMode = true;
-                    Popup.WARNING.showAndWait(
-                            "Nätverksfel - Kassa i degraderat läge",
-                            "Kunde inte spara till webb. Vi går in i degraderat läge.\n"
-                                    + "Alla köp sparas lokalt tills vi kan synkronisera igen.\n\n"
-                                    + "Du kan göra en manuell synk i Historik-fliken."
-                    );
-                } else {
-                    // Probably an APIException with data validation issues - let's show to user
-                    Popup.ERROR.showAndWait("Kunde inte spara till webb", e.getMessage());
-                }
+            ProgressDialog.runTask(
+                    view.getComponent(),
+                    "Bearbetar köp",
+                    "Sparar till webb...",
+                    // This is the background task (Callable)
+                    () -> {
+                        saveItemsToWeb(items);
+                        return null; // We don't need a result
+                    },
+                    // onSuccess => runs on EDT
+                    _ -> {
+                        // No exception => proceed with final checkout flow
+                        finishCheckoutFlow();
+                    },
+                    // onFailure => runs on EDT if an exception was thrown
+                    ex -> {
+
+                        if (isLikelyNetworkError(ex)) {
+                            degradedMode = true;
+                            Popup.WARNING.showAndWait(
+                                    "Nätverksfel - Kassa i degraderat läge",
+                                    "Kunde inte spara till webb. Vi går in i degraderat läge.\n"
+                                            + "Alla köp sparas lokalt tills vi kan synkronisera igen.\n\n"
+                                            + "Du kan göra en manuell synk i Historik-fliken."
+                            );
+                        } else {
+                            Popup.ERROR.showAndWait("Kunde inte spara till webb", ex.getMessage());
+                        }
+                        finishCheckoutFlow();
+                    }
+            );
+        } else {
+            // If offline or degraded, skip the web call
+            finishCheckoutFlow();
+        }
+    }
+
+    private void finishCheckoutFlow() {
+        // 1) Save items locally in all cases
+        // If we are in degraded mode, we must update the items to reflect correct uploaded status (false)
+        for (SoldItem item : items) {
+            if (degradedMode) {
+                item.setUploaded(false);
             }
         }
-
-        // 2) Regardless of whether we uploaded or not, always save locally
-        //    If degrade was triggered, we only have local copy for sure.
         synchronized (lock) {
             try {
                 FileUtils.appendSoldItems(items);
@@ -167,16 +193,17 @@ public class CashierTabController implements CashierControllerInterface {
             }
         }
 
-        // Clear the cashier UI
+        // 2) Clear the cashier UI
         items.clear();
         view.clearView();
+        view.enableCheckoutButtons(!items.isEmpty());
 
         // 3) If we are in degraded mode, spawn a background thread to attempt a catch-up
+        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
         if (!isOffline && degradedMode) {
             new Thread(() -> {
                 boolean success = pushLocalUnsyncedRecords();
                 if (success) {
-                    // Switch out of degraded mode
                     degradedMode = false;
                 }
             }).start();
@@ -186,6 +213,7 @@ public class CashierTabController implements CashierControllerInterface {
     public void cancelCheckout() {
         items.clear();
         view.clearView();
+        view.enableCheckoutButtons(!items.isEmpty());
     }
 
     // --- Recalculate totals ---
@@ -321,8 +349,8 @@ public class CashierTabController implements CashierControllerInterface {
 
         if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
             Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp", response.getRejectedItems());
-            for (se.goencoder.iloppis.model.SoldItem rejectedItem : response.getRejectedItems()) {
-                SoldItem localItem = itemMap.get(rejectedItem.getItemId());
+            for (se.goencoder.iloppis.model.RejectedItem rejectedItem : response.getRejectedItems()) {
+                SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
                 if (localItem != null) {
                     localItem.setUploaded(false);
                 }
@@ -330,17 +358,5 @@ public class CashierTabController implements CashierControllerInterface {
         }
     }
 
-    /**
-     * Heuristic to detect a network or connectivity type error.
-     * You can expand this logic depending on how your `ApiException` is structured.
-     */
-    private boolean isLikelyNetworkError(Exception e) {
-        if (e instanceof ApiException apiEx) {
-            // code=0 often indicates a connection failure or unknown host
-            return apiEx.getCode() == 0;
-        }
-        // Could be UnknownHostException, SocketTimeoutException, etc.
-        // For brevity, treat everything else as a potential network error.
-        return true;
-    }
+
 }

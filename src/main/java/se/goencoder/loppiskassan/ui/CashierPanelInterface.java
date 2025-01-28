@@ -4,7 +4,7 @@ import se.goencoder.loppiskassan.SoldItem;
 
 import java.util.Map;
 
-public interface CashierPanelInterface extends SelectabableTab{
+public interface CashierPanelInterface extends SelectabableTab, UiComponent{
     void setFocusToSellerField();
     void enableCheckoutButtons(boolean enable);
     void addSoldItem(SoldItem item);

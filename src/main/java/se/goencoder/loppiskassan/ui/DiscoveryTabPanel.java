@@ -73,10 +73,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
      */
     private void initializeState() {
         String savedEventId = ConfigurationStore.EVENT_ID_STR.get();
-        if (savedEventId != null && !savedEventId.isEmpty()) {
-            controller.discoverEvents(LocalDate.now().toString());
-            controller.eventSelected(savedEventId);
-        } else {
+        if (savedEventId == null || savedEventId.isEmpty()) {
             rootCardLayout.show(rootCardPanel, "discoveryMode");
         }
         controller.initUIState();

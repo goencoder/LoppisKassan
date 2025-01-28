@@ -113,7 +113,6 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         paidFilterDropdown.addActionListener(e -> controller.filterUpdated());
         sellerFilterDropdown.addActionListener(e -> controller.filterUpdated());
         paymentTypeFilterDropdown.addActionListener(e -> controller.filterUpdated());
-
         return filterPanel;
     }
 
@@ -271,9 +270,15 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
 
     @Override
     public void updateSellerDropdown(Set<String> sellers) {
-        sellerFilterDropdown.removeAllItems();
-        sellerFilterDropdown.addItem("Alla");
-        sellers.stream().map(Integer::parseInt).sorted().map(String::valueOf).forEach(sellerFilterDropdown::addItem);
+        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
+        model.addElement("Alla");
+        sellers.stream()
+                .map(Integer::parseInt)
+                .sorted()
+                .map(String::valueOf)
+                .forEach(model::addElement);
+
+        sellerFilterDropdown.setModel(model);
     }
 
     @Override
@@ -296,5 +301,11 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     @Override
     public void selected() {
         controller.loadHistory();
+        controller.filterUpdated();
+    }
+
+    @Override
+    public Component getComponent() {
+        return this;
     }
 }
