@@ -64,7 +64,12 @@ public class Main {
             // Schemalägg jobbet för händelseavkodningstråden (EDT)
             SwingUtilities.invokeLater(Main::createAndShowGUI);
         } catch (IOException e) {
-            Popup.FATAL.showAndWait("Kunde inte skapa kataloger", e);
+            // We have no logs yet, so we dump the error to the console
+            e.printStackTrace();
+            Popup.FATAL.showAndWait(
+                    "Kunde inte skapa kataloger",
+                    "Behöver skapa kataloger 'data' och 'logs' för att fortsätta." +
+                            "Kontrollera att programmet har rättigheter att skapa kataloger.");
         }
     }
 }

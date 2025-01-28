@@ -329,7 +329,9 @@ public class CashierTabController implements CashierControllerInterface {
             } catch (IOException e) {
                 // local file write error is not a reason to remain degraded
                 // but we do show a warning
-                Popup.WARNING.showAndWait("Varning", "Kunde inte uppdatera filstatus för uppladdade poster: " + e.getMessage());
+                Popup.WARNING.showAndWait(
+                        "Kunde inte uppdatera poster",
+                        "Kunde inte uppdatera filstatus för uppladdade poster: " + e.getMessage());
             }
 
             return true;
@@ -348,7 +350,9 @@ public class CashierTabController implements CashierControllerInterface {
         }
 
         if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
-            Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp", response.getRejectedItems());
+            Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp",
+                    "Eventuella duplicerade poster kan ignoreras (bara en kopia sparas)\n" +
+                            response.getRejectedItems());
             for (se.goencoder.iloppis.model.RejectedItem rejectedItem : response.getRejectedItems()) {
                 SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
                 if (localItem != null) {

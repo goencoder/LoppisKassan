@@ -65,7 +65,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
             SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
         } catch (IOException e) {
-            Popup.FATAL.showAndWait("Fel vid inläsning av fil", e.getMessage());
+            Popup.FATAL.showAndWait("Fel vid inläsning av kassafil: " + LOPPISKASSAN_CSV, e.getMessage());
         }
     }
 
@@ -119,7 +119,9 @@ public class HistoryTabController implements HistoryControllerInterface {
                 filterUpdated();
             }
         } catch (IOException e) {
-            Popup.FATAL.showAndWait("Fel vid rensning av kassa", e);
+            Popup.FATAL.showAndWait(
+                    "Fel vid rensning av kassafil: " + LOPPISKASSAN_CSV,
+                    e.getMessage());
         }
     }
 
@@ -140,11 +142,14 @@ public class HistoryTabController implements HistoryControllerInterface {
         List<SoldItem> filteredItems = applyFilters();
 
         if (filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller())) {
-            Popup.ERROR.showAndWait("Fel vid arkivering av poster", "Det går inte att arkivera poster som inte är utbetalda.");
+            Popup.ERROR.showAndWait(
+                    "Fel vid arkivering av poster",
+                    "Det går inte att arkivera poster som inte är utbetalda.");
             return;
         }
 
-        if (!Popup.CONFIRM.showConfirmDialog(BUTTON_ARCHIVE, "Är du säker på att du vill arkivera de visade posterna?")) {
+        if (!Popup.CONFIRM.showConfirmDialog(BUTTON_ARCHIVE,
+                "Är du säker på att du vill arkivera de visade posterna?")) {
             return;
         }
 
@@ -210,7 +215,9 @@ public class HistoryTabController implements HistoryControllerInterface {
 
                     },
                     e -> {
-                        Popup.ERROR.showAndWait("Nätverksfel", "Kunde inte hämta poster från iLoppis, men alla Poster är uppladdade");
+                        Popup.ERROR.showAndWait(
+                                "Nätverksfel",
+                                "Kunde inte hämta poster från iLoppis. Kontrollera din internetanslutning.");
                     }
             );
         }
@@ -268,7 +275,9 @@ public class HistoryTabController implements HistoryControllerInterface {
         try {
             FileUtils.saveSoldItems(allHistoryItems);
         } catch (IOException e) {
-            Popup.FATAL.showAndWait("Fel vid skrivning till fil", e.getMessage());
+            Popup.FATAL.showAndWait(
+                    "Fel vid skrivning till kassafil: " + LOPPISKASSAN_CSV,
+                    e.getMessage());
         }
     }
 
@@ -283,7 +292,9 @@ public class HistoryTabController implements HistoryControllerInterface {
         try {
             FileHelper.saveToFile(fileName, comment, FormatHelper.toCVS(filteredItems));
         } catch (IOException e) {
-            Popup.FATAL.showAndWait("Fel vid arkivering av poster", e.getMessage());
+            Popup.FATAL.showAndWait(
+                    "Fel vid arkivering av poster till fil: " + fileName,
+                    e.getMessage());
         }
     }
 
@@ -345,7 +356,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                     networkError = true;
                     break;
                 } else {
-                    Popup.ERROR.showAndWait("Fel vid uppladdning", e.getMessage());
+                    Popup.ERROR.showAndWait("Fel vid uppladdning till web", e.getMessage());
                     break;
                 }
             }
@@ -476,7 +487,9 @@ public class HistoryTabController implements HistoryControllerInterface {
         saveHistoryToFile();
         filterUpdated();
 
-        Popup.INFORMATION.showAndWait("Import klar!", "Poster importerade: " + importedItems.size());
+        Popup.INFORMATION.showAndWait(
+                "Import klar!",
+                "Poster importerade: " + importedItems.size());
     }
 }
 

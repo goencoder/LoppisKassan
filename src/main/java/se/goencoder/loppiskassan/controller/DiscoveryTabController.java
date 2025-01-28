@@ -16,6 +16,9 @@ import se.goencoder.loppiskassan.utils.EventUtils;
 import java.io.IOException;
 import java.util.*;
 
+import static se.goencoder.loppiskassan.config.ConfigurationStore.CONFIG_FILE_PATH;
+import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
+
 public class DiscoveryTabController implements DiscoveryControllerInterface {
 
     private static final DiscoveryTabController instance = new DiscoveryTabController();
@@ -59,10 +62,10 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
             view.populateEventsTable(eventList);
         } catch (ApiException ex) {
-            Popup.ERROR.showAndWait("Kunde inte hämta event", ex);
+            Popup.ERROR.showAndWait("Kunde inte hämta event", ex.getMessage());
             view.populateEventsTable(eventList); // Display only the offline event if an error occurs.
         } catch (Exception ex) {
-            Popup.ERROR.showAndWait("Ett fel uppstod", ex);
+            Popup.ERROR.showAndWait("Ett fel uppstod", ex.getMessage());
             view.populateEventsTable(eventList);
         }
     }
@@ -82,7 +85,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         try {
             split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
         } catch (IOException e) {
-            Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e);
+            Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e.getMessage());
             ConfigurationStore.reset();
             return;
         }
@@ -123,7 +126,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 RevenueSplit split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
                 view.showActiveEventInfo(event, split);
             } catch (IOException e) {
-                Popup.ERROR.showAndWait("Kunde inte ladda sparad event", e);
+                Popup.ERROR.showAndWait("Kunde inte ladda sparad event", e.getMessage());
             }
         } else {
             view.setCashierButtonEnabled(true);
@@ -151,7 +154,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         try {
             FileHelper.createBackupFile(); // Backup current data.
         } catch (IOException e) {
-            Popup.ERROR.showAndWait("Kunde inte rensa kassan", e);
+            Popup.ERROR.showAndWait("Kunde inte rensa kassafil: " + LOPPISKASSAN_CSV, e.getMessage());
         }
 
         // Reset the UI to the discovery mode.
@@ -170,7 +173,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                     return event;
                 }
             } catch (IOException e) {
-                Popup.FATAL.showAndWait("Kunde inte ladda sparad event", e);
+                Popup.FATAL.showAndWait(
+                        "Kunde inte ladda sparad event",
+                        "Fel vid laddning av sparad event från " + CONFIG_FILE_PATH +": " + e.getMessage());
             }
             return null;
         }
@@ -208,9 +213,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         } catch (Exception ex) {
             ConfigurationStore.reset();
             if (ex instanceof ApiException) {
-                Popup.ERROR.showAndWait("Kunde inte hämta token", ex);
+                Popup.ERROR.showAndWait("Kunde inte hämta token", "Felaktig kassakod?" + ex.getMessage());
             } else {
-                Popup.ERROR.showAndWait("Ett fel uppstod", ex);
+                Popup.ERROR.showAndWait("Ett fel uppstod", ex.getMessage());
             }
         }
     }
@@ -244,7 +249,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             try {
                 split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
             } catch (IOException e) {
-                Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e);
+                Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e.getMessage());
                 split = new RevenueSplit();
             }
         }
@@ -272,7 +277,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                     .approvedMarketServiceGetMarket(selectedEvent.getMarketId());
             market = response.getMarket();
         } catch (ApiException e) {
-            Popup.WARNING.showAndWait("Kunde inte hämta marknadsinfo", e);
+            Popup.WARNING.showAndWait(
+                    "Kunde inte hämta marknadsinfo",
+                    "Kontrollera din internetanslutning, " + e.getMessage());
         }
 
         RevenueSplit revenueSplit = Objects.requireNonNull(market).getRevenueSplit();

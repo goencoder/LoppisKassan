@@ -29,8 +29,8 @@ public class UserInterface extends JFrame {
                 case 2 -> HISTORY;
                 default -> {
                     Popup.FATAL.showAndWait(
-                            "Selected tab out of range",
-                            "The selected tab is out of range. Program will exit!");
+                            "Denna tabb finns inte",
+                            "Det finns ingen tabb med index " + index);
                     yield CASHIER;
                 }
             };

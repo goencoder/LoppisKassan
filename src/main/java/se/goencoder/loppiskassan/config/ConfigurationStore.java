@@ -23,9 +23,9 @@ public enum ConfigurationStore {
     OFFLINE_EVENT_BOOL("offline_event"),
     REVENUE_SPLIT_JSON("revenue_split");
 
+    public static final String CONFIG_FILE_PATH = "config.properties";
     private final String key;
     private static final Properties properties = new Properties();
-    private static final String CONFIG_FILE_PATH = "config.properties";
 
     static {
         try {
@@ -43,7 +43,9 @@ public enum ConfigurationStore {
                 }
             }
         } catch (IOException ex) {
-            Popup.FATAL.showAndWait("Configuration Error", "Failed to open or create the configuration file: " + CONFIG_FILE_PATH);
+            Popup.FATAL.showAndWait(
+                    "Configuration Error",
+                    "Failed to open or create the configuration file: " + CONFIG_FILE_PATH);
         }
     }
 
