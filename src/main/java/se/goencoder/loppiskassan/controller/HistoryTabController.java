@@ -1,10 +1,7 @@
 package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.iloppis.model.CreateSoldItems;
-import se.goencoder.iloppis.model.CreateSoldItemsResponse;
-import se.goencoder.iloppis.model.ListSoldItemsResponse;
-import se.goencoder.iloppis.model.RejectedItem;
+import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
@@ -30,7 +27,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.function.Function;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static se.goencoder.iloppis.model.PaidFilter.PAID_FILTER_UNSPECIFIED;
@@ -172,8 +168,37 @@ public class HistoryTabController implements HistoryControllerInterface {
         LocalDateTime now = LocalDateTime.now();
 
         filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
-        saveHistoryToFile();
-        filterUpdated();
+        try {
+            payoutWeb();
+            saveHistoryToFile();
+            filterUpdated();
+        } catch (ApiException e) {
+            Popup.ERROR.showAndWait("Fel vid utbetalning", e.getMessage());
+        }
+    }
+
+    private void payoutWeb() throws ApiException {
+        // TODO put this with a progress dialog
+        // TODO, figure out why this class has such a long name
+        PayoutTheUserPassesAFilterPlusARequiredUntilTimestampSoTheServerOnlyMarksItemsThatHaveASoldTimeUntilTimestampOrNoSoldTimeAndMatchTheFilter filter =
+                new PayoutTheUserPassesAFilterPlusARequiredUntilTimestampSoTheServerOnlyMarksItemsThatHaveASoldTimeUntilTimestampOrNoSoldTimeAndMatchTheFilter();
+        try {
+            int seller =  Integer.parseInt(view.getSellerFilter());
+            filter.setSeller(seller);
+        } catch (NumberFormatException e) {
+            // Do nothing
+        }
+        try {
+            PaymentMethodFilter paymentMethodFilter = PaymentMethodFilter.fromValue(view.getPaymentMethodFilter());
+            filter.setPaymentMethodFilter(paymentMethodFilter);
+        } catch (IllegalArgumentException e) {
+            // Do nothing
+        }
+        filter.setUntilTimestamp(OffsetDateTime.now());
+        ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServicePayout(
+                ConfigurationStore.EVENT_ID_STR.get(),
+                filter
+        );
     }
 
     private void copyToClipboard() {
@@ -214,11 +239,9 @@ public class HistoryTabController implements HistoryControllerInterface {
                     _ -> {
 
                     },
-                    e -> {
-                        Popup.ERROR.showAndWait(
-                                "Nätverksfel",
-                                "Kunde inte hämta poster från iLoppis. Kontrollera din internetanslutning.");
-                    }
+                    e -> Popup.ERROR.showAndWait(
+                            "Nätverksfel",
+                            "Kunde inte hämta poster från iLoppis. Kontrollera din internetanslutning.")
             );
         }
     }
@@ -323,7 +346,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     // TODO: This is not working, if offline with items to upload, message says we failed download - but all items uploaded which is not correct
-    // TODO: If we have incorre t items in the list not uploaded (eg incorrect seller id) and we try to sync - we do not show popup telling that some items could not be uploaded
+    // TODO: If we have incorret items in the list not uploaded (eg incorrect seller id) and we try to sync - we do not show popup telling that some items could not be uploaded
     private boolean uploadSoldItems() {
         // 1) Hitta alla poster som inte redan är uppladdade
         List<SoldItem> notUploaded = allHistoryItems.stream()

@@ -412,8 +412,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
                     ev.getId(),
                     ev.getName(),
                     (ev.getAddressCity() == null ? "" : ev.getAddressCity()),
-                    ev.getStartDate(),
-                    ev.getEndDate()
+                    ev.getStartTime(),
+                    ev.getEndTime()
             });
         }
     }

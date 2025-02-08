@@ -2,8 +2,8 @@ package se.goencoder.loppiskassan.utils;
 
 import se.goencoder.iloppis.model.Event;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.OffsetDateTime;
+
 import java.util.List;
 
 public class EventUtils {
@@ -20,8 +20,8 @@ public class EventUtils {
         event.setDescription("Detta är en offline-loppis. Ingen internetanslutning krävs.");
         event.setAddressCity("okänd stad");
         event.setAddressStreet("okänd gata");
-        event.setStartDate(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE));
-        event.setEndDate(null);
+        event.setStartTime(OffsetDateTime.now());
+        event.setEndTime(null);
     }
 }
 

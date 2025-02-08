@@ -221,12 +221,12 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     }
 
     private void fetchApprovedSellers(String eventId) throws ApiException {
-        ListVendorApplicationsResponse res = ApiHelper.INSTANCE.getVendorApplicationServiceApi()
-                .vendorApplicationServiceListVendorApplications(eventId, 500, "");
+        ListVendorsResponse res = ApiHelper.INSTANCE.getVendorServiceApi()
+            .vendorServiceListVendors(eventId, 500, "");
         Set<Integer> approvedSellers = new HashSet<>();
-        for (VendorApplication application : Objects.requireNonNull(res.getApplications())) {
-            if ("APPROVED".equalsIgnoreCase(application.getStatus())) {
-                approvedSellers.add(application.getSellerNumber());
+        for (Vendor vendor : Objects.requireNonNull(res.getVendors())) {
+            if ("APPROVED".equalsIgnoreCase(vendor.getStatus())) {
+                approvedSellers.add(vendor.getSellerNumber());
             }
         }
         JSONObject jsonObject = new JSONObject();

@@ -27,10 +27,10 @@
                 - Run the following command in the terminal:
                   ```
                   mvn install:install-file \
-                      -Dfile=/Users/goranengdahl/GolandProjects/loppis-content/gen/java-client/target/openapi-java-client-0.0.2.jar \
+                      -Dfile=/Users/goranengdahl/GolandProjects/loppis-content/gen/java-client/target/openapi-java-client-0.0.3.jar \
                       -DgroupId=se.goencoder.iloppis \
                       -DartifactId=iloppis-client \
-                      -Dversion=0.0.2 \
+                      -Dversion=0.0.3 \
                       -Dpackaging=jar
                   ```
              3. Update the version in the dependency below:
@@ -40,7 +40,7 @@
         <dependency>
             <groupId>se.goencoder.iloppis</groupId>
             <artifactId>iloppis-client</artifactId>
-            <version>0.0.2</version>
+            <version>0.0.3</version>
         </dependency>
 
         <dependency>

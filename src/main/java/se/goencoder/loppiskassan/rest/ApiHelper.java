@@ -15,7 +15,7 @@ public enum ApiHelper {
     private final SoldItemsServiceApi soldItemsServiceApi;
     private final ApiKeyServiceApi apiKeyServiceApi;
     private final EventServiceApi eventServiceApi;
-    private final VendorApplicationServiceApi vendorApplicationServiceApi;
+    private final VendorServiceApi vendorServiceApi;
     private final ApprovedMarketServiceApi approvedMarketServiceApi;
 
     ApiHelper(String host, int port) {
@@ -27,7 +27,7 @@ public enum ApiHelper {
         this.soldItemsServiceApi = new SoldItemsServiceApi(apiClient);
         this.apiKeyServiceApi = new ApiKeyServiceApi(apiClient);
         this.eventServiceApi = new EventServiceApi(apiClient);
-        this.vendorApplicationServiceApi = new VendorApplicationServiceApi(apiClient);
+        this.vendorServiceApi = new VendorServiceApi(apiClient);
         this.approvedMarketServiceApi = new ApprovedMarketServiceApi(apiClient);
 
 
@@ -42,8 +42,8 @@ public enum ApiHelper {
     public EventServiceApi getEventServiceApi() {
         return INSTANCE.eventServiceApi;
     }
-    public VendorApplicationServiceApi getVendorApplicationServiceApi() {
-        return INSTANCE.vendorApplicationServiceApi;
+    public VendorServiceApi getVendorServiceApi() {
+        return INSTANCE.vendorServiceApi;
     }
     public ApprovedMarketServiceApi getApprovedMarketServiceApi() {
         return INSTANCE.approvedMarketServiceApi;
