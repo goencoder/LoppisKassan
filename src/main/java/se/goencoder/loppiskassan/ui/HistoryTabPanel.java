@@ -229,17 +229,35 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     // Implementations of HistoryPanelInterface methods
     @Override
     public void updateHistoryTable(List<SoldItem> items) {
-        DefaultTableModel model = (DefaultTableModel) historyTable.getModel();
-        model.setRowCount(0);
-        for (SoldItem item : items) {
-            model.addRow(new Object[]{
-                    item.getSeller(),
-                    item.getPrice() + " SEK",
-                    item.getSoldTime().toString(),
-                    item.isCollectedBySeller() ? "Ja" : "Nej",
-                    item.getPaymentMethod().toString()
-            });
+        // Ensure table updates happen on the EDT to avoid threading issues
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> updateHistoryTable(items));
+            return;
         }
+
+        // Get current table model
+        DefaultTableModel model = (DefaultTableModel) historyTable.getModel();
+
+        // Clear the model safely
+        model.setRowCount(0);
+
+        // Only add rows if we have items
+        if (items != null && !items.isEmpty()) {
+            // Add data in batches to improve performance
+            for (SoldItem item : items) {
+                model.addRow(new Object[]{
+                        item.getSeller(),
+                        item.getPrice() + " SEK",
+                        item.getSoldTime().toString(),
+                        item.isCollectedBySeller() ? "Ja" : "Nej",
+                        item.getPaymentMethod().toString()
+                });
+            }
+        }
+
+        // Force UI update
+        historyTable.revalidate();
+        historyTable.repaint();
     }
 
     @Override

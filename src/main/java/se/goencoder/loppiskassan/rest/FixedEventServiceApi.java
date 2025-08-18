@@ -8,7 +8,6 @@ import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.FilterEventsRequest;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,10 +36,7 @@ public class FixedEventServiceApi extends EventServiceApi {
 
         try {
             // Get the base path to use
-            String basePath;
-            Method getBasePathMethod = ApiClient.class.getDeclaredMethod("getBasePath");
-            getBasePathMethod.setAccessible(true);
-            basePath = (String) getBasePathMethod.invoke(apiClient);
+            String basePath = apiClient.getBasePath();
 
             // Build the request with our custom headers
             String localVarPath = "/v1/events:filter";

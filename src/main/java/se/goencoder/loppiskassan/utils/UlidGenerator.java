@@ -1,6 +1,5 @@
 package se.goencoder.loppiskassan.utils;
 
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -13,9 +12,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * - 16 characters of randomness
  */
 public class UlidGenerator {
-    // Using ThreadLocal for better performance in multi-threaded environments
-    private static final ThreadLocal<SecureRandom> RANDOM = ThreadLocal.withInitial(SecureRandom::new);
-
     // ULID uses Crockford's base32 (excludes I, L, O, U)
     private static final char[] ENCODING_CHARS = {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -45,7 +41,7 @@ public class UlidGenerator {
 
         // Append 16 random characters
         for (int i = 0; i < 16; i++) {
-            int random = RANDOM.get().nextInt(32);
+            int random = ThreadLocalRandom.current().nextInt(32);
             result.append(ENCODING_CHARS[random]);
         }
 
