@@ -287,17 +287,54 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void mergeFetchedItems(Map<String, SoldItem> fetchedItems) {
-        // Merge fetched items with existing items in history.
-        fetchedItems.values().forEach(fetchedItem -> allHistoryItems.stream()
-                .filter(item -> item.getItemId().equals(fetchedItem.getItemId()))
-                .findFirst()
-                .ifPresentOrElse(
-                        existingItem -> {
-                            existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
-                            existingItem.setUploaded(fetchedItem.isUploaded());
-                        },
-                        () -> allHistoryItems.add(fetchedItem)
-                ));
+        // Track items that have been added to prevent duplicates
+        Set<String> processedItems = new HashSet<>();
+
+        // First pass: Update existing items
+        allHistoryItems.forEach(existingItem -> {
+            SoldItem fetchedItem = fetchedItems.get(existingItem.getItemId());
+            if (fetchedItem != null) {
+                // Update existing item
+                existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
+                existingItem.setUploaded(fetchedItem.isUploaded());
+                processedItems.add(existingItem.getItemId());
+            }
+        });
+
+        // Second pass: Add new items, but check for potential duplicates
+        for (SoldItem fetchedItem : fetchedItems.values()) {
+            if (processedItems.contains(fetchedItem.getItemId())) {
+                // Already processed this item
+                continue;
+            }
+
+            // Check for potential duplicate by matching seller, price, and close timestamp
+            boolean isDuplicate = allHistoryItems.stream().anyMatch(existingItem ->
+                    existingItem.getSeller() == fetchedItem.getSeller() &&
+                    existingItem.getPrice() == fetchedItem.getPrice() &&
+                    isSameTimeApproximately(existingItem.getSoldTime(), fetchedItem.getSoldTime(), 60) // 60 seconds tolerance
+            );
+
+            if (!isDuplicate) {
+                allHistoryItems.add(fetchedItem);
+            }
+        }
+    }
+
+    /**
+     * Helper method to check if two timestamps are approximately the same
+     * @param time1 First timestamp
+     * @param time2 Second timestamp
+     * @param toleranceSeconds Maximum difference in seconds
+     * @return true if timestamps are within tolerance
+     */
+    private boolean isSameTimeApproximately(LocalDateTime time1, LocalDateTime time2, long toleranceSeconds) {
+        if (time1 == null || time2 == null) {
+            return false;
+        }
+
+        long diffSeconds = Math.abs(java.time.Duration.between(time1, time2).getSeconds());
+        return diffSeconds <= toleranceSeconds;
     }
 
     private void saveHistoryToFile() {

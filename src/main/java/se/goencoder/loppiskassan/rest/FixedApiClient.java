@@ -45,7 +45,12 @@ public class FixedApiClient extends ApiClient {
      * Helper method to directly create a JSON request body
      */
     public RequestBody createJsonRequestBody(Object obj) throws ApiException {
-        String json = getJSON().serialize(obj);
-        return RequestBody.create(json, JSON_MEDIA_TYPE);
+        try {
+            String json = getJSON().serialize(obj);
+            return RequestBody.create(json, JSON_MEDIA_TYPE);
+        } catch (Exception e) {
+            // Fixed ApiException constructor call to use the correct signature
+            throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 0, null);
+        }
     }
 }

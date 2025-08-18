@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.utils;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Utility class for generating ULID (Universally Unique Lexicographically Sortable Identifier) strings.
@@ -12,7 +13,8 @@ import java.time.Instant;
  * - 16 characters of randomness
  */
 public class UlidGenerator {
-    private static final SecureRandom RANDOM = new SecureRandom();
+    // Using ThreadLocal for better performance in multi-threaded environments
+    private static final ThreadLocal<SecureRandom> RANDOM = ThreadLocal.withInitial(SecureRandom::new);
 
     // ULID uses Crockford's base32 (excludes I, L, O, U)
     private static final char[] ENCODING_CHARS = {
@@ -43,7 +45,7 @@ public class UlidGenerator {
 
         // Append 16 random characters
         for (int i = 0; i < 16; i++) {
-            int random = RANDOM.nextInt(32);
+            int random = RANDOM.get().nextInt(32);
             result.append(ENCODING_CHARS[random]);
         }
 
