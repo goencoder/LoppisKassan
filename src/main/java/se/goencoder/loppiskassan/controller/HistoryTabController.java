@@ -39,6 +39,11 @@ import static se.goencoder.loppiskassan.ui.Constants.*;
  */
 public class HistoryTabController implements HistoryControllerInterface {
     private static final HistoryTabController instance = new HistoryTabController();
+
+    // Constants for API queries and timing tolerance
+    private static final int PAGE_SIZE = 500;
+    private static final int SOLD_TIME_TOLERANCE_SECONDS = 60;
+
     private HistoryPanelInterface view;
     private List<SoldItem> allHistoryItems;
 
@@ -265,7 +270,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                                 PAYMENT_METHOD_FILTER_UNSPECIFIED.getValue(), // paymentMethodFilter
                                 null,                                 // seller
                                 Boolean.FALSE,                        // includeArchived
-                                Integer.valueOf(500),                 // pageSize
+                                Integer.valueOf(PAGE_SIZE),                 // pageSize
                                 pageToken,                           // nextPageToken
                                 "",                                  // prevPageToken
                                 Boolean.FALSE                        // includeAggregates
@@ -312,7 +317,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             boolean isDuplicate = allHistoryItems.stream().anyMatch(existingItem ->
                     existingItem.getSeller() == fetchedItem.getSeller() &&
                     existingItem.getPrice() == fetchedItem.getPrice() &&
-                    isSameTimeApproximately(existingItem.getSoldTime(), fetchedItem.getSoldTime(), 60) // 60 seconds tolerance
+                    isSameTimeApproximately(existingItem.getSoldTime(), fetchedItem.getSoldTime(), SOLD_TIME_TOLERANCE_SECONDS) // 60 seconds tolerance
             );
 
             if (!isDuplicate) {

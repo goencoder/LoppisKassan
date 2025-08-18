@@ -8,6 +8,7 @@ import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.FilterEventsRequest;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,8 +58,8 @@ public class FixedEventServiceApi extends EventServiceApi {
             // Create the call from the request
             return apiClient.getHttpClient().newCall(request);
         } catch (Exception e) {
-            // Create an ApiException with a valid constructor signature
-            throw new ApiException("Failed to build request with custom headers: " + e.getMessage(), e, 0, null);
+            // Create an ApiException with a more meaningful error code (500) and empty map instead of null
+            throw new ApiException("Failed to build request with custom headers: " + e.getMessage(), e, 500, Collections.emptyMap());
         }
     }
 }

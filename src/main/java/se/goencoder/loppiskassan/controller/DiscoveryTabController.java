@@ -22,6 +22,10 @@ import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 public class DiscoveryTabController implements DiscoveryControllerInterface {
 
     private static final DiscoveryTabController instance = new DiscoveryTabController();
+
+    // Constant for API requests
+    private static final int APPROVED_SELLERS_PAGE_SIZE = 500;
+
     private DiscoveryPanelInterface view;
     private List<Event> eventList;
 
@@ -231,7 +235,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
     private void fetchApprovedSellers(String eventId) throws ApiException {
         ListVendorsResponse res = ApiHelper.INSTANCE.getVendorServiceApi()
-            .vendorServiceListVendors(eventId, Integer.valueOf(500), "", "");
+            .vendorServiceListVendors(eventId, Integer.valueOf(APPROVED_SELLERS_PAGE_SIZE), "", "");
         Set<Integer> approvedSellers = new HashSet<>();
         for (Vendor vendor : Objects.requireNonNull(res.getVendors())) {
             if ("APPROVED".equalsIgnoreCase(vendor.getStatus())) {

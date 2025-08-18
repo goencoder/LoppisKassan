@@ -1,5 +1,6 @@
 package se.goencoder.loppiskassan.rest;
 
+import java.util.Collections;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import se.goencoder.iloppis.invoker.ApiClient;
@@ -49,8 +50,8 @@ public class FixedApiClient extends ApiClient {
             String json = getJSON().serialize(obj);
             return RequestBody.create(json, JSON_MEDIA_TYPE);
         } catch (Exception e) {
-            // Fixed ApiException constructor call to use the correct signature
-            throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 0, null);
+            // Using more meaningful error code (500) and empty map instead of null for headers
+            throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 500, Collections.emptyMap());
         }
     }
 }
