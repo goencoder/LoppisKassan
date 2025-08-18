@@ -39,6 +39,11 @@ import static se.goencoder.loppiskassan.ui.Constants.*;
  */
 public class HistoryTabController implements HistoryControllerInterface {
     private static final HistoryTabController instance = new HistoryTabController();
+
+    // Constants for API queries and timing tolerance
+    private static final int PAGE_SIZE = 500;
+    private static final int SOLD_TIME_TOLERANCE_SECONDS = 60;
+
     private HistoryPanelInterface view;
     private List<SoldItem> allHistoryItems;
 
@@ -178,26 +183,29 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void payoutWeb() throws ApiException {
-        // TODO put this with a progress dialog
-        // TODO, figure out why this class has such a long name
-        PayoutTheUserPassesAFilterPlusARequiredUntilTimestampSoTheServerOnlyMarksItemsThatHaveASoldTimeUntilTimestampOrNoSoldTimeAndMatchTheFilter filter =
-                new PayoutTheUserPassesAFilterPlusARequiredUntilTimestampSoTheServerOnlyMarksItemsThatHaveASoldTimeUntilTimestampOrNoSoldTimeAndMatchTheFilter();
+        // Create a payout request with the current filter settings
+        SoldItemsServicePayoutBody payoutBody = new SoldItemsServicePayoutBody();
+
         try {
-            int seller =  Integer.parseInt(view.getSellerFilter());
-            filter.setSeller(seller);
+            int seller = Integer.parseInt(view.getSellerFilter());
+            payoutBody.setSeller(seller);
         } catch (NumberFormatException e) {
-            // Do nothing
+            // Do nothing if seller filter isn't a valid number
         }
+
         try {
             PaymentMethodFilter paymentMethodFilter = PaymentMethodFilter.fromValue(view.getPaymentMethodFilter());
-            filter.setPaymentMethodFilter(paymentMethodFilter);
+            payoutBody.setPaymentMethodFilter(paymentMethodFilter);
         } catch (IllegalArgumentException e) {
-            // Do nothing
+            // Do nothing if payment method filter isn't valid
         }
-        filter.setUntilTimestamp(OffsetDateTime.now());
+
+        payoutBody.setUntilTimestamp(OffsetDateTime.now());
+
+        // Call the API to process the payout
         ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServicePayout(
                 ConfigurationStore.EVENT_ID_STR.get(),
-                filter
+                payoutBody
         );
     }
 
@@ -256,13 +264,16 @@ public class HistoryTabController implements HistoryControllerInterface {
             while (!fetchedAll) {
                 ListSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi()
                         .soldItemsServiceListSoldItems(
-                                eventId,
-                                PAID_FILTER_UNSPECIFIED.getValue(),
-                                PAYMENT_METHOD_FILTER_UNSPECIFIED.getValue(),
-                                null,
-                                false,
-                                500,
-                                pageToken
+                                eventId,                              // eventId
+                                null,                                 // purchaseId
+                                PAID_FILTER_UNSPECIFIED.getValue(),   // paidFilter
+                                PAYMENT_METHOD_FILTER_UNSPECIFIED.getValue(), // paymentMethodFilter
+                                null,                                 // seller
+                                Boolean.FALSE,                        // includeArchived
+                                Integer.valueOf(PAGE_SIZE),                 // pageSize
+                                pageToken,                           // nextPageToken
+                                "",                                  // prevPageToken
+                                Boolean.FALSE                        // includeAggregates
                         );
 
                 result.getItems().forEach(item -> {
@@ -281,17 +292,54 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void mergeFetchedItems(Map<String, SoldItem> fetchedItems) {
-        // Merge fetched items with existing items in history.
-        fetchedItems.values().forEach(fetchedItem -> allHistoryItems.stream()
-                .filter(item -> item.getItemId().equals(fetchedItem.getItemId()))
-                .findFirst()
-                .ifPresentOrElse(
-                        existingItem -> {
-                            existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
-                            existingItem.setUploaded(fetchedItem.isUploaded());
-                        },
-                        () -> allHistoryItems.add(fetchedItem)
-                ));
+        // Track items that have been added to prevent duplicates
+        Set<String> processedItems = new HashSet<>();
+
+        // First pass: Update existing items
+        allHistoryItems.forEach(existingItem -> {
+            SoldItem fetchedItem = fetchedItems.get(existingItem.getItemId());
+            if (fetchedItem != null) {
+                // Update existing item
+                existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
+                existingItem.setUploaded(fetchedItem.isUploaded());
+                processedItems.add(existingItem.getItemId());
+            }
+        });
+
+        // Second pass: Add new items, but check for potential duplicates
+        for (SoldItem fetchedItem : fetchedItems.values()) {
+            if (processedItems.contains(fetchedItem.getItemId())) {
+                // Already processed this item
+                continue;
+            }
+
+            // Check for potential duplicate by matching seller, price, and close timestamp
+            boolean isDuplicate = allHistoryItems.stream().anyMatch(existingItem ->
+                    existingItem.getSeller() == fetchedItem.getSeller() &&
+                    existingItem.getPrice() == fetchedItem.getPrice() &&
+                    isSameTimeApproximately(existingItem.getSoldTime(), fetchedItem.getSoldTime(), SOLD_TIME_TOLERANCE_SECONDS) // 60 seconds tolerance
+            );
+
+            if (!isDuplicate) {
+                allHistoryItems.add(fetchedItem);
+            }
+        }
+    }
+
+    /**
+     * Helper method to check if two timestamps are approximately the same
+     * @param time1 First timestamp
+     * @param time2 Second timestamp
+     * @param toleranceSeconds Maximum difference in seconds
+     * @return true if timestamps are within tolerance
+     */
+    private boolean isSameTimeApproximately(LocalDateTime time1, LocalDateTime time2, long toleranceSeconds) {
+        if (time1 == null || time2 == null) {
+            return false;
+        }
+
+        long diffSeconds = Math.abs(java.time.Duration.between(time1, time2).getSeconds());
+        return diffSeconds <= toleranceSeconds;
     }
 
     private void saveHistoryToFile() {
@@ -426,42 +474,44 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private List<RejectedItem> uploadBatch(List<SoldItem> batch) throws ApiException {
-        // 1. Bygg upp CreateSoldItems-objekt för alla poster i "batch"
-        CreateSoldItems createSoldItems = new CreateSoldItems();
+        // 1. Build a SoldItemsServiceCreateSoldItemsBody object for all items in the batch
+        SoldItemsServiceCreateSoldItemsBody requestBody = new SoldItemsServiceCreateSoldItemsBody();
+
         for (SoldItem localItem : batch) {
             se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
-            // Sätt tidszon (om nödvändigt) innan du lägger till i createSoldItems
+            // Set timezone before adding to the request
             apiItem.setSoldTime(OffsetDateTime.of(
                     localItem.getSoldTime(),
                     OffsetDateTime.now().getOffset()
             ));
-            createSoldItems.addItemsItem(apiItem);
+            requestBody.addItemsItem(apiItem);
         }
 
-        // 2. Anropa API och ta emot resultatet
+        // 2. Call the API and receive the result
         CreateSoldItemsResponse response =
                 ApiHelper.INSTANCE.getSoldItemsServiceApi()
                         .soldItemsServiceCreateSoldItems(
                                 ConfigurationStore.EVENT_ID_STR.get(),
-                                createSoldItems);
+                                requestBody);
 
-        // 3. Skapa en Map för att lättare hitta rätt objekt i batchen
+        // 3. Create a map to easily find the right object in the batch
         Map<String, SoldItem> localMap = batch.stream()
                 .collect(Collectors.toMap(SoldItem::getItemId, Function.identity()));
 
-        // 4. Hantera acceptedItems:
-        //    Markera dem som uppladdade (isUploaded = true) i de lokala objekten
+        // 4. Handle acceptedItems:
+        //    Mark them as uploaded (isUploaded = true) in the local objects
         if (response.getAcceptedItems() != null) {
             for (se.goencoder.iloppis.model.SoldItem accepted : response.getAcceptedItems()) {
                 SoldItem localItem = localMap.get(accepted.getItemId());
                 if (localItem != null) {
                     localItem.setUploaded(true);
-                    // Uppdatera fler fält om du vill, t.ex. collectedBySellerTime etc.
+                    // Update more fields if needed, e.g., collectedBySellerTime etc.
                 }
             }
         }
-        // 5. Hantera rejectedItems:
-    return response.getRejectedItems();
+
+        // 5. Handle rejectedItems
+        return response.getRejectedItems();
     }
 
     private boolean isPayoutEnabled(List<SoldItem> filteredItems) {
@@ -515,4 +565,3 @@ public class HistoryTabController implements HistoryControllerInterface {
                 "Poster importerade: " + importedItems.size());
     }
 }
-

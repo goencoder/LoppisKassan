@@ -21,13 +21,13 @@ public class SoldItemUtils {
         }
         se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
         apiItem.setSeller(item.getSeller());
-        apiItem.setItemId(item.getItemId());
         apiItem.setPrice(item.getPrice());
         apiItem.setPaymentMethod(
                 item.getPaymentMethod() == PaymentMethod.Kontant
                         ? se.goencoder.iloppis.model.PaymentMethod.KONTANT
                         : se.goencoder.iloppis.model.PaymentMethod.SWISH
         );
+        apiItem.setPurchaseId(item.getPurchaseId());
 
         return apiItem;
     }
@@ -53,4 +53,3 @@ public class SoldItemUtils {
     }
 
 }
-

@@ -27,20 +27,20 @@
                 - Run the following command in the terminal:
                   ```
                   mvn install:install-file \
-                      -Dfile=/Users/goranengdahl/GolandProjects/loppis-content/gen/java-client/target/openapi-java-client-0.0.3.jar \
+                      -Dfile=/Users/goranengdahl/GolandProjects/iloppis-service/gen/java-client/target/openapi-java-client-0.0.5.jar \
                       -DgroupId=se.goencoder.iloppis \
                       -DartifactId=iloppis-client \
-                      -Dversion=0.0.3 \
+                      -Dversion=0.0.5 \
                       -Dpackaging=jar
                   ```
              3. Update the version in the dependency below:
-                  <version>0.0.2</version>
+                  <version>0.0.5</version>
              4. Save and recompile your application to ensure it picks up the new dependency.
         -->
         <dependency>
             <groupId>se.goencoder.iloppis</groupId>
             <artifactId>iloppis-client</artifactId>
-            <version>0.0.3</version>
+            <version>0.0.4</version>
         </dependency>
 
         <dependency>
@@ -57,8 +57,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <source>23</source>
-                    <target>23</target>
+                    <source>24</source>
+                    <target>24</target>
                     <compilerArgs>--enable-preview</compilerArgs>
                 </configuration>
             </plugin>
