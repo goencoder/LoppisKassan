@@ -2,8 +2,8 @@ package se.goencoder.loppiskassan.controller;
 
 import org.json.JSONObject;
 import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.iloppis.model.CreateSoldItems;
 import se.goencoder.iloppis.model.CreateSoldItemsResponse;
+import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
@@ -16,9 +16,9 @@ import se.goencoder.loppiskassan.ui.ProgressDialog;
 import se.goencoder.loppiskassan.utils.ConfigurationUtils;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
+import se.goencoder.loppiskassan.utils.UlidGenerator;
 
 import javax.swing.*;
-import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -133,7 +133,8 @@ public class CashierTabController implements CashierControllerInterface {
         boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
 
         LocalDateTime now = LocalDateTime.now();
-        String purchaseId = UUID.randomUUID().toString();
+        // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
+        String purchaseId = UlidGenerator.generate();
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
 
         if (!isOffline && !degradedMode) {
@@ -263,7 +264,7 @@ public class CashierTabController implements CashierControllerInterface {
             return;
         }
 
-        CreateSoldItems createSoldItems = new CreateSoldItems();
+        SoldItemsServiceCreateSoldItemsBody createSoldItems = new SoldItemsServiceCreateSoldItemsBody();
         ZoneOffset currentOffset = OffsetDateTime.now().getOffset();
 
         Map<String, SoldItem> itemMap = items.stream()

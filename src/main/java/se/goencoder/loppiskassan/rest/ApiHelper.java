@@ -1,6 +1,5 @@
 package se.goencoder.loppiskassan.rest;
 import se.goencoder.iloppis.api.*;
-import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 
@@ -11,7 +10,7 @@ import se.goencoder.loppiskassan.config.ConfigurationStore;
  */
 public enum ApiHelper {
     INSTANCE("127.0.0.1", 8080);
-    private final ApiClient apiClient;
+    private final FixedApiClient apiClient;
     private final SoldItemsServiceApi soldItemsServiceApi;
     private final ApiKeyServiceApi apiKeyServiceApi;
     private final EventServiceApi eventServiceApi;
@@ -19,32 +18,42 @@ public enum ApiHelper {
     private final ApprovedMarketServiceApi approvedMarketServiceApi;
 
     ApiHelper(String host, int port) {
-        this.apiClient = new ApiClient();
+        // Use our fixed API client implementation
+        this.apiClient = new FixedApiClient();
         this.apiClient.setBasePath("http://" + host + ":" + port);
+        this.apiClient.setUserAgent("LoppisKassan/2.0.0");
+        
+        // Configure the JSON serialization to use pretty printing
+        this.apiClient.getJSON().setGson(this.apiClient.getJSON().getGson().newBuilder().setPrettyPrinting().create());
+
         if (ConfigurationStore.API_KEY_STR.get() != null) {
             setCurrentApiKey(ConfigurationStore.API_KEY_STR.get());
         }
+
+        // Create API instances with our fixed client
         this.soldItemsServiceApi = new SoldItemsServiceApi(apiClient);
         this.apiKeyServiceApi = new ApiKeyServiceApi(apiClient);
         this.eventServiceApi = new EventServiceApi(apiClient);
         this.vendorServiceApi = new VendorServiceApi(apiClient);
         this.approvedMarketServiceApi = new ApprovedMarketServiceApi(apiClient);
-
-
     }
 
     public SoldItemsServiceApi getSoldItemsServiceApi() {
         return INSTANCE.soldItemsServiceApi;
     }
+
     public ApiKeyServiceApi getApiKeyServiceApi() {
         return INSTANCE.apiKeyServiceApi;
     }
+
     public EventServiceApi getEventServiceApi() {
         return INSTANCE.eventServiceApi;
     }
+
     public VendorServiceApi getVendorServiceApi() {
         return INSTANCE.vendorServiceApi;
     }
+
     public ApprovedMarketServiceApi getApprovedMarketServiceApi() {
         return INSTANCE.approvedMarketServiceApi;
     }
@@ -66,5 +75,4 @@ public enum ApiHelper {
         // For brevity, treat everything else as a potential network error.
         return true;
     }
-
 }

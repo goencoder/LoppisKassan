@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan;
 
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.utils.UlidGenerator;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -39,7 +40,7 @@ public class TestRunner {
                 case Kontant: paymentMethod = PaymentMethod.Swish; break;
                 default: break;
             }
-            purchaseId = UUID.randomUUID().toString();
+            purchaseId = UlidGenerator.generate();
             try {
                 FileHelper.saveToFile(LOPPISKASSAN_CSV,
                         "",

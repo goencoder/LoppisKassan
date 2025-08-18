@@ -52,9 +52,17 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         // Fetch and add real events from iLoppis.
         try {
             EventServiceApi eventApi = ApiHelper.INSTANCE.getEventServiceApi();
-            FilterEventsRequest request = new FilterEventsRequest()
-                    .filter(new EventFilter().dateFrom(dateFrom))
-                    .pagination(new Pagination().pageSize(100));
+
+            // Create the components separately to avoid serialization issues
+            EventFilter eventFilter = new EventFilter();
+            eventFilter.setDateFrom(dateFrom);
+
+            Pagination pagination = new Pagination();
+            pagination.setPageSize(100);
+
+            FilterEventsRequest request = new FilterEventsRequest();
+            request.setFilter(eventFilter);
+            request.setPagination(pagination);
 
             FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
             List<Event> discovered = response.getEvents();
@@ -62,6 +70,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
             view.populateEventsTable(eventList);
         } catch (ApiException ex) {
+            ex.printStackTrace();
             Popup.ERROR.showAndWait("Kunde inte hämta event", ex.getMessage());
             view.populateEventsTable(eventList); // Display only the offline event if an error occurs.
         } catch (Exception ex) {
@@ -222,7 +231,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
     private void fetchApprovedSellers(String eventId) throws ApiException {
         ListVendorsResponse res = ApiHelper.INSTANCE.getVendorServiceApi()
-            .vendorServiceListVendors(eventId, 500, "");
+            .vendorServiceListVendors(eventId, Integer.valueOf(500), "", "");
         Set<Integer> approvedSellers = new HashSet<>();
         for (Vendor vendor : Objects.requireNonNull(res.getVendors())) {
             if ("APPROVED".equalsIgnoreCase(vendor.getStatus())) {
