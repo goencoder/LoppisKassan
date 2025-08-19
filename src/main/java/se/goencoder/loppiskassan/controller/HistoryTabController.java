@@ -244,7 +244,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
                         return null;
                     },
-                    _ -> {
+                    unused -> {
 
                     },
                     e -> Popup.ERROR.showAndWait(
