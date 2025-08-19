@@ -48,7 +48,7 @@ public class FixedApiClient extends ApiClient {
     public RequestBody createJsonRequestBody(Object obj) throws ApiException {
         try {
             String json = getJSON().serialize(obj);
-            return RequestBody.create(json, JSON_MEDIA_TYPE);
+            return RequestBody.create(JSON_MEDIA_TYPE, json);
         } catch (Exception e) {
             // Using more meaningful error code (500) and empty map instead of null for headers
             throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 500, Collections.emptyMap());

@@ -47,7 +47,7 @@ public class SimpleApiClient {
             // Build the request manually with proper content type
             Request httpRequest = new Request.Builder()
                 .url("http://127.0.0.1:8080/v1/events:filter")
-                .post(RequestBody.create(jsonBody, MediaType.parse("application/json")))
+                .post(RequestBody.create(MediaType.parse("application/json"), jsonBody))
                 .build();
 
             System.out.println("Sending request to: " + httpRequest.url());
