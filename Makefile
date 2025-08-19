@@ -1,4 +1,5 @@
-SHELL := /usr/bin/env bash
+# Makefile for LoppisKassan
+SHELL := /bin/bash
 .ONESHELL:
 ROOT_DIR := $(shell pwd)
 
@@ -31,8 +32,6 @@ proxy:
 </settings>
 EOF
 
-
-
 help: ## Show help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
@@ -41,7 +40,7 @@ java-version: ## Print java & maven versions
 	mvn -v || true
 
 install-client: proxy
-	$(MAVEN) $(MFLAGS) install:install-file \
+	$(MAVEN) $(MFLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
 	  -Dfile=lib/openapi-java-client-0.0.4.jar \
 	  -DpomFile=lib/openapi-java-client-0.0.4.pom
 
