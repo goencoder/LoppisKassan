@@ -372,13 +372,15 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
 
     @Override
     public void updateSumLabel(String sum) {
-        totalSum = Integer.parseInt(sum);
+        // Parse as double first to handle decimal numbers, then convert to int
+        totalSum = (int) Double.parseDouble(sum);
         totalSumLabel.setText(LocalizationManager.tr("history.total_sum", totalSum));
     }
 
     @Override
     public void updateNoItemsLabel(String noItems) {
-        itemsCount = Integer.parseInt(noItems);
+        // Parse as double first to handle decimal numbers, then convert to int
+        itemsCount = (int) Double.parseDouble(noItems);
         itemsCountLabel.setText(LocalizationManager.tr("history.items_count", itemsCount));
     }
 
