@@ -1,5 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
+import se.goencoder.loppiskassan.config.ConfigurationStore;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
@@ -10,8 +12,9 @@ public class UserInterface extends JFrame {
     private final List<SelectabableTab> selectabableTabs = new ArrayList<>();
 
     private enum SELECTABLE_TABS {
-        CASHIER(0),
-        HISTORY(1);
+        DISCOVERY(0),
+        CASHIER(1),
+        HISTORY(2);
         private final int index;
         SELECTABLE_TABS(int index){
             this.index = index;
@@ -20,14 +23,17 @@ public class UserInterface extends JFrame {
             return index;
         }
         static SELECTABLE_TABS fromIndex(int index) {
-            switch (index) {
-                case 0: return CASHIER;
-                case 1: return HISTORY;
-                default: Popup.FATAL.showAndWait(
-                        "Selected tab out of range",
-                        "The selected tab is out of range. Program will exit!");
-                    return CASHIER; // Dummy, will not reach here after FATAL
-            }
+            return switch (index) {
+                case 0 -> DISCOVERY;
+                case 1 -> CASHIER;
+                case 2 -> HISTORY;
+                default -> {
+                    Popup.FATAL.showAndWait(
+                            "Denna tabb finns inte",
+                            "Det finns ingen tabb med index " + index);
+                    yield CASHIER;
+                }
+            };
         }
     }
 
@@ -39,6 +45,17 @@ public class UserInterface extends JFrame {
         tabPane.addChangeListener(e -> {
             // This method is called whenever the selected tab changes
             SELECTABLE_TABS selectedTab = SELECTABLE_TABS.fromIndex(tabPane.getSelectedIndex());
+            if (selectedTab != SELECTABLE_TABS.DISCOVERY) {
+                // If we are attempting to select a tab other than
+                // The one selecting which loppis to manage, we need to check if a loppis has been selected or not.
+                if (ConfigurationStore.EVENT_ID_STR.get() == null) {
+                    tabPane.setSelectedIndex(SELECTABLE_TABS.DISCOVERY.getIndex());
+                    Popup.ERROR.showAndWait(
+                            "Ingen loppis vald",
+                            "Vänligen välj en loppis att öppna en kassa för först.");
+                    return;
+                }
+            }
             selectabableTabs.get(selectedTab.getIndex()).selected();
         });
 
@@ -57,8 +74,12 @@ public class UserInterface extends JFrame {
     }
 
     private void initializeTabs() {
+        DiscoveryTabPanel discoveryTabPanel = new DiscoveryTabPanel();
+        tabPane.addTab("Välj Loppis", null, discoveryTabPanel, "Välj vilken loppis du vill öppna en kassa för");
+        selectabableTabs.add(discoveryTabPanel);
+
         CashierTabPanel cashierTabPanel = new CashierTabPanel();
-        tabPane.addTab("Kassa", null, cashierTabPanel, "Hantera kassatransaktioner");
+        tabPane.addTab("Kassahantering", null, cashierTabPanel, "Hantera kassatransaktioner");
         selectabableTabs.add(cashierTabPanel);
 
         HistoryTabPanel historyTabPanel = new HistoryTabPanel();

@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan;
 
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.utils.UlidGenerator;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -9,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 
@@ -16,6 +19,8 @@ import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
  * Created by gengdahl on 2016-09-20.
  */
 public class TestRunner {
+    private static final Logger logger = Logger.getLogger(TestRunner.class.getName());
+
     private final Random random = new Random(System.currentTimeMillis());
     public static void main(String[] args){
         TestRunner tr = new TestRunner();
@@ -35,21 +40,21 @@ public class TestRunner {
                 case Kontant: paymentMethod = PaymentMethod.Swish; break;
                 default: break;
             }
-            purchaseId = UUID.randomUUID().toString();
+            purchaseId = UlidGenerator.generate();
             try {
                 FileHelper.saveToFile(LOPPISKASSAN_CSV,
                         "",
                         FormatHelper.toCVS(createRandomSoldItems(paymentMethod,
                   purchaseId)));
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.log(Level.SEVERE, "Failed to save to file", e);
             }
 
         }
     }
     private List<SoldItem> createRandomSoldItems(PaymentMethod paymentMethod,
                                                  String purchaseId){
-        int numberOfRecords = (int)(System.currentTimeMillis() % 19 + 1);
+        int numberOfRecords = random.nextInt(19) + 1;
         List<SoldItem> items = new ArrayList<>(numberOfRecords);
         for (int i = 0 ; i < numberOfRecords; i++){
             SoldItem item = createRandomSoldItem(paymentMethod, purchaseId);
@@ -63,17 +68,15 @@ public class TestRunner {
                                           String purchaseId){
         int seller = Math.abs(random.nextInt() % 9) + 1;
         int price = Math.abs(random.nextInt() % 20) +1 ;
-        int priceAlt = Math.abs(random.nextInt() % 20) + 1;
-        if (price > priceAlt){
-            price = priceAlt;
-        }
+
         return new SoldItem(purchaseId,
-          UUID.randomUUID().toString(),
-          LocalDateTime.now(),
-          seller,
-          price,
-          null,
-          paymentMethod);
+                UUID.randomUUID().toString(),
+                LocalDateTime.now(),
+                seller,
+                price,
+                null,
+                paymentMethod,
+                false);
     }
 
 }

@@ -19,12 +19,20 @@ public class SoldItem {
     private PaymentMethod paymentMethod;
     private String purchaseId;
     private final String itemId;
+    private boolean uploaded;
 
     /**
      * Konstruktor för att skapa en ny såld vara.
      */
-    public SoldItem(String purchaseId, String itemId, LocalDateTime soldTime, int seller, int price,
-                    LocalDateTime collectedBysellerTime, PaymentMethod paymentMethod) {
+    public SoldItem(
+            String purchaseId,
+            String itemId,
+            LocalDateTime soldTime,
+            int seller,
+            int price,
+            LocalDateTime collectedBysellerTime,
+            PaymentMethod paymentMethod,
+            boolean uploaded) {
         this.purchaseId = purchaseId;
         this.itemId = itemId;
         this.price = price;
@@ -32,13 +40,22 @@ public class SoldItem {
         this.soldTime = soldTime;
         this.collectedBySellerTime = collectedBysellerTime;
         this.paymentMethod = paymentMethod;
+        this.uploaded = uploaded;
     }
 
     /**
      * Konstruktor som skapar en såld vara med en genererad unik identifierare och aktuell tidpunkt som säljtid.
      */
     public SoldItem(int seller, int price, PaymentMethod paymentMethod) {
-        this(UUID.randomUUID().toString(), UUID.randomUUID().toString(), LocalDateTime.now(), seller, price, null, paymentMethod);
+        this(
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
+                LocalDateTime.now(),
+                seller,
+                price,
+                null,
+                paymentMethod,
+                false);
     }
 
     // Standard getters and setters
@@ -86,6 +103,13 @@ public class SoldItem {
 
     public void setPurchaseId(String purchaseId) {
         this.purchaseId = purchaseId;
+    }
+
+    public boolean isUploaded() {
+        return uploaded;
+    }
+    public void setUploaded(boolean uploaded) {
+        this.uploaded = uploaded;
     }
 
     // Overridden methods for equality and hashing

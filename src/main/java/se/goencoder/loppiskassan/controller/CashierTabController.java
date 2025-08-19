@@ -1,68 +1,96 @@
 package se.goencoder.loppiskassan.controller;
 
+import org.json.JSONObject;
+import se.goencoder.iloppis.invoker.ApiException;
+import se.goencoder.iloppis.model.CreateSoldItemsResponse;
+import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.ui.ProgressDialog;
+import se.goencoder.loppiskassan.utils.ConfigurationUtils;
+import se.goencoder.loppiskassan.utils.FileUtils;
+import se.goencoder.loppiskassan.utils.SoldItemUtils;
+import se.goencoder.loppiskassan.utils.UlidGenerator;
+
 import javax.swing.*;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
+import static se.goencoder.loppiskassan.rest.ApiHelper.isLikelyNetworkError;
 
-/**
- * Controls the cashier tab, handling the sales process, including item management and checkout procedures.
- */
 public class CashierTabController implements CashierControllerInterface {
+
+    // TODO, check so that the buttons to abort/swish/kontant are enabled only if there is at least one item in the list of items (not before that)
+
     private static final CashierTabController instance = new CashierTabController();
+
+    /**
+     * True if the system encountered a network error and is now in "degraded mode".
+     * When degraded, we skip attempts to upload new purchases. Instead, we save them
+     * locally and spawn a background sync attempt. If that sync succeeds, we switch
+     * back to normal (degradedMode = false).
+     */
+    private static boolean degradedMode = false;
+
+    /**
+     * A lock object to synchronize file reads/writes and web push
+     * across the main thread and any background threads.
+     */
+    private final Object lock = new Object();
+
     private final List<SoldItem> items = new ArrayList<>();
     private CashierPanelInterface view;
 
-    // Private constructor to enforce singleton pattern.
     private CashierTabController() {}
 
-    // Returns the singleton instance of this controller.
     public static CashierControllerInterface getInstance() {
         return instance;
     }
 
-    // Sets up the button for cash checkout.
+    // --- Button setup methods ---
+    @Override
     public void setupCheckoutCashButtonAction(JButton checkoutCashButton) {
         checkoutCashButton.addActionListener(e -> checkout(PaymentMethod.Kontant));
     }
 
-    // Sets up the button for Swish (digital) checkout.
+    @Override
     public void setupCheckoutSwishButtonAction(JButton checkoutSwishButton) {
         checkoutSwishButton.addActionListener(e -> checkout(PaymentMethod.Swish));
     }
 
-    // Sets up the button to cancel the checkout process.
+    @Override
     public void setupCancelCheckoutButtonAction(JButton cancelCheckoutButton) {
         cancelCheckoutButton.addActionListener(e -> cancelCheckout());
     }
 
-    // Configures the action for the prices text field.
     @Override
     public void setupPricesTextFieldAction(JTextField pricesTextField) {
         pricesTextField.addActionListener(e -> {
-            Map<Integer,Integer[]> prices = view.getAndClearSellerPrices();
+            Map<Integer, Integer[]> prices = view.getAndClearSellerPrices();
             prices.forEach(this::addItem);
             view.setFocusToSellerField();
         });
     }
 
-    // Registers the interface of the cashier panel view with this controller.
+    @Override
     public void registerView(CashierPanelInterface view) {
         this.view = view;
     }
 
-    // Removes a sold item by its ID and recalculates the total.
+    // --- Item operations ---
     @Override
     public void deleteItem(String itemId) {
         items.removeIf(item -> item.getItemId().equals(itemId));
@@ -76,7 +104,19 @@ public class CashierTabController implements CashierControllerInterface {
         view.updateChangeCashField(change);
     }
 
-    // Adds an item to the list and recalculates the total.
+    @Override
+    public boolean isSellerApproved(int sellerId) {
+        // If truly offline mode, just allow
+        if (ConfigurationUtils.isOfflineMode()) {
+            return true;
+        }
+        String approvedSellersJson = ConfigurationStore.APPROVED_SELLERS_JSON.get();
+        return new JSONObject(approvedSellersJson)
+                .getJSONArray("approvedSellers")
+                .toList()
+                .contains(sellerId);
+    }
+
     public void addItem(Integer sellerId, Integer[] prices) {
         if (FileHelper.assertRecordFileRights(LOPPISKASSAN_CSV)) {
             for (Integer price : prices) {
@@ -88,36 +128,99 @@ public class CashierTabController implements CashierControllerInterface {
         }
     }
 
-    // Handles the checkout process for different payment methods.
+    // --- Checkout process ---
     public void checkout(PaymentMethod paymentMethod) {
+        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+
         LocalDateTime now = LocalDateTime.now();
-        String purchaseId = UUID.randomUUID().toString();
-        items.forEach(item -> {
-            item.setSoldTime(now);
-            item.setPaymentMethod(paymentMethod);
-            item.setPurchaseId(purchaseId);
-        });
-        try {
-            FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
-            items.clear();
-            view.clearView();
-        } catch (IOException e) {
-            Popup.ERROR.showAndWait("Kunde inte spara till fil (" +
-                    FileHelper.getRecordFilePath(LOPPISKASSAN_CSV) +
-                    ")", e.getMessage());
+        // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
+        String purchaseId = UlidGenerator.generate();
+        prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
+
+        if (!isOffline && !degradedMode) {
+            ProgressDialog.runTask(
+                    view.getComponent(),
+                    "Bearbetar köp",
+                    "Sparar till webb...",
+                    // This is the background task (Callable)
+                    () -> {
+                        saveItemsToWeb(items);
+                        return null; // We don't need a result
+                    },
+                    // onSuccess => runs on EDT
+                    unused -> {
+                        // No exception => proceed with final checkout flow
+                        finishCheckoutFlow();
+                    },
+                    // onFailure => runs on EDT if an exception was thrown
+                    ex -> {
+
+                        if (isLikelyNetworkError(ex)) {
+                            degradedMode = true;
+                            Popup.WARNING.showAndWait(
+                                    "Nätverksfel - Kassa i degraderat läge",
+                                    "Kunde inte spara till webb. Vi går in i degraderat läge.\n"
+                                            + "Alla köp sparas lokalt tills vi kan synkronisera igen.\n\n"
+                                            + "Du kan göra en manuell synk i Historik-fliken."
+                            );
+                        } else {
+                            Popup.ERROR.showAndWait("Kunde inte spara till webb", ex.getMessage());
+                        }
+                        finishCheckoutFlow();
+                    }
+            );
+        } else {
+            // If offline or degraded, skip the web call
+            finishCheckoutFlow();
         }
     }
 
-    // Cancels the checkout, clearing the items and view.
+    private void finishCheckoutFlow() {
+        // 1) Save items locally in all cases
+        // If we are in degraded mode, we must update the items to reflect correct uploaded status (false)
+        for (SoldItem item : items) {
+            if (degradedMode) {
+                item.setUploaded(false);
+            }
+        }
+        synchronized (lock) {
+            try {
+                FileUtils.appendSoldItems(items);
+            } catch (IOException e) {
+                Popup.ERROR.showAndWait(
+                        "Kunde inte spara till fil (" + FileHelper.getRecordFilePath(LOPPISKASSAN_CSV) + ")",
+                        e.getMessage()
+                );
+            }
+        }
+
+        // 2) Clear the cashier UI
+        items.clear();
+        view.clearView();
+        view.enableCheckoutButtons(!items.isEmpty());
+
+        // 3) If we are in degraded mode, spawn a background thread to attempt a catch-up
+        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        if (!isOffline && degradedMode) {
+            new Thread(() -> {
+                boolean success = pushLocalUnsyncedRecords();
+                if (success) {
+                    degradedMode = false;
+                }
+            }).start();
+        }
+    }
+
     public void cancelCheckout() {
         items.clear();
         view.clearView();
+        view.enableCheckoutButtons(!items.isEmpty());
     }
 
-    // Recalculates and updates the total sum and item count displayed.
+    // --- Recalculate totals ---
     private void reCalculate() {
         int totalSum = getSum();
-        int roundedSum = (totalSum + 99) / 100 * 100; // Round up to the nearest 100.
+        int roundedSum = (totalSum + 99) / 100 * 100;
         int change = roundedSum - totalSum;
 
         view.clearView();
@@ -127,11 +230,138 @@ public class CashierTabController implements CashierControllerInterface {
         view.updateChangeCashField(change);
         view.updatePayedCashField(roundedSum);
         view.setFocusToSellerField();
-        view.enableCheckoutButtons(items.size() > 0);
+        view.enableCheckoutButtons(!items.isEmpty());
     }
 
-    // Calculates the total sum of sold items.
     private int getSum() {
         return items.stream().mapToInt(SoldItem::getPrice).sum();
     }
+
+    // --- Helpers ---
+    private void prepareItemsForCheckout(List<SoldItem> items, String purchaseId,
+                                         PaymentMethod paymentMethod, LocalDateTime now) {
+        for (SoldItem item : items) {
+            item.setSoldTime(now);
+            item.setPaymentMethod(paymentMethod);
+            item.setPurchaseId(purchaseId);
+        }
+    }
+
+    /**
+     * Attempts to upload the given items to the web in a single batch request.
+     * <p>
+     * Note: This method does NOT handle concurrency by itself. Make sure you
+     * synchronize if reading from or modifying shared structures.
+     *
+     * @throws ApiException if there's an API-level or partial success
+     * @throws RuntimeException or other exceptions for network connectivity errors
+     *                          (some might bubble as ApiException with code=0)
+     */
+    private void saveItemsToWeb(List<SoldItem> items) throws ApiException {
+        // TODO: set an API call timeout of 5 seconds for this request in your HTTP client config
+
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+
+        SoldItemsServiceCreateSoldItemsBody createSoldItems = new SoldItemsServiceCreateSoldItemsBody();
+        ZoneOffset currentOffset = OffsetDateTime.now().getOffset();
+
+        Map<String, SoldItem> itemMap = items.stream()
+                .collect(Collectors.toMap(SoldItem::getItemId, x -> x));
+
+        for (SoldItem item : items) {
+            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
+            apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), currentOffset));
+            createSoldItems.addItemsItem(apiItem);
+        }
+
+        CreateSoldItemsResponse response = ApiHelper.INSTANCE
+                .getSoldItemsServiceApi()
+                .soldItemsServiceCreateSoldItems(ConfigurationStore.EVENT_ID_STR.get(), createSoldItems);
+
+        updateLocalItemsStatus(response, itemMap);
+    }
+
+    /**
+     * Reads the local file, finds all items not uploaded, attempts to upload them.
+     * Updates local file based on partial success. Returns true if no network error
+     * occurred (i.e. connectivity was OK, even if some items were rejected for data reasons).
+     */
+    private boolean pushLocalUnsyncedRecords() {
+        synchronized (lock) {
+            List<SoldItem> allItems;
+            try {
+                Path localCsv = FileHelper.getRecordFilePath(LOPPISKASSAN_CSV);
+                allItems = FormatHelper.toItems(FileHelper.readFromFile(localCsv), true);
+            } catch (IOException e) {
+                return false;
+            }
+
+            List<SoldItem> notUploaded = allItems.stream()
+                    .filter(item -> !item.isUploaded())
+                    .collect(Collectors.toList());
+
+            if (notUploaded.isEmpty()) {
+                return true; // Nothing to push, so "success" in terms of connectivity
+            }
+
+            try {
+                saveItemsToWeb(notUploaded);
+            } catch (ApiException apiEx) {
+                // If code=0 or other sign of no connectivity => degrade remains
+                if (isLikelyNetworkError(apiEx)) {
+                    return false;
+                }
+                // Otherwise partial success or data error => keep going
+            } catch (Exception ex) {
+                // Non-ApiException network or other error => degrade remains
+                if (isLikelyNetworkError(ex)) {
+                    return false;
+                }
+                // Some other unknown error => treat as connectivity for safety
+                return false;
+            }
+
+            // On partial success, some items may now be uploaded
+            // -> re-save entire file with updated statuses
+            try {
+                FileUtils.saveSoldItems(allItems);
+            } catch (IOException e) {
+                // local file write error is not a reason to remain degraded
+                // but we do show a warning
+                Popup.WARNING.showAndWait(
+                        "Kunde inte uppdatera poster",
+                        "Kunde inte uppdatera filstatus för uppladdade poster: " + e.getMessage());
+            }
+
+            return true;
+        }
+    }
+
+    private void updateLocalItemsStatus(CreateSoldItemsResponse response,
+                                        Map<String, SoldItem> itemMap) {
+        if (response.getAcceptedItems() != null) {
+            for (se.goencoder.iloppis.model.SoldItem acceptedItem : response.getAcceptedItems()) {
+                SoldItem localItem = itemMap.get(acceptedItem.getItemId());
+                if (localItem != null) {
+                    localItem.setUploaded(true);
+                }
+            }
+        }
+
+        if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
+            Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp",
+                    "Eventuella duplicerade poster kan ignoreras (bara en kopia sparas)\n" +
+                            response.getRejectedItems());
+            for (se.goencoder.iloppis.model.RejectedItem rejectedItem : response.getRejectedItems()) {
+                SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
+                if (localItem != null) {
+                    localItem.setUploaded(false);
+                }
+            }
+        }
+    }
+
+
 }

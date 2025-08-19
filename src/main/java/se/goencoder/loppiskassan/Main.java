@@ -19,7 +19,7 @@ public class Main {
      */
     private static void createAndShowGUI() {
         UserInterface frame = new UserInterface();
-        frame.setTitle("Loppiskassan v2.0 ("+FileHelper.getRecordFilePath(FileHelper.LOPPISKASSAN_CSV)+")");
+        frame.setTitle("iLoppis Kassahantering v1.0");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Ställ in ramens storlek och gör den synlig
@@ -64,7 +64,12 @@ public class Main {
             // Schemalägg jobbet för händelseavkodningstråden (EDT)
             SwingUtilities.invokeLater(Main::createAndShowGUI);
         } catch (IOException e) {
-            Popup.FATAL.showAndWait("Kunde inte skapa kataloger", e);
+            // We have no logs yet, so we dump the error to the console
+            e.printStackTrace();
+            Popup.FATAL.showAndWait(
+                    "Kunde inte skapa kataloger",
+                    "Behöver skapa kataloger 'data' och 'logs' för att fortsätta." +
+                            "Kontrollera att programmet har rättigheter att skapa kataloger.");
         }
     }
 }

@@ -65,7 +65,9 @@ public class FileHelper {
         if (!canWrite || !canRead) {
             String message = String.format("Cannot read/write file: %s. Writable: %b, Readable: %b", path, canWrite, canRead);
             logger.warning(message);
-            Popup.WARNING.showAndWait("File Access Error", "Check read/write permissions and ensure no other program is using the file.");
+            Popup.WARNING.showAndWait(
+                    "Problem med filrättigheter",
+                    "Kontrollera att programmet har rättigheter att läsa och skriva till filen: " + path);
             return false;
         }
         return true;
@@ -103,8 +105,6 @@ public class FileHelper {
         Path path = getRecordFilePath(fileName);
         if (!Files.exists(path)) {
             logger.log(Level.INFO, "File does not exist: " + path);
-            Popup.INFORMATION.showAndWait("Filen finns inte",
-                    "Filen " + fileName + " finns inte. Har du registrerat några köp?");
             return "";
         }
         return readFromFile(path);

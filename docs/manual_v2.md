@@ -89,7 +89,7 @@ I titelbaren på programmet står sökvägen till den aktuella kassan (*loppiska
 
 ![Titelbar](images/titelbar_v2.png)
 
-Samla ihop alla dessa filer och importera dem en efter en i hurudkassan genom att klicka på **Importera kassa**.
+Samla ihop alla dessa filer och importera dem en efter en i huvudkassan genom att klicka på **Importera kassa**.
 Skulle du råka importera en kassa två gånger gör det inget, programmet upptäcker dubletter vid import och kastar bort dem.
 
 > **Tips!**
