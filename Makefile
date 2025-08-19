@@ -54,25 +54,26 @@ install-client: proxy
 	  -DpomFile=lib/openapi-java-client-0.0.4.pom
 
 build: install-client ## Build fat jar (skip tests for speed)
-	mvn -q $(MVN_PROXY_FLAGS) -DskipTests package
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package
 
-build-codex: install-client
-	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests -Dexec.skip=true package
+build-codex: install-client ## Build for Codex (no jpackage)
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package
 
 test: ## Run unit tests
 	mvn -q $(MVN_PROXY_FLAGS) test
 
 verify: ## Lint & enforce rules (Checkstyle/SpotBugs/Enforcer if configured)
-	mvn -q $(MVN_PROXY_FLAGS) -DskipTests verify
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests verify
 
 security: ## OWASP Dependency-Check (if plugin present)
 	mvn $(MVN_PROXY_FLAGS) org.owasp:dependency-check-maven:check
 
-run: ## Run the packaged app (requires jpackage/fat jar step)
+run: ## Run the packaged app (headless guard)
+	@if [ -z "$$DISPLAY" ]; then echo "Headless env: skipping 'make run'."; exit 0; fi
 	@if [ ! -f "$(JAR_NAME)" ]; then echo "Jar not found. Run: make build"; exit 3; fi
 	java --enable-preview -jar $(JAR_NAME)
 
 clean: ## Clean build artifacts
 	mvn -q $(MVN_PROXY_FLAGS) clean
 
-ci: java-version install-client build test verify  ## What CI (codex) should run (TODO add security her after we get an NVD API Key )
+ci: java-version install-client build-codex test verify  ## What CI (codex) should run
