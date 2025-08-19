@@ -8,6 +8,8 @@ import java.io.StringWriter;
 import java.util.Objects;
 import java.util.logging.Logger;
 
+import se.goencoder.loppiskassan.localization.LocalizationManager;
+
 
 /**
  * Enum representing different types of popup windows that can be displayed in the Loppiskassan Swing application.
@@ -75,7 +77,7 @@ public enum Popup {
      */
     public boolean showConfirmDialog(String title, String message) {
         // Customize button texts as needed
-        Object[] options = {"Bekräfta", "Avbryt"};
+        Object[] options = {LocalizationManager.tr("popup.confirm"), LocalizationManager.tr("popup.cancel")};
         int result = JOptionPane.showOptionDialog(null, message, title,
                 JOptionPane.DEFAULT_OPTION, messageType,
                 null, options, options[0]);

@@ -1,0 +1,17 @@
+{
+  "tab.discovery": "Select Event",
+  "tab.discovery.tooltip": "Select which event to open a cash register for",
+  "tab.cashier": "Cashier",
+  "tab.cashier.tooltip": "Handle cash register transactions",
+  "tab.history": "History",
+  "tab.history.tooltip": "View past transactions",
+  "error.no_tab": "This tab does not exist",
+  "error.no_tab_index": "There is no tab with index {0}",
+  "error.no_event_selected.title": "No event selected",
+  "error.no_event_selected.message": "Please select an event before opening a cash register.",
+  "frame.title": "iLoppis Cash Register v1.0",
+  "popup.confirm": "Confirm",
+  "popup.cancel": "Cancel",
+  "error.create_dirs.title": "Could not create directories",
+  "error.create_dirs.message": "Need to create directories 'data' and 'logs' to continue. Ensure the program has permission to create directories."
+}

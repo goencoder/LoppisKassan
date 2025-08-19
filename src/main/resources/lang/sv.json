@@ -1,0 +1,17 @@
+{
+  "tab.discovery": "Välj Loppis",
+  "tab.discovery.tooltip": "Välj vilken loppis du vill öppna en kassa för",
+  "tab.cashier": "Kassahantering",
+  "tab.cashier.tooltip": "Hantera kassatransaktioner",
+  "tab.history": "Historik",
+  "tab.history.tooltip": "Visa tidigare transaktioner",
+  "error.no_tab": "Denna tabb finns inte",
+  "error.no_tab_index": "Det finns ingen tabb med index {0}",
+  "error.no_event_selected.title": "Ingen loppis vald",
+  "error.no_event_selected.message": "Vänligen välj en loppis att öppna en kassa för först.",
+  "frame.title": "iLoppis Kassahantering v1.0",
+  "popup.confirm": "Bekräfta",
+  "popup.cancel": "Avbryt",
+  "error.create_dirs.title": "Kunde inte skapa kataloger",
+  "error.create_dirs.message": "Behöver skapa kataloger 'data' och 'logs' för att fortsätta. Kontrollera att programmet har rättigheter att skapa kataloger."
+}
