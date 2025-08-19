@@ -394,10 +394,14 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         cashierCodeField.setVisible(show);
     }
 
+    private DefaultTableModel getEventsTableModel() {
+        return (DefaultTableModel) eventsTable.getModel();
+    }
+
     // Called once an event is selected
     @Override
     public void clearEventsTable() {
-        DefaultTableModel model = (DefaultTableModel) eventsTable.getModel();
+        DefaultTableModel model = getEventsTableModel();
         model.setRowCount(0);
         // Also revert to "noSelection" in the detail area
         detailCardLayout.show(detailCardPanel, "noSelection");
@@ -405,7 +409,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     @Override
     public void populateEventsTable(List<Event> events) {
-        DefaultTableModel model = (DefaultTableModel) eventsTable.getModel();
+        DefaultTableModel model = getEventsTableModel();
         model.setRowCount(0); // Clear first
         for (Event ev : events) {
             model.addRow(new Object[]{
@@ -426,7 +430,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private String getEventIdForRow(int rowIndex) {
         if (rowIndex < 0) return null;
-        DefaultTableModel model = (DefaultTableModel) eventsTable.getModel();
+        DefaultTableModel model = getEventsTableModel();
         return (String) model.getValueAt(rowIndex, 0);
     }
 
