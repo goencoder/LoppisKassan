@@ -60,29 +60,46 @@ public class FormatHelper {
             //   6 -> paymentMethod
             //   7 -> uploaded
 
+            if (columns.length < 7) {
+                System.err.println("Skipping malformed line: " + lines[i]);
+                continue;
+            }
+
             String collectedTime = columns[5];
             LocalDateTime dateTime = null;
             if (!collectedTime.equals("Nej")) {
                 dateTime = stringToDateAndTime(collectedTime);
             }
 
-            // Parse PaymentMethod from columns[6]
-            PaymentMethod pm = PaymentMethod.valueOf(columns[6]);
+            PaymentMethod pm;
+            try {
+                pm = PaymentMethod.valueOf(columns[6]);
+            } catch (IllegalArgumentException e) {
+                System.err.println("Skipping line with invalid payment method: " + lines[i]);
+                continue;
+            }
 
-            // Parse uploaded from columns[7] (if present)
-            SoldItem item = getSoldItem(columns, dateTime, pm);
+            boolean uploaded = false;
+            try {
+                if (columns.length > 7) {
+                    if (!columns[7].equalsIgnoreCase("true") && !columns[7].equalsIgnoreCase("false")) {
+                        throw new IllegalArgumentException("Invalid boolean");
+                    }
+                    uploaded = Boolean.parseBoolean(columns[7]);
+                }
+            } catch (IllegalArgumentException e) {
+                System.err.println("Skipping line with invalid uploaded flag: " + lines[i]);
+                continue;
+            }
+
+            SoldItem item = getSoldItem(columns, dateTime, pm, uploaded);
             items.add(item);
         }
         return items;
     }
 
     @NotNull
-    private static SoldItem getSoldItem(String[] columns, LocalDateTime dateTime, PaymentMethod pm) {
-        boolean uploaded = false;
-        if (columns.length > 7) {
-            uploaded = Boolean.parseBoolean(columns[7]);
-        }
-
+    private static SoldItem getSoldItem(String[] columns, LocalDateTime dateTime, PaymentMethod pm, boolean uploaded) {
         // Construct new SoldItem
         // purchaseId
         // itemId
