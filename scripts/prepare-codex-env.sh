@@ -24,8 +24,11 @@ if [[ ! -f "$CLIENT_JAR" ]]; then
   exit 2
 fi
 
+echo "==> Looking for $CLIENT_JAR"
+ls -la lib
+
 echo "==> Installing local OpenAPI client to ~/.m2 ..."
-mvn -q install:install-file \
+mvn install:install-file \
   -Dfile="$CLIENT_JAR" \
   -DgroupId="$GROUP_ID" \
   -DartifactId="$ARTIFACT_ID" \
@@ -34,15 +37,15 @@ mvn -q install:install-file \
 
 # ---- Build & quality gates ----
 echo "==> Build (skip tests by default for faster codex runs)"
-mvn -q -DskipTests package
+mvn -DskipTests package
 
 echo "==> Unit tests"
-mvn -q test
+mvn test
 
 echo "==> Lint (Checkstyle/SpotBugs if configured) & Enforcer"
-mvn -q -DskipTests verify || true
+mvn -DskipTests verify || true
 
 echo "==> Security (OWASP dependency-check if configured)"
-mvn -q org.owasp:dependency-check-maven:check || true
+mvn org.owasp:dependency-check-maven:check || true
 
 echo "==> Done."
