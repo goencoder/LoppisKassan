@@ -20,17 +20,7 @@ export MAVEN_OPTS += -Djava.net.preferIPv4Stack=true -Dhttp.proxyHost=$(PROXY_HO
 
 proxy:
 	mkdir -p ~/.m2
-	@cat > ~/.m2/settings.xml <<'EOF'
-<settings>
-  <proxies>
-    <proxy>
-      <id>codex</id><active>true</active><protocol>http</protocol>
-      <host>proxy</host><port>8080</port>
-      <nonProxyHosts>localhost|127.0.0.1|::1</nonProxyHosts>
-    </proxy>
-  </proxies>
-</settings>
-EOF
+	cp $(ROOT_DIR)/scripts/maven-settings.xml ~/.m2/settings.xml
 
 help: ## Show help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'

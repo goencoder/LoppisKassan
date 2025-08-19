@@ -1,0 +1,10 @@
+<settings>
+  <proxies>
+    <proxy>
+      <id>codex</id><active>true</active><protocol>http</protocol>
+      <host>proxy</host><port>8080</port>
+      <nonProxyHosts>localhost|127.0.0.1|::1</nonProxyHosts>
+    </proxy>
+  </proxies>
+</settings>
+
