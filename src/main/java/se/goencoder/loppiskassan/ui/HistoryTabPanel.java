@@ -3,6 +3,7 @@ package se.goencoder.loppiskassan.ui;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.controller.HistoryControllerInterface;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -67,7 +68,13 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
      */
     private JTable initializeTable() {
         // Define column names for the table
-        String[] columnNames = {"Säljare", "Pris", "Sålt", "Utbetalt", "Betalningsmedel"};
+        String[] columnNames = {
+                LocalizationManager.tr("history.table.seller"),
+                LocalizationManager.tr("history.table.price"),
+                LocalizationManager.tr("history.table.sold"),
+                LocalizationManager.tr("history.table.paid_out"),
+                LocalizationManager.tr("history.table.payment_method")
+        };
         DefaultTableModel model = new DefaultTableModel(null, columnNames);
 
         // Create the table with a non-editable model
@@ -91,15 +98,41 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
 
         // Paid filter dropdown
         paidFilterDropdown = new JComboBox<>();
-        addFilterRow(filterPanel, gbc, "Utbetalt", paidFilterDropdown, new String[]{"Alla", "Ja", "Nej"});
+        addFilterRow(
+                filterPanel,
+                gbc,
+                LocalizationManager.tr("filter.paid"),
+                paidFilterDropdown,
+                new String[]{
+                        LocalizationManager.tr("filter.all"),
+                        LocalizationManager.tr("filter.yes"),
+                        LocalizationManager.tr("filter.no")
+                }
+        );
 
         // Seller filter dropdown
         sellerFilterDropdown = new JComboBox<>();
-        addFilterRow(filterPanel, gbc, "Säljnummer", sellerFilterDropdown, new String[]{"Alla"});
+        addFilterRow(
+                filterPanel,
+                gbc,
+                LocalizationManager.tr("filter.seller"),
+                sellerFilterDropdown,
+                new String[]{LocalizationManager.tr("filter.all")}
+        );
 
         // Payment method filter dropdown
         paymentTypeFilterDropdown = new JComboBox<>();
-        addFilterRow(filterPanel, gbc, "Betalningsmedel", paymentTypeFilterDropdown, new String[]{"Alla", "Swish", "Kontant"});
+        addFilterRow(
+                filterPanel,
+                gbc,
+                LocalizationManager.tr("filter.payment_method"),
+                paymentTypeFilterDropdown,
+                new String[]{
+                        LocalizationManager.tr("filter.all"),
+                        LocalizationManager.tr("payment.swish"),
+                        LocalizationManager.tr("payment.cash")
+                }
+        );
 
         // Add flexible space to push components to the top
         gbc.weightx = 1;
@@ -147,8 +180,8 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
      */
     private JPanel initializeSummaryPanel() {
         JPanel summaryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        itemsCountLabel = new JLabel("Antal varor: 0");
-        totalSumLabel = new JLabel("Summa: 0 SEK");
+        itemsCountLabel = new JLabel(LocalizationManager.tr("history.items_count", 0));
+        totalSumLabel = new JLabel(LocalizationManager.tr("history.total_sum", 0));
         summaryPanel.add(itemsCountLabel);
         summaryPanel.add(totalSumLabel);
         return summaryPanel;
@@ -166,9 +199,9 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         Dimension buttonSize = new Dimension(150, 50);
 
         // Initialize buttons
-        eraseAllDataButton = createButton(BUTTON_ERASE, buttonSize.width, buttonSize.height);
-        archiveFilteredButton = createButton("Arkivera filtrerat", buttonSize.width, buttonSize.height);
-        importDataButton = createButton(BUTTON_IMPORT, buttonSize.width, buttonSize.height);
+        eraseAllDataButton = createButton(LocalizationManager.tr(BUTTON_ERASE), buttonSize.width, buttonSize.height);
+        archiveFilteredButton = createButton(LocalizationManager.tr("button.archive_filtered"), buttonSize.width, buttonSize.height);
+        importDataButton = createButton(LocalizationManager.tr(BUTTON_IMPORT), buttonSize.width, buttonSize.height);
 
         // Add buttons to the panel
         managementButtonsPanel.add(createFlowRightPanel(eraseAllDataButton));
@@ -197,8 +230,8 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
         JPanel innerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
 
         // Initialize buttons
-        payoutButton = createButton(BUTTON_PAY_OUT, 150, 50);
-        toClipboardButton = createButton(BUTTON_COPY_TO_CLIPBOARD, 150, 50);
+        payoutButton = createButton(LocalizationManager.tr(BUTTON_PAY_OUT), 150, 50);
+        toClipboardButton = createButton(LocalizationManager.tr(BUTTON_COPY_TO_CLIPBOARD), 150, 50);
 
         // Add buttons to the inner panel
         innerPanel.add(payoutButton);
@@ -247,10 +280,10 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
             for (SoldItem item : items) {
                 model.addRow(new Object[]{
                         item.getSeller(),
-                        item.getPrice() + " SEK",
+                        item.getPrice() + " " + LocalizationManager.tr("currency.sek"),
                         item.getSoldTime().toString(),
-                        item.isCollectedBySeller() ? "Ja" : "Nej",
-                        item.getPaymentMethod().toString()
+                        item.isCollectedBySeller() ? LocalizationManager.tr("common.yes") : LocalizationManager.tr("common.no"),
+                        LocalizationManager.tr("payment." + item.getPaymentMethod().toString().toLowerCase())
                 });
             }
         }
@@ -262,12 +295,12 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
 
     @Override
     public void updateSumLabel(String sum) {
-        totalSumLabel.setText("Summa: " + sum + " SEK");
+        totalSumLabel.setText(LocalizationManager.tr("history.total_sum", sum));
     }
 
     @Override
     public void updateNoItemsLabel(String noItems) {
-        itemsCountLabel.setText("Antal varor: " + noItems);
+        itemsCountLabel.setText(LocalizationManager.tr("history.items_count", noItems));
     }
 
     @Override
@@ -289,7 +322,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface {
     @Override
     public void updateSellerDropdown(Set<String> sellers) {
         DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
-        model.addElement("Alla");
+        model.addElement(LocalizationManager.tr("filter.all"));
         sellers.stream()
                 .map(Integer::parseInt)
                 .sorted()

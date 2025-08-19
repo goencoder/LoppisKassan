@@ -12,6 +12,7 @@ import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.utils.EventUtils;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import java.io.IOException;
 import java.util.*;
@@ -262,14 +263,14 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             try {
                 split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
             } catch (IOException e) {
-                Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e.getMessage());
+                Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
                 split = new RevenueSplit();
             }
         }
 
-        selectedEvent.setAddressCity("(ingen stad)");
-        selectedEvent.setDescription("Ingen beskrivning (offline-läge)");
-        selectedEvent.setAddressStreet("(ingen gata)");
+        selectedEvent.setAddressCity(LocalizationManager.tr("event.no_city"));
+        selectedEvent.setDescription(LocalizationManager.tr("event.no_description_offline"));
+        selectedEvent.setAddressStreet(LocalizationManager.tr("event.no_street"));
 
         view.setEventName(selectedEvent.getName());
         view.setEventDescription(selectedEvent.getDescription());
@@ -291,8 +292,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             market = response.getMarket();
         } catch (ApiException e) {
             Popup.WARNING.showAndWait(
-                    "Kunde inte hämta marknadsinfo",
-                    "Kontrollera din internetanslutning, " + e.getMessage());
+                    LocalizationManager.tr("warning.fetch_market_info.title"),
+                    LocalizationManager.tr("warning.fetch_market_info.message", e.getMessage()));
         }
 
         RevenueSplit revenueSplit = Objects.requireNonNull(market).getRevenueSplit();

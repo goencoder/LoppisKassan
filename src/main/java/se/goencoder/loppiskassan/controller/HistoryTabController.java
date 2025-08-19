@@ -13,6 +13,7 @@ import se.goencoder.loppiskassan.ui.ProgressDialog;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.FilterUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -66,7 +67,9 @@ public class HistoryTabController implements HistoryControllerInterface {
             Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
             SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
         } catch (IOException e) {
-            Popup.FATAL.showAndWait("Fel vid inläsning av kassafil: " + LOPPISKASSAN_CSV, e.getMessage());
+            Popup.FATAL.showAndWait(
+                    LocalizationManager.tr("error.read_register_file", LOPPISKASSAN_CSV),
+                    e.getMessage());
         }
     }
 
@@ -114,7 +117,9 @@ public class HistoryTabController implements HistoryControllerInterface {
     private void clearData() {
         // Clear all local data after user confirmation.
         try {
-            if (Popup.CONFIRM.showConfirmDialog(BUTTON_ERASE, "Är du säker på att du vill rensa kassan?")) {
+            if (Popup.CONFIRM.showConfirmDialog(
+                    LocalizationManager.tr(BUTTON_ERASE),
+                    LocalizationManager.tr("confirm.erase_register"))) {
                 FileHelper.createBackupFile();
                 allHistoryItems.clear();
                 filterUpdated();
@@ -134,7 +139,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         try {
             importSoldItemsFromFile(file);
         } catch (Exception e) {
-            Popup.ERROR.showAndWait("Importering misslyckades", e.getMessage());
+            Popup.ERROR.showAndWait(LocalizationManager.tr("error.import_failed"), e.getMessage());
         }
     }
 
@@ -144,13 +149,14 @@ public class HistoryTabController implements HistoryControllerInterface {
 
         if (filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller())) {
             Popup.ERROR.showAndWait(
-                    "Fel vid arkivering av poster",
-                    "Det går inte att arkivera poster som inte är utbetalda.");
+                    LocalizationManager.tr("error.archive_failed.title"),
+                    LocalizationManager.tr("error.archive_unpaid"));
             return;
         }
 
-        if (!Popup.CONFIRM.showConfirmDialog(BUTTON_ARCHIVE,
-                "Är du säker på att du vill arkivera de visade posterna?")) {
+        if (!Popup.CONFIRM.showConfirmDialog(
+                LocalizationManager.tr(BUTTON_ARCHIVE),
+                LocalizationManager.tr("confirm.archive_displayed"))) {
             return;
         }
 
@@ -178,7 +184,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             saveHistoryToFile();
             filterUpdated();
         } catch (ApiException e) {
-            Popup.ERROR.showAndWait("Fel vid utbetalning", e.getMessage());
+            Popup.ERROR.showAndWait(LocalizationManager.tr("error.payout"), e.getMessage());
         }
     }
 
@@ -248,8 +254,8 @@ public class HistoryTabController implements HistoryControllerInterface {
 
                     },
                     e -> Popup.ERROR.showAndWait(
-                            "Nätverksfel",
-                            "Kunde inte hämta poster från iLoppis. Kontrollera din internetanslutning.")
+                            LocalizationManager.tr("error.network_fetch_history.title"),
+                            LocalizationManager.tr("error.network_fetch_history.message"))
             );
         }
     }
@@ -355,16 +361,18 @@ public class HistoryTabController implements HistoryControllerInterface {
     private void archiveItemsToFile(List<SoldItem> filteredItems) {
         // Save filtered items to an archive file with a timestamped filename.
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss"));
-        String fileName = "arkiverade_" + timestamp + ".csv";
+        String fileName = LocalizationManager.tr("history.archive_prefix") + timestamp + ".csv";
 
-        String comment = "# Säljare: " + (view.getSellerFilter() == null ? "Alla" : view.getSellerFilter()) +
-                ", Betalningsmetod: " + (view.getPaymentMethodFilter() == null ? "Alla" : view.getPaymentMethodFilter());
+        String comment = "# " + LocalizationManager.tr("history.comment.seller") + ": " +
+                (view.getSellerFilter() == null ? LocalizationManager.tr("filter.all") : view.getSellerFilter()) +
+                ", " + LocalizationManager.tr("history.comment.payment_method") + ": " +
+                (view.getPaymentMethodFilter() == null ? LocalizationManager.tr("filter.all") : view.getPaymentMethodFilter());
 
         try {
             FileHelper.saveToFile(fileName, comment, FormatHelper.toCVS(filteredItems));
         } catch (IOException e) {
             Popup.FATAL.showAndWait(
-                    "Fel vid arkivering av poster till fil: " + fileName,
+                    LocalizationManager.tr("error.archive_file", fileName),
                     e.getMessage());
         }
     }
@@ -384,9 +392,9 @@ public class HistoryTabController implements HistoryControllerInterface {
         int totalSum = filteredItems.stream().mapToInt(SoldItem::getPrice).sum();
         int provision = (int) (0.1 * totalSum);
 
-        StringBuilder summary = new StringBuilder("Säljredovisning:\n");
-        summary.append(totalItems).append(" varor sålda för totalt ").append(totalSum).append(" SEK.\n");
-        summary.append("Provision: ").append(provision).append(" SEK.\n");
+        StringBuilder summary = new StringBuilder(LocalizationManager.tr("history.summary.header"));
+        summary.append(LocalizationManager.tr("history.summary.items", totalItems, totalSum));
+        summary.append(LocalizationManager.tr("history.summary.provision", provision));
 
         filteredItems.forEach(item -> summary.append(item.toString()).append("\n"));
 
@@ -427,7 +435,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                     networkError = true;
                     break;
                 } else {
-                    Popup.ERROR.showAndWait("Fel vid uppladdning till web", e.getMessage());
+                    Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_web"), e.getMessage());
                     break;
                 }
             }
@@ -440,32 +448,24 @@ public class HistoryTabController implements HistoryControllerInterface {
         if (networkError) {
             // Möjligen vill du också räkna hur många sub‐batchar som redan hade laddats upp innan felet.
             Popup.ERROR.showAndWait(
-                    "Nätverksfel",
-                    "Kunde inte nå servern för att ladda upp fler poster.\n"+
-                            "Vissa batchar kan ha laddats upp innan felet uppstod."
-            );
+                    LocalizationManager.tr("error.network_upload.title"),
+                    LocalizationManager.tr("error.network_upload.message"));
             return false;
         }
 
-        // 6) Visa om vi fick avvisade poster p.g.a. API-fel i subBatch (typ fel data)
+        // 6) Show rejected items due to API errors
         if (!allRejected.isEmpty()) {
-            StringBuilder msg = new StringBuilder("Följande poster avvisades vid uppladdning:\n");
+            StringBuilder msg = new StringBuilder(LocalizationManager.tr("error.upload_rejected.header"));
             for (RejectedItem rejectedItem : allRejected) {
-
-                msg.append("- ")
-                        .append(rejectedItem.getItem().getItemId())
-                        .append(", säljare: ")
-                        .append(rejectedItem.getItem().getSeller())
-                        .append(", pris: ")
-                        .append(rejectedItem.getItem().getPrice())
-                        .append(", betalmetod: ")
-                        .append(rejectedItem.getItem().getPaymentMethod())
-                        .append(", orsak: ")
-                        .append(rejectedItem.getReason())
-                        .append("\n");
+                msg.append(LocalizationManager.tr(
+                        "error.upload_rejected.entry",
+                        rejectedItem.getItem().getItemId(),
+                        rejectedItem.getItem().getSeller(),
+                        rejectedItem.getItem().getPrice(),
+                        rejectedItem.getItem().getPaymentMethod(),
+                        rejectedItem.getReason()));
             }
-            Popup.ERROR.showAndWait("Uppladdning misslyckades för vissa varor", msg.toString());
-            // Returnera false => vi vet att allt inte gick igenom
+            Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_rejected"), msg.toString());
             return false;
         }
 
@@ -538,7 +538,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     private File selectFileForImport() {
         // Open a file chooser dialog to select an external file for import.
         JFileChooser fileChooser = new JFileChooser(FileHelper.getRecordFilePath(LOPPISKASSAN_CSV).toFile());
-        fileChooser.setDialogTitle("Öppna annan kassa-fil");
+        fileChooser.setDialogTitle(LocalizationManager.tr("history.open_other_register"));
         fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
 
         int result = fileChooser.showOpenDialog(null);

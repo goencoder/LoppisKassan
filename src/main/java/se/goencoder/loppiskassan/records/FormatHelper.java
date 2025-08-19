@@ -3,6 +3,7 @@ package se.goencoder.loppiskassan.records;
 import org.jetbrains.annotations.NotNull;
 import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -12,14 +13,21 @@ import java.util.List;
 public class FormatHelper {
     public static final String LINE_ENDING = System.lineSeparator();
     private static final String DELIMITER = ",";
-    public static final String CVS_HEADERS = "Köp-id" + DELIMITER + "Varu-id" + DELIMITER + "tidsstämpel" + DELIMITER
-            + "säljare" + DELIMITER + "pris" + DELIMITER + "utbetalt" + DELIMITER + "Betalningsmetod" + DELIMITER + "uppladdad";
+    public static final String CVS_HEADERS =
+            LocalizationManager.tr("csv.header.purchase_id") + DELIMITER +
+            LocalizationManager.tr("csv.header.item_id") + DELIMITER +
+            LocalizationManager.tr("csv.header.timestamp") + DELIMITER +
+            LocalizationManager.tr("csv.header.seller") + DELIMITER +
+            LocalizationManager.tr("csv.header.price") + DELIMITER +
+            LocalizationManager.tr("csv.header.paid_out") + DELIMITER +
+            LocalizationManager.tr("csv.header.payment_method") + DELIMITER +
+            LocalizationManager.tr("csv.header.uploaded");
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public static String toCVS(List<SoldItem> items) {
         StringBuilder stringBuilder = new StringBuilder();
         for (SoldItem item : items) {
-            String collectedTime = "Nej";
+            String collectedTime = LocalizationManager.tr("common.no");
             if (item.isCollectedBySeller()) {
                 collectedTime = dateAndTimeToString(item.getCollectedBySellerTime());
             }
@@ -62,7 +70,7 @@ public class FormatHelper {
 
             String collectedTime = columns[5];
             LocalDateTime dateTime = null;
-            if (!collectedTime.equals("Nej")) {
+            if (!collectedTime.equals(LocalizationManager.tr("common.no"))) {
                 dateTime = stringToDateAndTime(collectedTime);
             }
 
