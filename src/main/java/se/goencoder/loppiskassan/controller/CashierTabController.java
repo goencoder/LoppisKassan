@@ -148,7 +148,7 @@ public class CashierTabController implements CashierControllerInterface {
                         return null; // We don't need a result
                     },
                     // onSuccess => runs on EDT
-                    _ -> {
+                    unused -> {
                         // No exception => proceed with final checkout flow
                         finishCheckoutFlow();
                     },
