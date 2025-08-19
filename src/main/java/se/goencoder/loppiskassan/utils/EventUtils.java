@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.utils;
 
 import se.goencoder.iloppis.model.Event;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import java.time.OffsetDateTime;
 
@@ -16,10 +17,10 @@ public class EventUtils {
 
     public static void populateOfflineEvent(Event event) {
         event.setId("offline");
-        event.setName("Offline-loppis");
-        event.setDescription("Detta är en offline-loppis. Ingen internetanslutning krävs.");
-        event.setAddressCity("okänd stad");
-        event.setAddressStreet("okänd gata");
+        event.setName(LocalizationManager.tr("event.offline.name"));
+        event.setDescription(LocalizationManager.tr("event.offline.description"));
+        event.setAddressCity(LocalizationManager.tr("event.no_city"));
+        event.setAddressStreet(LocalizationManager.tr("event.no_street"));
         event.setStartTime(OffsetDateTime.now());
         event.setEndTime(null);
     }

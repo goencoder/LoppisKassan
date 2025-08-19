@@ -10,14 +10,11 @@ public class FilterUtils {
     public static List<SoldItem> applyFilters(
             List<SoldItem> items, String paidFilter, String sellerFilter, String paymentMethodFilter) {
         return items.stream()
-                .filter(item -> switch (paidFilter) {
-                    case "Ja" -> item.isCollectedBySeller();
-                    case "Nej" -> !item.isCollectedBySeller();
-                    default -> true;
-                })
-                .filter(item -> sellerFilter == null || sellerFilter.equals("Alla")
+                .filter(item -> paidFilter == null ||
+                        Boolean.parseBoolean(paidFilter) == item.isCollectedBySeller())
+                .filter(item -> sellerFilter == null
                         || Filter.getFilterFunc(Filter.SELLER, sellerFilter).test(item))
-                .filter(item -> paymentMethodFilter == null || paymentMethodFilter.equals("Alla")
+                .filter(item -> paymentMethodFilter == null
                         || Filter.getFilterFunc(Filter.PAYMENT_METHOD, paymentMethodFilter).test(item))
                 .collect(Collectors.toList());
     }

@@ -1,5 +1,6 @@
 package se.goencoder.loppiskassan.records;
 
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 
 import java.io.*;
@@ -66,8 +67,8 @@ public class FileHelper {
             String message = String.format("Cannot read/write file: %s. Writable: %b, Readable: %b", path, canWrite, canRead);
             logger.warning(message);
             Popup.WARNING.showAndWait(
-                    "Problem med filrättigheter",
-                    "Kontrollera att programmet har rättigheter att läsa och skriva till filen: " + path);
+                    LocalizationManager.tr("error.file_permissions.title"),
+                    LocalizationManager.tr("error.file_permissions.message", path));
             return false;
         }
         return true;

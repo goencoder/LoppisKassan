@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -19,15 +20,19 @@ import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
  * Represents the cashier tab in the application, allowing users to input transactions,
  * manage purchases, and perform checkout operations.
  */
-public class CashierTabPanel extends JPanel implements CashierPanelInterface {
+public class CashierTabPanel extends JPanel implements CashierPanelInterface, LocalizationAware {
 
     // Components for the cashier table and input fields
     private JTable cashierTable;
     private JTextField sellerField, pricesField, payedCashField, changeCashField;
     private JLabel noItemsLabel, sumLabel;
+    private JLabel sellerLabel, pricesLabel, paidLabel, changeLabel;
 
     // Buttons for checkout actions
     private JButton cancelCheckoutButton, checkoutCashButton, checkoutSwishButton;
+
+    private int itemsCount = 0;
+    private int sumValue = 0;
 
     /**
      * Initializes the cashier tab panel with its components and controller setup.
@@ -55,6 +60,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
         // Disable checkout buttons initially
         enableCheckoutButtons(false);
+        reloadTexts();
     }
 
     /**
@@ -112,13 +118,17 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         changeCashField.setEditable(false); // Change field should not be editable
 
         // Add labels and fields to the panel
-        fieldsPanel.add(new JLabel(LocalizationManager.tr("cashier.seller_id")));
+        sellerLabel = new JLabel();
+        fieldsPanel.add(sellerLabel);
         fieldsPanel.add(sellerField);
-        fieldsPanel.add(new JLabel(LocalizationManager.tr("cashier.prices_example")));
+        pricesLabel = new JLabel();
+        fieldsPanel.add(pricesLabel);
         fieldsPanel.add(pricesField);
-        fieldsPanel.add(new JLabel(LocalizationManager.tr("cashier.paid")));
+        paidLabel = new JLabel();
+        fieldsPanel.add(paidLabel);
         fieldsPanel.add(payedCashField);
-        fieldsPanel.add(new JLabel(LocalizationManager.tr("cashier.change")));
+        changeLabel = new JLabel();
+        fieldsPanel.add(changeLabel);
         fieldsPanel.add(changeCashField);
 
         // Add a key listener to calculate change dynamically
@@ -142,8 +152,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
         // Info panel for displaying additional details
         JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        noItemsLabel = new JLabel(LocalizationManager.tr("cashier.no_items", 0));
-        sumLabel = new JLabel(LocalizationManager.tr("cashier.sum", 0));
+        noItemsLabel = new JLabel();
+        sumLabel = new JLabel();
         infoPanel.add(noItemsLabel);
         infoPanel.add(sumLabel);
 
@@ -161,9 +171,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         JPanel buttonPanel = new JPanel(new GridLayout(1, 3));
 
         // Initialize buttons
-        cancelCheckoutButton = createButton(LocalizationManager.tr("cashier.cancel_purchase"), 150, 50);
-        checkoutCashButton = createButton(LocalizationManager.tr("cashier.cash"), 150, 50);
-        checkoutSwishButton = createButton(LocalizationManager.tr("cashier.swish"), 150, 50);
+        cancelCheckoutButton = createButton("", 150, 50);
+        checkoutCashButton = createButton("", 150, 50);
+        checkoutSwishButton = createButton("", 150, 50);
 
         // Add buttons to the panel
         buttonPanel.add(cancelCheckoutButton);
@@ -171,6 +181,43 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         buttonPanel.add(checkoutSwishButton);
 
         return buttonPanel;
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        LocalizationManager.addListener(this::reloadTexts);
+    }
+
+    @Override
+    public void removeNotify() {
+        LocalizationManager.removeListener(this::reloadTexts);
+        super.removeNotify();
+    }
+
+    @Override
+    public void reloadTexts() {
+        sellerLabel.setText(LocalizationManager.tr("cashier.seller_id"));
+        pricesLabel.setText(LocalizationManager.tr("cashier.prices_example"));
+        paidLabel.setText(LocalizationManager.tr("cashier.paid"));
+        changeLabel.setText(LocalizationManager.tr("cashier.change"));
+
+        cancelCheckoutButton.setText(LocalizationManager.tr("cashier.cancel_purchase"));
+        checkoutCashButton.setText(LocalizationManager.tr("cashier.cash"));
+        checkoutSwishButton.setText(LocalizationManager.tr("cashier.swish"));
+
+        DefaultTableModel model = (DefaultTableModel) cashierTable.getModel();
+        model.setColumnIdentifiers(new String[]{
+                LocalizationManager.tr("cashier.table.seller"),
+                LocalizationManager.tr("cashier.table.price"),
+                LocalizationManager.tr("cashier.table.item_id")
+        });
+        if (cashierTable.getColumnModel().getColumnCount() > 2) {
+            cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2));
+        }
+
+        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
+        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
     }
 
     // ------------------------------------------------------------------------
@@ -201,12 +248,14 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
     @Override
     public void updateSumLabel(String newText) {
-        sumLabel.setText(LocalizationManager.tr("cashier.sum", newText));
+        sumValue = Integer.parseInt(newText);
+        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
     }
 
     @Override
     public void updateNoItemsLabel(String newText) {
-        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", newText));
+        itemsCount = Integer.parseInt(newText);
+        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
     }
 
     @Override
@@ -273,8 +322,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         pricesField.setText("");
         payedCashField.setText("");
         changeCashField.setText("");
-        sumLabel.setText(LocalizationManager.tr("cashier.sum", 0));
-        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", 0));
+        sumValue = 0;
+        itemsCount = 0;
+        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
+        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
         setFocusToSellerField();
     }
 

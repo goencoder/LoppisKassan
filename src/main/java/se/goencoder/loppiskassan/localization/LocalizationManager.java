@@ -1,6 +1,8 @@
 package se.goencoder.loppiskassan.localization;
 
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Singleton manager for localization. Uses a {@link LocalizationStrategy}
@@ -9,15 +11,27 @@ import java.text.MessageFormat;
 public final class LocalizationManager {
     private static LocalizationStrategy strategy = new JsonLocalizationStrategy("sv");
 
+    /** Listener for language change events. */
+    public interface LanguageChangeListener { void onLanguageChanged(); }
+
+    private static final List<LanguageChangeListener> listeners = new ArrayList<>();
+
     private LocalizationManager() {}
 
+    public static void addListener(LanguageChangeListener l) { listeners.add(l); }
+
+    public static void removeListener(LanguageChangeListener l) { listeners.remove(l); }
+
     /**
-     * Changes the current language.
+     * Changes the current language and notifies listeners.
      *
      * @param languageCode ISO language code (e.g. "sv", "en")
      */
     public static void setLanguage(String languageCode) {
         strategy = new JsonLocalizationStrategy(languageCode);
+        for (LanguageChangeListener l : new ArrayList<>(listeners)) {
+            l.onLanguageChanged();
+        }
     }
 
     /**

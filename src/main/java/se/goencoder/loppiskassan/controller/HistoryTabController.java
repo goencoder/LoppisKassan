@@ -238,20 +238,16 @@ public class HistoryTabController implements HistoryControllerInterface {
         if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
             importData();
         } else {
-
             ProgressDialog.runTask(
                     view.getComponent(),
-                    "Uppdaterar Poster",
-                    "Synkroniserar poster med iLoppis...",
+                    LocalizationManager.tr("history.progress.updating_items"),
+                    LocalizationManager.tr("history.progress.syncing"),
                     () -> {
-
                         uploadSoldItems();
                         downloadSoldItems();
-
                         return null;
                     },
                     unused -> {
-
                     },
                     e -> Popup.ERROR.showAndWait(
                             LocalizationManager.tr("error.network_fetch_history.title"),
@@ -353,7 +349,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             FileUtils.saveSoldItems(allHistoryItems);
         } catch (IOException e) {
             Popup.FATAL.showAndWait(
-                    "Fel vid skrivning till kassafil: " + LOPPISKASSAN_CSV,
+                    LocalizationManager.tr("error.write_register_file", LOPPISKASSAN_CSV),
                     e.getMessage());
         }
     }
@@ -521,16 +517,16 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private boolean isArchiveEnabled() {
         // Enable archive if the "Paid" filter is set to "Yes."
-        return "Ja".equals(view.getPaidFilter());
+        return "true".equals(view.getPaidFilter());
     }
 
     private void updateImportButton() {
         // Update the import button text and enable it based on the current mode.
         boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
         if (isOffline) {
-            view.setImportButtonText("Importera kassa");
+            view.setImportButtonText(LocalizationManager.tr(BUTTON_IMPORT));
         } else {
-            view.setImportButtonText("Uppdatera med Web");
+            view.setImportButtonText(LocalizationManager.tr("button.update_web"));
         }
         view.enableButton(BUTTON_IMPORT, true);
     }
@@ -539,7 +535,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         // Open a file chooser dialog to select an external file for import.
         JFileChooser fileChooser = new JFileChooser(FileHelper.getRecordFilePath(LOPPISKASSAN_CSV).toFile());
         fileChooser.setDialogTitle(LocalizationManager.tr("history.open_other_register"));
-        fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
+        fileChooser.setFileFilter(new FileNameExtensionFilter(LocalizationManager.tr("history.csv_files"), "csv"));
 
         int result = fileChooser.showOpenDialog(null);
         return result == JFileChooser.APPROVE_OPTION ? fileChooser.getSelectedFile() : null;
@@ -561,7 +557,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         filterUpdated();
 
         Popup.INFORMATION.showAndWait(
-                "Import klar!",
-                "Poster importerade: " + importedItems.size());
+                LocalizationManager.tr("info.import_done.title"),
+                LocalizationManager.tr("info.import_done.message", importedItems.size()));
     }
 }
