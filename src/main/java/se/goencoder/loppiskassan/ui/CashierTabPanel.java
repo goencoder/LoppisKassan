@@ -170,6 +170,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
     // Methods for interacting with the CashierControllerInterface
     // ------------------------------------------------------------------------
 
+    private DefaultTableModel getTableModel() {
+        return (DefaultTableModel) cashierTable.getModel();
+    }
+
     @Override
     public void setFocusToSellerField() {
         sellerField.requestFocus();
@@ -184,7 +188,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
     @Override
     public void addSoldItem(SoldItem item) {
-        DefaultTableModel model = (DefaultTableModel) cashierTable.getModel();
+        DefaultTableModel model = getTableModel();
         model.insertRow(0, new Object[]{item.getSeller(), item.getPrice(), item.getItemId()});
     }
 
@@ -250,7 +254,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
     @Override
     public void clearView() {
-        DefaultTableModel model = (DefaultTableModel) cashierTable.getModel();
+        DefaultTableModel model = getTableModel();
         model.setRowCount(0); // Clear table
         sellerField.setText("");
         pricesField.setText("");
