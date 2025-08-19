@@ -14,13 +14,32 @@ JAR_NAME := target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
 .DEFAULT_GOAL := help
 MAVEN ?= mvn
 MFLAGS ?= -B -U
-PROXY_HOST ?= proxy
-PROXY_PORT ?= 8080
-export MAVEN_OPTS += -Djava.net.preferIPv4Stack=true -Dhttp.proxyHost=$(PROXY_HOST) -Dhttp.proxyPort=$(PROXY_PORT) -Dhttps.proxyHost=$(PROXY_HOST) -Dhttps.proxyPort=$(PROXY_PORT) -Dhttp.nonProxyHosts=localhost\|127.0.0.1\|::1
+
+# Detect if we're running in Codex by checking if /workspace exists
+IN_CODEX := $(shell test -d /workspace && echo 1 || echo 0)
+
+# Configure Maven options based on environment
+ifeq ($(IN_CODEX),1)
+    PROXY_HOST ?= proxy
+    PROXY_PORT ?= 8080
+    export MAVEN_OPTS += -Djava.net.preferIPv4Stack=true -Dhttp.proxyHost=$(PROXY_HOST) -Dhttp.proxyPort=$(PROXY_PORT) -Dhttps.proxyHost=$(PROXY_HOST) -Dhttps.proxyPort=$(PROXY_PORT) -Dhttp.nonProxyHosts=localhost\|127.0.0.1\|::1
+    $(info Detected Codex environment, enabling proxy settings)
+    MVN_PROXY_FLAGS :=
+else
+    # For local builds, explicitly disable proxy settings
+    export MAVEN_OPTS :=
+    MVN_PROXY_FLAGS := -Dhttp.proxyHost= -Dhttps.proxyHost= -Dhttp.proxyPort= -Dhttps.proxyPort=
+    $(info Detected local environment, disabling proxy settings)
+endif
 
 proxy:
+ifeq ($(IN_CODEX),1)
 	mkdir -p ~/.m2
 	cp $(ROOT_DIR)/scripts/maven-settings.xml ~/.m2/settings.xml
+	@echo "Proxy settings configured for Codex environment"
+else
+	@echo "Skipping proxy configuration for local environment"
+endif
 
 help: ## Show help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -30,30 +49,30 @@ java-version: ## Print java & maven versions
 	mvn -v || true
 
 install-client: proxy
-	$(MAVEN) $(MFLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
 	  -Dfile=lib/openapi-java-client-0.0.4.jar \
 	  -DpomFile=lib/openapi-java-client-0.0.4.pom
 
 build: install-client ## Build fat jar (skip tests for speed)
-	mvn -q -DskipTests package
+	mvn -q $(MVN_PROXY_FLAGS) -DskipTests package
 
 build-codex: install-client
-	$(MAVEN) $(MFLAGS) -DskipTests -Dexec.skip=true package
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests -Dexec.skip=true package
 
 test: ## Run unit tests
-	mvn -q test
+	mvn -q $(MVN_PROXY_FLAGS) test
 
 verify: ## Lint & enforce rules (Checkstyle/SpotBugs/Enforcer if configured)
-	mvn -q -DskipTests verify
+	mvn -q $(MVN_PROXY_FLAGS) -DskipTests verify
 
 security: ## OWASP Dependency-Check (if plugin present)
-	mvn org.owasp:dependency-check-maven:check
+	mvn $(MVN_PROXY_FLAGS) org.owasp:dependency-check-maven:check
 
 run: ## Run the packaged app (requires jpackage/fat jar step)
 	@if [ ! -f "$(JAR_NAME)" ]; then echo "Jar not found. Run: make build"; exit 3; fi
 	java --enable-preview -jar $(JAR_NAME)
 
 clean: ## Clean build artifacts
-	mvn -q clean
+	mvn -q $(MVN_PROXY_FLAGS) clean
 
 ci: java-version install-client build test verify  ## What CI (codex) should run (TODO add security her after we get an NVD API Key )
