@@ -1,0 +1,7 @@
+target/
+*.jar
+.log
+logs/
+.idea/
+.DS_Store
+dependency-check-report.
