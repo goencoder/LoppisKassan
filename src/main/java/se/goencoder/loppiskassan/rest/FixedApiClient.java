@@ -17,6 +17,7 @@ public class FixedApiClient extends ApiClient {
 
     /**
      * Override the serialize method to ensure content type is never null
+     * and implement it directly without calling the problematic parent method
      */
     @Override
     public RequestBody serialize(Object obj, String contentType) throws ApiException {
@@ -25,8 +26,16 @@ public class FixedApiClient extends ApiClient {
             contentType = "application/json";
         }
 
-        // Call the parent implementation with the guaranteed non-null content type
-        return super.serialize(obj, contentType);
+        try {
+            // Serialize the object to JSON using the same JSON serializer as the parent
+            String json = getJSON().serialize(obj);
+
+            // Create the RequestBody with the correct parameter order for OkHttp 3.x
+            MediaType mediaType = MediaType.parse(contentType);
+            return RequestBody.create(mediaType, json);
+        } catch (Exception e) {
+            throw new ApiException("Failed to serialize object: " + e.getMessage(), e, 500, Collections.emptyMap());
+        }
     }
 
     /**
