@@ -25,11 +25,6 @@ ifeq ($(IN_CODEX),1)
     export MAVEN_OPTS += -Djava.net.preferIPv4Stack=true -Dhttp.proxyHost=$(PROXY_HOST) -Dhttp.proxyPort=$(PROXY_PORT) -Dhttps.proxyHost=$(PROXY_HOST) -Dhttps.proxyPort=$(PROXY_PORT) -Dhttp.nonProxyHosts=localhost\|127.0.0.1\|::1
     $(info Detected Codex environment, enabling proxy settings)
     MVN_PROXY_FLAGS :=
-else
-    # For local builds, explicitly disable proxy settings
-    export MAVEN_OPTS :=
-    MVN_PROXY_FLAGS := -Dhttp.proxyHost= -Dhttps.proxyHost= -Dhttp.proxyPort= -Dhttps.proxyPort=
-    $(info Detected local environment, disabling proxy settings)
 endif
 
 proxy:
@@ -41,39 +36,12 @@ else
 	@echo "Skipping proxy configuration for local environment"
 endif
 
-help: ## Show help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS=":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-java-version: ## Print java & maven versions
-	java -version || true
-	mvn -v || true
 
 install-client: proxy
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
 	  -Dfile=lib/openapi-java-client-0.0.4.jar \
 	  -DpomFile=lib/openapi-java-client-0.0.4.pom
 
-build: install-client ## Build fat jar (skip tests for speed)
-	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package
-
 build-codex: install-client ## Build for Codex (no jpackage)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package
-
-test: ## Run unit tests
-	mvn -q $(MVN_PROXY_FLAGS) test
-
-verify: ## Lint & enforce rules (Checkstyle/SpotBugs/Enforcer if configured)
-	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests verify
-
-security: ## OWASP Dependency-Check (if plugin present)
-	mvn $(MVN_PROXY_FLAGS) org.owasp:dependency-check-maven:check
-
-run: ## Run the packaged app (headless guard)
-	@if [ -z "$$DISPLAY" ]; then echo "Headless env: skipping 'make run'."; exit 0; fi
-	@if [ ! -f "$(JAR_NAME)" ]; then echo "Jar not found. Run: make build"; exit 3; fi
-	java --enable-preview -jar $(JAR_NAME)
-
-clean: ## Clean build artifacts
-	mvn -q $(MVN_PROXY_FLAGS) clean
-
-ci: java-version install-client build-codex test verify  ## What CI (codex) should run
