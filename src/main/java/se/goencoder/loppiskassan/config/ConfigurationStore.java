@@ -36,11 +36,23 @@ public enum ConfigurationStore {
                     properties.load(input);
                 }
             } else {
-                // Create the file if it doesn't exist
+                // Create the file if it doesn't exist and set default values
                 if (configFile.createNewFile()) {
+                    // Set sensible defaults
+                    properties.setProperty("language", "sv");
+                    properties.setProperty("offline_event", "false");
+
                     try (OutputStream output = new FileOutputStream(configFile)) {
                         properties.store(output, "Application Configuration");
                     }
+                }
+            }
+
+            // Ensure language always has a default value, even if config exists but language is missing
+            if (properties.getProperty("language") == null) {
+                properties.setProperty("language", "sv");
+                try (OutputStream output = new FileOutputStream(CONFIG_FILE_PATH)) {
+                    properties.store(output, "Application Configuration");
                 }
             }
         } catch (IOException ex) {
@@ -54,7 +66,12 @@ public enum ConfigurationStore {
         this.key = key;
     }
     public static void reset() {
+        // retain the language selection
+        String lang = properties.getProperty("language", "sv");
         properties.clear();
+        // Set sensible defaults after reset
+        properties.setProperty("language", lang);
+        properties.setProperty("offline_event", "false");
         saveProperties();
     }
 
@@ -90,5 +107,3 @@ public enum ConfigurationStore {
 
 
 }
-
-

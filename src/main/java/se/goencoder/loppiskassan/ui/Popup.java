@@ -2,12 +2,15 @@ package se.goencoder.loppiskassan.ui;
 
 
 
-import javax.swing.*;
+import javax.swing.JOptionPane;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Logger;
 
+import org.json.JSONObject;
+import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 
@@ -45,7 +48,41 @@ public enum Popup {
      */
     public void showAndWait(String title, Object information) {
         String info = null;
-        if (information instanceof Exception) {
+        if (information instanceof ApiException) {
+            String body = ((ApiException) information).getResponseBody();
+            if (body != null && !body.isEmpty()) {
+                try {
+                    JSONObject jsonObj = new JSONObject(body);
+                    String language = LocalizationManager.getLanguage();
+                    String localizedMessage = null;
+                    if (jsonObj.has("details")) {
+                        for (Object detailObj : jsonObj.getJSONArray("details")) {
+                            if (detailObj instanceof JSONObject) {
+                                JSONObject detail = (JSONObject) detailObj;
+                                if ("type.googleapis.com/google.rpc.LocalizedMessage".equals(detail.optString("@type"))) {
+                                    String localeStr = detail.optString("locale");
+                                    Locale detailLocale = Locale.forLanguageTag(localeStr.replace('_', '-'));
+                                    if (language.equalsIgnoreCase(detailLocale.getLanguage())) {
+                                        localizedMessage = detail.optString("message", null);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (localizedMessage != null) {
+                        info = localizedMessage;
+                    } else {
+                        info = ((ApiException)information).getMessage();
+                    }
+                } catch (org.json.JSONException ex) {
+                    logger.warning("Failed to parse JSON from ApiException: " + ex.getMessage());
+                    info = ex.getMessage();
+                }
+            } else {
+                info = LocalizationManager.tr("error.api_exception.default");
+            }
+        } else if (information instanceof Exception) {
             // Convert the stack trace of an exception into a string
             StringWriter sw = new StringWriter();
             ((Exception) information).printStackTrace(new PrintWriter(sw));
@@ -54,6 +91,7 @@ public enum Popup {
             // Convert the information object to a string if it's not an exception
             info = information.toString();
         }
+
 
         // Use JOptionPane to display the message
         JOptionPane.showMessageDialog(null, Objects.requireNonNull(info).substring(0, Math.min(info.length(), 400)), title, messageType);
