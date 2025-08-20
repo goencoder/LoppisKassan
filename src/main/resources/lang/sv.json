@@ -145,5 +145,7 @@
   "info.import_done.message": "Poster importerade: {0}",
   "error.write_register_file": "Fel vid skrivning till kassafil: {0}",
   "error.file_permissions.title": "Problem med filrättigheter",
-  "error.file_permissions.message": "Kontrollera att programmet har rättigheter att läsa och skriva till filen: {0}"
+  "error.file_permissions.message": "Kontrollera att programmet har rättigheter att läsa och skriva till filen: {0}",
+  "language.swedish": "Svenska",
+  "language.english": "Engelska"
 }
