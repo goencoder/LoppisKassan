@@ -137,7 +137,7 @@ public final class LanguageSelector extends JPanel {
         private final Icon left, right;
         private final int gap;
 
-        CompoundIcon(Icon left, Icon right) { this(left, right, 6); }
+        CompoundIcon(Icon left, Icon right) { this(left, right, UiKnobs.LANG_ICON_CHEVRON_GAP); }
         CompoundIcon(Icon left, Icon right, int gap) { this.left = left; this.right = right; this.gap = gap; }
 
         @Override public int getIconWidth() { return left.getIconWidth() + gap + right.getIconWidth(); }
