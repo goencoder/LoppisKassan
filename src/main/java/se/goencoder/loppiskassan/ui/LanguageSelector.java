@@ -84,7 +84,7 @@ public final class LanguageSelector extends JPanel {
             });
             // Keep rows consistent height
             mi.setPreferredSize(new Dimension(
-                    Math.max(mi.getPreferredSize().width, 160),
+                    Math.max(mi.getPreferredSize().width, UiKnobs.LANG_POPUP_ITEM_MIN_W),
                     UiKnobs.LANG_POPUP_ROW_HEIGHT + UiKnobs.LANG_POPUP_ITEM_PAD.top + UiKnobs.LANG_POPUP_ITEM_PAD.bottom
             ));
             menu.add(mi);
