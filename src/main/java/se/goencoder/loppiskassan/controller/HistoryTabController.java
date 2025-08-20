@@ -472,44 +472,55 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private List<RejectedItem> uploadBatch(List<SoldItem> batch) throws ApiException {
-        // 1. Build a SoldItemsServiceCreateSoldItemsBody object for all items in the batch
-        SoldItemsServiceCreateSoldItemsBody requestBody = new SoldItemsServiceCreateSoldItemsBody();
+        // Group items by purchase ID to ensure server compatibility
+        Map<String, List<SoldItem>> purchaseGroups = batch.stream()
+                .collect(Collectors.groupingBy(item -> {
+                    String purchaseId = item.getPurchaseId();
+                    if (purchaseId == null || purchaseId.trim().isEmpty()) {
+                        purchaseId = se.goencoder.loppiskassan.utils.UlidGenerator.generate();
+                        item.setPurchaseId(purchaseId);
+                    }
+                    return purchaseId;
+                }));
 
-        for (SoldItem localItem : batch) {
-            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
-            // Set timezone before adding to the request
-            apiItem.setSoldTime(OffsetDateTime.of(
-                    localItem.getSoldTime(),
-                    OffsetDateTime.now().getOffset()
-            ));
-            requestBody.addItemsItem(apiItem);
-        }
+        List<RejectedItem> allRejected = new ArrayList<>();
 
-        // 2. Call the API and receive the result
-        CreateSoldItemsResponse response =
-                ApiHelper.INSTANCE.getSoldItemsServiceApi()
-                        .soldItemsServiceCreateSoldItems(
-                                ConfigurationStore.EVENT_ID_STR.get(),
-                                requestBody);
+        // Upload each purchase group separately to avoid "purchaseId mismatch" errors
+        for (List<SoldItem> purchaseItems : purchaseGroups.values()) {
+            SoldItemsServiceCreateSoldItemsBody requestBody = new SoldItemsServiceCreateSoldItemsBody();
 
-        // 3. Create a map to easily find the right object in the batch
-        Map<String, SoldItem> localMap = batch.stream()
-                .collect(Collectors.toMap(SoldItem::getItemId, Function.identity()));
+            for (SoldItem localItem : purchaseItems) {
+                se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
+                apiItem.setSoldTime(OffsetDateTime.of(
+                        localItem.getSoldTime(),
+                        OffsetDateTime.now().getOffset()
+                ));
+                requestBody.addItemsItem(apiItem);
+            }
 
-        // 4. Handle acceptedItems:
-        //    Mark them as uploaded (isUploaded = true) in the local objects
-        if (response.getAcceptedItems() != null) {
-            for (se.goencoder.iloppis.model.SoldItem accepted : response.getAcceptedItems()) {
-                SoldItem localItem = localMap.get(accepted.getItemId());
-                if (localItem != null) {
-                    localItem.setUploaded(true);
-                    // Update more fields if needed, e.g., collectedBySellerTime etc.
+            CreateSoldItemsResponse response = ApiHelper.INSTANCE.getSoldItemsServiceApi()
+                    .soldItemsServiceCreateSoldItems(ConfigurationStore.EVENT_ID_STR.get(), requestBody);
+
+            // Mark accepted items as uploaded
+            if (response.getAcceptedItems() != null) {
+                Map<String, SoldItem> localMap = purchaseItems.stream()
+                        .collect(Collectors.toMap(SoldItem::getItemId, Function.identity()));
+
+                for (se.goencoder.iloppis.model.SoldItem accepted : response.getAcceptedItems()) {
+                    SoldItem localItem = localMap.get(accepted.getItemId());
+                    if (localItem != null) {
+                        localItem.setUploaded(true);
+                    }
                 }
+            }
+
+            // Collect rejected items
+            if (response.getRejectedItems() != null) {
+                allRejected.addAll(response.getRejectedItems());
             }
         }
 
-        // 5. Handle rejectedItems
-        return response.getRejectedItems();
+        return allRejected;
     }
 
     private boolean isPayoutEnabled(List<SoldItem> filteredItems) {

@@ -112,6 +112,8 @@
   "info.register_ready.message": "Kassan är redo att användas.",
   "error.fetch_token.title": "Kunde inte hämta token",
   "error.fetch_token.message": "Felaktig kassakod? {0}",
+  "error.cashier_code_required": "Kassakod krävs för online-loppisar.",
+  "error.title": "Fel",
   "confirm.change_event.title": "Byt event?",
   "confirm.change_event.message": "Alla dina lokala registerposter kommer att raderas.\nOm du är offline går de förlorade för alltid.\nOm du är online går ej uppladdade poster förlorade.\n\nVill du fortsätta?",
   "error.clear_register_file": "Fel vid rensning av kassafil: {0}",

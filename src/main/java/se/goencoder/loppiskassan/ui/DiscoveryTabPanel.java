@@ -146,7 +146,20 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         discoverButton.addActionListener(e -> controller.discoverEvents(dateFromField.getText().trim()));
         getTokenButton.addActionListener(e -> {
             int rowIndex = getSelectedTableRow();
-            controller.openRegister(getEventIdForRow(rowIndex), getCashierCode());
+            String eventId = getEventIdForRow(rowIndex);
+            String cashierCode = getCashierCode();
+            if (eventId == null || eventId.isEmpty()) {
+                controller.openRegister(eventId, cashierCode);
+                return;
+            }
+            boolean isOffline = "offline".equalsIgnoreCase(eventId);
+            if (!isOffline && cashierCode.isEmpty()) {
+                Popup.ERROR.showAndWait(
+                        LocalizationManager.tr("error.title"),
+                        LocalizationManager.tr("error.cashier_code_required"));
+                return;
+            }
+            controller.openRegister(eventId, cashierCode);
         });
 
         return panel;
