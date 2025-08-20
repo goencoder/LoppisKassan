@@ -66,9 +66,11 @@ public enum ConfigurationStore {
         this.key = key;
     }
     public static void reset() {
+        // retain the language selection
+        String lang = properties.getProperty("language", "sv");
         properties.clear();
         // Set sensible defaults after reset
-        properties.setProperty("language", "sv");
+        properties.setProperty("language", lang);
         properties.setProperty("offline_event", "false");
         saveProperties();
     }

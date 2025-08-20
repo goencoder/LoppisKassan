@@ -39,6 +39,7 @@ public class Main {
         loggerCreated = true;
         FileHandler mFileHandler;
         final Logger parentLogger = Logger.getAnonymousLogger().getParent();
+        parentLogger.setLevel(Level.INFO); // Set the root logger to capture all levels
         final Handler[] handlers = parentLogger.getHandlers();
         for (final Handler handler : handlers) {
             if (handler instanceof ConsoleHandler) {

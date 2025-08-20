@@ -11,8 +11,6 @@ import java.util.List;
  * to retrieve translations. The default language is Swedish.
  */
 public final class LocalizationManager {
-    private static LocalizationStrategy strategy;
-
     /** Listener for language change events. */
     public interface LanguageChangeListener { void onLanguageChanged(); }
 
@@ -32,8 +30,6 @@ public final class LocalizationManager {
         if (ConfigurationStore.LANGUAGE_STR.get() == null) {
             ConfigurationStore.LANGUAGE_STR.set("sv");
         }
-        // Initialize strategy with the configured language
-        strategy = new JsonLocalizationStrategy(ConfigurationStore.LANGUAGE_STR.get());
     }
 
     /**
@@ -43,7 +39,6 @@ public final class LocalizationManager {
      */
     public static void setLanguage(String languageCode) {
         ConfigurationStore.LANGUAGE_STR.set(languageCode);
-        strategy = new JsonLocalizationStrategy(languageCode);
         for (LanguageChangeListener l : new ArrayList<>(listeners)) {
             l.onLanguageChanged();
         }
@@ -53,19 +48,13 @@ public final class LocalizationManager {
         return ConfigurationStore.LANGUAGE_STR.get();
     }
 
-    public static void reloadFromConfig() {
-        strategy = new JsonLocalizationStrategy(ConfigurationStore.LANGUAGE_STR.get());
-    }
-
     /**
      * Returns the translation for the given key, formatting using
      * {@link MessageFormat} when arguments are provided.
      */
     public static String tr(String key, Object... args) {
-        // Ensure strategy is initialized
-        if (strategy == null) {
-            initialize();
-        }
+        // Always get the latest language from the configuration
+        LocalizationStrategy strategy = new JsonLocalizationStrategy(getLanguage());
         String value = strategy.get(key);
         return args.length > 0 ? MessageFormat.format(value, args) : value;
     }

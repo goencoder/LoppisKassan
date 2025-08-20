@@ -2,9 +2,10 @@ package se.goencoder.loppiskassan.ui;
 
 
 
-import javax.swing.*;
+import javax.swing.JOptionPane;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Logger;
 
@@ -57,10 +58,13 @@ public enum Popup {
                     for (Object detailObj : jsonObj.getJSONArray("details")) {
                         if (detailObj instanceof JSONObject) {
                             JSONObject detail = (JSONObject) detailObj;
-                            if ("type.googleapis.com/google.rpc.LocalizedMessage".equals(detail.optString("@type"))
-                                    && language.equals(detail.optString("locale"))) {
-                                localizedMessage = detail.optString("message", null);
-                                break;
+                            if ("type.googleapis.com/google.rpc.LocalizedMessage".equals(detail.optString("@type"))) {
+                                String localeStr = detail.optString("locale");
+                                Locale detailLocale = Locale.forLanguageTag(localeStr.replace('_', '-'));
+                                if (language.equalsIgnoreCase(detailLocale.getLanguage())) {
+                                    localizedMessage = detail.optString("message", null);
+                                    break;
+                                }
                             }
                         }
                     }
