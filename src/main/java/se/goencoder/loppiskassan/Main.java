@@ -5,6 +5,7 @@ import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.UserInterface;
+import se.goencoder.loppiskassan.ui.Theme;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -19,6 +20,7 @@ public class Main {
      * Initierar och visar huvudfönstret för Swing-applikationen.
      */
     private static void createAndShowGUI() {
+        Theme.install(); // Install look & feel before creating components
         UserInterface frame = new UserInterface();
         frame.setTitle(LocalizationManager.tr("frame.title"));
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
