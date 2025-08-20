@@ -111,9 +111,25 @@ public final class LanguageSelector extends JPanel {
     }
 
     private static String currentLanguage() {
-        // If you persist language elsewhere, hook it here.
-        // Default to "sv" to match existing behavior.
-        return "sv";
+        return LocalizationManager.getLanguage();
+    }
+
+    public void selectLanguage(String code) {
+        if (code == null) {
+            return;
+        }
+        if (!code.equals(currentLanguage())) {
+            LocalizationManager.setLanguage(code);
+            updateTriggerForCurrentLanguage();
+        }
+    }
+
+    public String getSelectedLanguageCode() {
+        return currentLanguage();
+    }
+
+    public String getTriggerTooltip() {
+        return trigger.getToolTipText();
     }
 
     // Helper to paint two icons side-by-side (flag + chevron)
