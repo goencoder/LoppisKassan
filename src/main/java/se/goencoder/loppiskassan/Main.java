@@ -64,6 +64,9 @@ public class Main {
             FileHelper.createDirectories();
             createLogger();
 
+            // Initialize localization system with proper language configuration
+            LocalizationManager.initialize();
+
             // Schemalägg jobbet för händelseavkodningstråden (EDT)
             SwingUtilities.invokeLater(Main::createAndShowGUI);
         } catch (IOException e) {

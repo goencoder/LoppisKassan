@@ -228,7 +228,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             if (ex instanceof ApiException) {
                 Popup.ERROR.showAndWait(
                         LocalizationManager.tr("error.fetch_token.title"),
-                        LocalizationManager.tr("error.fetch_token.message", ex.getMessage()));
+                        ex);
             } else {
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
             }

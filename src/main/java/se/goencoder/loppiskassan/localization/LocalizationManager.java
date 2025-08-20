@@ -11,7 +11,7 @@ import java.util.List;
  * to retrieve translations. The default language is Swedish.
  */
 public final class LocalizationManager {
-    private static LocalizationStrategy strategy = new JsonLocalizationStrategy(languageFromConfig());
+    private static LocalizationStrategy strategy;
 
     /** Listener for language change events. */
     public interface LanguageChangeListener { void onLanguageChanged(); }
@@ -23,6 +23,18 @@ public final class LocalizationManager {
     public static void addListener(LanguageChangeListener l) { listeners.add(l); }
 
     public static void removeListener(LanguageChangeListener l) { listeners.remove(l); }
+
+    /**
+     * Initialize the localization system. Should be called once at application startup.
+     */
+    public static void initialize() {
+        // Ensure language is set to default if not already configured
+        if (ConfigurationStore.LANGUAGE_STR.get() == null) {
+            ConfigurationStore.LANGUAGE_STR.set("sv");
+        }
+        // Initialize strategy with the configured language
+        strategy = new JsonLocalizationStrategy(ConfigurationStore.LANGUAGE_STR.get());
+    }
 
     /**
      * Changes the current language and notifies listeners.
@@ -38,11 +50,11 @@ public final class LocalizationManager {
     }
 
     public static String getLanguage() {
-        return languageFromConfig();
+        return ConfigurationStore.LANGUAGE_STR.get();
     }
 
     public static void reloadFromConfig() {
-        strategy = new JsonLocalizationStrategy(languageFromConfig());
+        strategy = new JsonLocalizationStrategy(ConfigurationStore.LANGUAGE_STR.get());
     }
 
     /**
@@ -50,12 +62,11 @@ public final class LocalizationManager {
      * {@link MessageFormat} when arguments are provided.
      */
     public static String tr(String key, Object... args) {
+        // Ensure strategy is initialized
+        if (strategy == null) {
+            initialize();
+        }
         String value = strategy.get(key);
         return args.length > 0 ? MessageFormat.format(value, args) : value;
-    }
-
-    private static String languageFromConfig() {
-        String value = ConfigurationStore.LANGUAGE_STR.get();
-        return value != null ? value : "sv";
     }
 }
