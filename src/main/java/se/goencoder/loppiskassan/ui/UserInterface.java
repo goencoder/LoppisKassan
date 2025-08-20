@@ -79,11 +79,14 @@ public class UserInterface extends JFrame implements LocalizationAware {
     }
 
     private JPanel createLanguagePanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 6));
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
         panel.setOpaque(false);
-        // Drop-in språkväljare (flag + caret). Läs/skriv ev. persisterat val i ConfigurationStore om du vill.
-        LanguageSelector selector = new LanguageSelector();
-        panel.add(selector);
+
+        panel.add(Box.createHorizontalGlue());
+        panel.add(new LanguageSelector());
+        panel.add(Box.createHorizontalStrut(8));
+
         return panel;
     }
 

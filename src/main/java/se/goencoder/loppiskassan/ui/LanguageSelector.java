@@ -1,118 +1,91 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.ui.icons.FlagIcon;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import java.awt.*;
-import java.io.InputStream;
-import java.util.Objects;
 
-/**
- * Språk-dropdown med PNG flaggor och ✓ för valt språk.
- * Anropar LocalizationManager.setLanguage(code) vid val och uppdaterar UI.
- */
-public class LanguageSelector extends JPanel {
+public final class LanguageSelector extends JPanel {
+    public static final class LanguageItem {
+        public final String code;      // "sv" or "en"
+        public final String labelKey;  // "language.swedish" / "language.english"
+        public final Icon icon;
 
-    public static final class LocaleOption {
-        public final String code;   // "sv", "en"
-        public final String labelKey; // t.ex. "language.swedish"
-        public final String flagFile; // "se@1x.png", "gb@1x.png"
-        public LocaleOption(String code, String labelKey, String flagFile) {
+        public LanguageItem(String code, String labelKey, Icon icon) {
             this.code = code;
             this.labelKey = labelKey;
-            this.flagFile = flagFile;
+            this.icon = icon;
         }
-        @Override public String toString() { return code; }
+
+        @Override public String toString() { return LocalizationManager.tr(labelKey); }
     }
 
-    private final JComboBox<LocaleOption> combo;
+    private final JComboBox<LanguageItem> combo;
 
     public LanguageSelector() {
-        setOpaque(false);
         setLayout(new BorderLayout());
 
-        // Tillgängliga språk här – lägg till fler vid behov
-        LocaleOption[] options = new LocaleOption[] {
-                new LocaleOption("sv", "language.swedish", "se@1x.png"),
-                new LocaleOption("en", "language.english", "gb@1x.png")
-        };
+        LanguageItem sv = new LanguageItem(
+                "sv", "language.swedish",
+                new FlagIcon("flags/se", UiKnobs.FLAG_W, UiKnobs.FLAG_H)
+        );
+        LanguageItem en = new LanguageItem(
+                "en", "language.english",
+                new FlagIcon("flags/gb", UiKnobs.FLAG_W, UiKnobs.FLAG_H)
+        );
 
-        combo = new JComboBox<>(options);
-        combo.setRenderer(new FlagRenderer(combo));
-        combo.setFocusable(false);
-        combo.setBorder(new EmptyBorder(2, 6, 2, 6));
-        // Välj default (sv) – eller läs från ev. konfiguration om du vill persistera val
-        combo.setSelectedIndex(0);
+        combo = new JComboBox<>(new DefaultComboBoxModel<>(new LanguageItem[]{ sv, en }));
+        combo.setFont(UiKnobs.LANG_FONT);
+        combo.setMaximumRowCount(6);
+        combo.setRenderer(new FlagRenderer());
+        combo.setPrototypeDisplayValue(en); // ensures width for longest label
+        combo.setPreferredSize(new Dimension(
+                Math.max(UiKnobs.LANG_SELECTOR_MIN_WIDTH, combo.getPreferredSize().width),
+                UiKnobs.LANG_SELECTOR_HEIGHT
+        ));
+
+        String cur = getCurrentLanguageCode();
+        combo.setSelectedItem("en".equals(cur) ? en : sv);
 
         combo.addActionListener(e -> {
-            LocaleOption sel = (LocaleOption) combo.getSelectedItem();
-            if (sel != null) {
-                LocalizationManager.setLanguage(sel.code);
-                // Ev. spara i konfiguration här om du vill persistera språkvalet
-            }
+            LanguageItem li = (LanguageItem) combo.getSelectedItem();
+            if (li != null) LocalizationManager.setLanguage(li.code);
         });
 
         add(combo, BorderLayout.CENTER);
     }
 
-    /**
-     * Custom renderer som ritar PNG flagga + (valfritt) text och ✓ på det aktuella valet i popup-listan.
-     * I stängd vy kan vi dölja text för ett rent "flag + caret"-utseende.
-     */
-    private static class FlagRenderer extends DefaultListCellRenderer {
-        private final JComboBox<LocaleOption> owner;
-        FlagRenderer(JComboBox<LocaleOption> owner) { this.owner = owner; }
-
-        @Override
-        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                      boolean isSelected, boolean cellHasFocus) {
-            JLabel lbl = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-            lbl.setBorder(new EmptyBorder(4, 8, 4, 8));
-            lbl.setOpaque(true);
-
-            if (!(value instanceof LocaleOption opt)) {
-                lbl.setText("");
-                lbl.setIcon(null);
-                return lbl;
-            }
-
-            boolean closedView = (index == -1);
-            boolean showText = closedView ? UiKnobs.LANG_BUTTON_SHOW_TEXT : UiKnobs.LANG_POPUP_SHOW_TEXT;
-
-            // Load PNG flag icon
-            Icon icon = loadPngFlag(opt.flagFile, UiKnobs.LANG_ICON_SIZE_PX);
-            String text = LocalizationManager.tr(opt.labelKey);
-
-            lbl.setIcon(icon);
-            lbl.setText(showText ? "  " + text : "");
-
-            // Add ✓ to the selected row in the popup only
-            if (!closedView) {
-                Object selected = owner.getSelectedItem();
-                if (Objects.equals(selected, opt)) {
-                    lbl.setText("✓  " + lbl.getText());
-                }
-            }
-
-            return lbl;
-        }
+    private static String getCurrentLanguageCode() {
+        return "sv"; // default
     }
 
-    private static Icon loadPngFlag(String flagFile, int sizePx) {
-        String path = UiKnobs.LANG_FLAGS_PATH + flagFile;
-        try (InputStream is = LanguageSelector.class.getResourceAsStream(path)) {
-            if (is == null) {
-                System.err.println("Could not find flag file: " + path);
-                return null;
+    private static final class FlagRenderer extends BasicComboBoxRenderer {
+        @Override
+        public Component getListCellRendererComponent(
+                JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+
+            LanguageItem item = (LanguageItem) value;
+            setIcon(item.icon);
+            setText(LocalizationManager.tr(item.labelKey));
+            setFont(UiKnobs.LANG_FONT);
+            setBorder(BorderFactory.createEmptyBorder(
+                    UiKnobs.LANG_CELL_PADDING.top,
+                    UiKnobs.LANG_CELL_PADDING.left,
+                    UiKnobs.LANG_CELL_PADDING.bottom,
+                    UiKnobs.LANG_CELL_PADDING.right
+            ));
+            setIconTextGap(UiKnobs.LANG_ICON_TEXT_GAP);
+
+            if (list != null && list.getFixedCellHeight() != UiKnobs.LANG_LIST_ROW_HEIGHT) {
+                list.setFixedCellHeight(UiKnobs.LANG_LIST_ROW_HEIGHT);
             }
-            byte[] bytes = is.readAllBytes();
-            Image img = Toolkit.getDefaultToolkit().createImage(bytes);
-            Image scaled = img.getScaledInstance(sizePx, sizePx, Image.SCALE_SMOOTH);
-            return new ImageIcon(scaled);
-        } catch (Exception e) {
-            System.err.println("Error loading flag file " + path + ": " + e.getMessage());
-            return null;
+
+            return this;
         }
     }
 }
+
