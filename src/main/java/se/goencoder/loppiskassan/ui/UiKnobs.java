@@ -12,6 +12,7 @@ public final class UiKnobs {
 
     // Popup list
     public static final int LANG_POPUP_ROW_HEIGHT = 24;
+    public static final int LANG_POPUP_ITEM_MIN_W = 160;
     public static final Insets LANG_POPUP_ITEM_PAD = new Insets(4, 8, 4, 8);
 
     // Typography
@@ -23,5 +24,6 @@ public final class UiKnobs {
 
     // Spacing between icon and text
     public static final int LANG_ICON_TEXT_GAP = 8;
+    public static final int LANG_ICON_CHEVRON_GAP = 6;
 }
 
