@@ -27,7 +27,7 @@ public class FormatHelper {
     public static String toCVS(List<SoldItem> items) {
         StringBuilder stringBuilder = new StringBuilder();
         for (SoldItem item : items) {
-            String collectedTime = LocalizationManager.tr("common.no");
+            String collectedTime = "";
             if (item.isCollectedBySeller()) {
                 collectedTime = dateAndTimeToString(item.getCollectedBySellerTime());
             }
@@ -68,9 +68,14 @@ public class FormatHelper {
             //   6 -> paymentMethod
             //   7 -> uploaded
 
-            String collectedTime = columns[5];
+            String collectedTime = columns[5].trim();
             LocalDateTime dateTime = null;
-            if (!collectedTime.equals(LocalizationManager.tr("common.no"))) {
+
+            // Backwards compatibility: old files may have "Nej"/"No" for not paid.
+            // New format: empty string means not paid; timestamp means paid.
+            if (!collectedTime.isEmpty()
+                    && !collectedTime.equalsIgnoreCase("Nej")
+                    && !collectedTime.equalsIgnoreCase("No")) {
                 dateTime = stringToDateAndTime(collectedTime);
             }
 
