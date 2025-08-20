@@ -79,13 +79,11 @@ public class UserInterface extends JFrame implements LocalizationAware {
     }
 
     private JPanel createLanguagePanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 6));
         panel.setOpaque(false);
 
-        panel.add(Box.createHorizontalGlue());
-        panel.add(new LanguageSelector());
-        panel.add(Box.createHorizontalStrut(8));
+        LanguageSelector selector = new LanguageSelector();
+        panel.add(selector);
 
         return panel;
     }
