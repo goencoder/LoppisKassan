@@ -112,6 +112,8 @@
   "info.register_ready.message": "The register is ready to use.",
   "error.fetch_token.title": "Could not fetch token",
   "error.fetch_token.message": "Incorrect cashier code? {0}",
+  "error.cashier_code_required": "Cashier code is required for online events.",
+  "error.title": "Error",
   "confirm.change_event.title": "Change event?",
   "confirm.change_event.message": "All local records will be erased.\nIf offline they are lost forever.\nIf online, any unsynced entries are lost.\n\nContinue?",
   "error.clear_register_file": "Error clearing register file: {0}",
