@@ -12,6 +12,7 @@ import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.utils.EventUtils;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import java.io.IOException;
 import java.util.*;
@@ -75,10 +76,10 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             view.populateEventsTable(eventList);
         } catch (ApiException ex) {
             ex.printStackTrace();
-            Popup.ERROR.showAndWait("Kunde inte hämta event", ex.getMessage());
+            Popup.ERROR.showAndWait(LocalizationManager.tr("error.fetch_events.title"), ex.getMessage());
             view.populateEventsTable(eventList); // Display only the offline event if an error occurs.
         } catch (Exception ex) {
-            Popup.ERROR.showAndWait("Ett fel uppstod", ex.getMessage());
+            Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
             view.populateEventsTable(eventList);
         }
     }
@@ -86,7 +87,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     @Override
     public void openRegister(String eventId, String cashierCode) {
         if (eventId == null || eventId.isEmpty()) {
-            Popup.WARNING.showAndWait("Ingen rad vald", "Du måste välja ett event först.");
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("error.no_event_selected.title"),
+                    LocalizationManager.tr("error.no_event_selected.message"));
             return;
         }
         Event event = fromId(eventId);
@@ -98,7 +101,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         try {
             split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
         } catch (IOException e) {
-            Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e.getMessage());
+            Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
             ConfigurationStore.reset();
             return;
         }
@@ -139,7 +142,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 RevenueSplit split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
                 view.showActiveEventInfo(event, split);
             } catch (IOException e) {
-                Popup.ERROR.showAndWait("Kunde inte ladda sparad event", e.getMessage());
+                Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_event.title"), e.getMessage());
             }
         } else {
             view.setCashierButtonEnabled(true);
@@ -149,15 +152,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     @Override
     public void changeEventRequested() {
         boolean confirm = Popup.CONFIRM.showConfirmDialog(
-                "Byt event?",
-                """
-                Alla dina lokala registerposter kommer att raderas.
-                Om du är offline, går de förlorade för alltid.
-                Om du är online, eventuella ej uppladdade poster går förlorade.
-
-                Vill du fortsätta?
-                """
-        );
+                LocalizationManager.tr("confirm.change_event.title"),
+                LocalizationManager.tr("confirm.change_event.message"));
         if (!confirm) {
             return;
         }
@@ -167,7 +163,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         try {
             FileHelper.createBackupFile(); // Backup current data.
         } catch (IOException e) {
-            Popup.ERROR.showAndWait("Kunde inte rensa kassafil: " + LOPPISKASSAN_CSV, e.getMessage());
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("error.clear_register_file", LOPPISKASSAN_CSV),
+                    e.getMessage());
         }
 
         // Reset the UI to the discovery mode.
@@ -187,8 +185,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 }
             } catch (IOException e) {
                 Popup.FATAL.showAndWait(
-                        "Kunde inte ladda sparad event",
-                        "Fel vid laddning av sparad event från " + CONFIG_FILE_PATH +": " + e.getMessage());
+                        LocalizationManager.tr("error.load_saved_event.title"),
+                        LocalizationManager.tr("error.load_saved_event.message", CONFIG_FILE_PATH, e.getMessage()));
             }
             return null;
         }
@@ -216,7 +214,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
             fetchApprovedSellers(eventId);
 
-            Popup.INFORMATION.showAndWait("Ok!", "Kassan är redo att användas.");
+            Popup.INFORMATION.showAndWait(
+                    LocalizationManager.tr("info.register_ready.title"),
+                    LocalizationManager.tr("info.register_ready.message"));
 
             view.setCashierButtonEnabled(false);
             view.clearCashierCodeField();
@@ -226,9 +226,11 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         } catch (Exception ex) {
             ConfigurationStore.reset();
             if (ex instanceof ApiException) {
-                Popup.ERROR.showAndWait("Kunde inte hämta token", "Felaktig kassakod?" + ex.getMessage());
+                Popup.ERROR.showAndWait(
+                        LocalizationManager.tr("error.fetch_token.title"),
+                        LocalizationManager.tr("error.fetch_token.message", ex.getMessage()));
             } else {
-                Popup.ERROR.showAndWait("Ett fel uppstod", ex.getMessage());
+                Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
             }
         }
     }
@@ -262,14 +264,14 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             try {
                 split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
             } catch (IOException e) {
-                Popup.ERROR.showAndWait("Kunde inte ladda sparad fördelning", e.getMessage());
+                Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
                 split = new RevenueSplit();
             }
         }
 
-        selectedEvent.setAddressCity("(ingen stad)");
-        selectedEvent.setDescription("Ingen beskrivning (offline-läge)");
-        selectedEvent.setAddressStreet("(ingen gata)");
+        selectedEvent.setAddressCity(LocalizationManager.tr("event.no_city"));
+        selectedEvent.setDescription(LocalizationManager.tr("event.no_description_offline"));
+        selectedEvent.setAddressStreet(LocalizationManager.tr("event.no_street"));
 
         view.setEventName(selectedEvent.getName());
         view.setEventDescription(selectedEvent.getDescription());
@@ -291,8 +293,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             market = response.getMarket();
         } catch (ApiException e) {
             Popup.WARNING.showAndWait(
-                    "Kunde inte hämta marknadsinfo",
-                    "Kontrollera din internetanslutning, " + e.getMessage());
+                    LocalizationManager.tr("warning.fetch_market_info.title"),
+                    LocalizationManager.tr("warning.fetch_market_info.message", e.getMessage()));
         }
 
         RevenueSplit revenueSplit = Objects.requireNonNull(market).getRevenueSplit();

@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan;
 
 
 import se.goencoder.loppiskassan.records.FileHelper;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.UserInterface;
 
@@ -19,7 +20,7 @@ public class Main {
      */
     private static void createAndShowGUI() {
         UserInterface frame = new UserInterface();
-        frame.setTitle("iLoppis Kassahantering v1.0");
+        frame.setTitle(LocalizationManager.tr("frame.title"));
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Ställ in ramens storlek och gör den synlig
@@ -67,9 +68,8 @@ public class Main {
             // We have no logs yet, so we dump the error to the console
             e.printStackTrace();
             Popup.FATAL.showAndWait(
-                    "Kunde inte skapa kataloger",
-                    "Behöver skapa kataloger 'data' och 'logs' för att fortsätta." +
-                            "Kontrollera att programmet har rättigheter att skapa kataloger.");
+                    LocalizationManager.tr("error.create_dirs.title"),
+                    LocalizationManager.tr("error.create_dirs.message"));
         }
     }
 }

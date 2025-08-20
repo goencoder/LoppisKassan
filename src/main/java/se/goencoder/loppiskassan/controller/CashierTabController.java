@@ -11,6 +11,7 @@ import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.ProgressDialog;
 import se.goencoder.loppiskassan.utils.ConfigurationUtils;
@@ -140,31 +141,21 @@ public class CashierTabController implements CashierControllerInterface {
         if (!isOffline && !degradedMode) {
             ProgressDialog.runTask(
                     view.getComponent(),
-                    "Bearbetar köp",
-                    "Sparar till webb...",
-                    // This is the background task (Callable)
+                    LocalizationManager.tr("cashier.progress.processing"),
+                    LocalizationManager.tr("cashier.progress.saving_web"),
                     () -> {
                         saveItemsToWeb(items);
-                        return null; // We don't need a result
+                        return null;
                     },
-                    // onSuccess => runs on EDT
-                    unused -> {
-                        // No exception => proceed with final checkout flow
-                        finishCheckoutFlow();
-                    },
-                    // onFailure => runs on EDT if an exception was thrown
+                    unused -> finishCheckoutFlow(),
                     ex -> {
-
                         if (isLikelyNetworkError(ex)) {
                             degradedMode = true;
                             Popup.WARNING.showAndWait(
-                                    "Nätverksfel - Kassa i degraderat läge",
-                                    "Kunde inte spara till webb. Vi går in i degraderat läge.\n"
-                                            + "Alla köp sparas lokalt tills vi kan synkronisera igen.\n\n"
-                                            + "Du kan göra en manuell synk i Historik-fliken."
-                            );
+                                    LocalizationManager.tr("warning.degraded_mode.title"),
+                                    LocalizationManager.tr("warning.degraded_mode.message"));
                         } else {
-                            Popup.ERROR.showAndWait("Kunde inte spara till webb", ex.getMessage());
+                            Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_web"), ex.getMessage());
                         }
                         finishCheckoutFlow();
                     }
@@ -188,7 +179,7 @@ public class CashierTabController implements CashierControllerInterface {
                 FileUtils.appendSoldItems(items);
             } catch (IOException e) {
                 Popup.ERROR.showAndWait(
-                        "Kunde inte spara till fil (" + FileHelper.getRecordFilePath(LOPPISKASSAN_CSV) + ")",
+                        LocalizationManager.tr("error.save_file", FileHelper.getRecordFilePath(LOPPISKASSAN_CSV)),
                         e.getMessage()
                 );
             }
@@ -331,8 +322,8 @@ public class CashierTabController implements CashierControllerInterface {
                 // local file write error is not a reason to remain degraded
                 // but we do show a warning
                 Popup.WARNING.showAndWait(
-                        "Kunde inte uppdatera poster",
-                        "Kunde inte uppdatera filstatus för uppladdade poster: " + e.getMessage());
+                        LocalizationManager.tr("warning.update_items.title"),
+                        LocalizationManager.tr("warning.update_items.message", e.getMessage()));
             }
 
             return true;
@@ -351,9 +342,9 @@ public class CashierTabController implements CashierControllerInterface {
         }
 
         if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
-            Popup.WARNING.showAndWait("Några föremål kunde inte laddas upp",
-                    "Eventuella duplicerade poster kan ignoreras (bara en kopia sparas)\n" +
-                            response.getRejectedItems());
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("warning.partial_upload.title"),
+                    LocalizationManager.tr("warning.partial_upload.message", response.getRejectedItems()));
             for (se.goencoder.iloppis.model.RejectedItem rejectedItem : response.getRejectedItems()) {
                 SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
                 if (localItem != null) {

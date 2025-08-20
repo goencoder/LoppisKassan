@@ -3,6 +3,8 @@ package se.goencoder.loppiskassan.ui;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.controller.CashierTabController;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -18,15 +20,19 @@ import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
  * Represents the cashier tab in the application, allowing users to input transactions,
  * manage purchases, and perform checkout operations.
  */
-public class CashierTabPanel extends JPanel implements CashierPanelInterface {
+public class CashierTabPanel extends JPanel implements CashierPanelInterface, LocalizationAware {
 
     // Components for the cashier table and input fields
     private JTable cashierTable;
     private JTextField sellerField, pricesField, payedCashField, changeCashField;
     private JLabel noItemsLabel, sumLabel;
+    private JLabel sellerLabel, pricesLabel, paidLabel, changeLabel;
 
     // Buttons for checkout actions
     private JButton cancelCheckoutButton, checkoutCashButton, checkoutSwishButton;
+
+    private int itemsCount = 0;
+    private int sumValue = 0;
 
     /**
      * Initializes the cashier tab panel with its components and controller setup.
@@ -54,6 +60,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
         // Disable checkout buttons initially
         enableCheckoutButtons(false);
+        reloadTexts();
     }
 
     /**
@@ -61,7 +68,11 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
      * The table includes hidden columns for internal data like item IDs.
      */
     private void initializeTable() {
-        String[] columnNames = {"Säljare", "Pris", "Item ID"};
+        String[] columnNames = {
+                LocalizationManager.tr("cashier.table.seller"),
+                LocalizationManager.tr("cashier.table.price"),
+                LocalizationManager.tr("cashier.table.item_id")
+        };
         DefaultTableModel tableModel = new DefaultTableModel(null, columnNames) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -107,13 +118,17 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         changeCashField.setEditable(false); // Change field should not be editable
 
         // Add labels and fields to the panel
-        fieldsPanel.add(new JLabel("Säljnummer:"));
+        sellerLabel = new JLabel();
+        fieldsPanel.add(sellerLabel);
         fieldsPanel.add(sellerField);
-        fieldsPanel.add(new JLabel("Pris(er) ex: 10 150"));
+        pricesLabel = new JLabel();
+        fieldsPanel.add(pricesLabel);
         fieldsPanel.add(pricesField);
-        fieldsPanel.add(new JLabel("Betalt:"));
+        paidLabel = new JLabel();
+        fieldsPanel.add(paidLabel);
         fieldsPanel.add(payedCashField);
-        fieldsPanel.add(new JLabel("Växel:"));
+        changeLabel = new JLabel();
+        fieldsPanel.add(changeLabel);
         fieldsPanel.add(changeCashField);
 
         // Add a key listener to calculate change dynamically
@@ -126,7 +141,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
                     int payedAmount = payedCashField.getText().isEmpty() ? 0 : Integer.parseInt(payedCashField.getText());
                     controller.calculateChange(payedAmount);
                 } catch (NumberFormatException ex) {
-                    Popup.WARNING.showAndWait("Felaktigt belopp", "Ange ett korrekt belopp");
+                    Popup.WARNING.showAndWait(
+                            LocalizationManager.tr("cashier.invalid_amount.title"),
+                            LocalizationManager.tr("cashier.invalid_amount.message"));
                 }
             }
         });
@@ -135,8 +152,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
         // Info panel for displaying additional details
         JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        noItemsLabel = new JLabel("0 varor");
-        sumLabel = new JLabel("0 SEK");
+        noItemsLabel = new JLabel();
+        sumLabel = new JLabel();
         infoPanel.add(noItemsLabel);
         infoPanel.add(sumLabel);
 
@@ -154,9 +171,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         JPanel buttonPanel = new JPanel(new GridLayout(1, 3));
 
         // Initialize buttons
-        cancelCheckoutButton = createButton("Avbryt köp", 150, 50);
-        checkoutCashButton = createButton("Kontant", 150, 50);
-        checkoutSwishButton = createButton("Swish", 150, 50);
+        cancelCheckoutButton = createButton("", 150, 50);
+        checkoutCashButton = createButton("", 150, 50);
+        checkoutSwishButton = createButton("", 150, 50);
 
         // Add buttons to the panel
         buttonPanel.add(cancelCheckoutButton);
@@ -164,6 +181,43 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         buttonPanel.add(checkoutSwishButton);
 
         return buttonPanel;
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        LocalizationManager.addListener(this::reloadTexts);
+    }
+
+    @Override
+    public void removeNotify() {
+        LocalizationManager.removeListener(this::reloadTexts);
+        super.removeNotify();
+    }
+
+    @Override
+    public void reloadTexts() {
+        sellerLabel.setText(LocalizationManager.tr("cashier.seller_id"));
+        pricesLabel.setText(LocalizationManager.tr("cashier.prices_example"));
+        paidLabel.setText(LocalizationManager.tr("cashier.paid"));
+        changeLabel.setText(LocalizationManager.tr("cashier.change"));
+
+        cancelCheckoutButton.setText(LocalizationManager.tr("cashier.cancel_purchase"));
+        checkoutCashButton.setText(LocalizationManager.tr("cashier.cash"));
+        checkoutSwishButton.setText(LocalizationManager.tr("cashier.swish"));
+
+        DefaultTableModel model = (DefaultTableModel) cashierTable.getModel();
+        model.setColumnIdentifiers(new String[]{
+                LocalizationManager.tr("cashier.table.seller"),
+                LocalizationManager.tr("cashier.table.price"),
+                LocalizationManager.tr("cashier.table.item_id")
+        });
+        if (cashierTable.getColumnModel().getColumnCount() > 2) {
+            cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2));
+        }
+
+        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
+        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
     }
 
     // ------------------------------------------------------------------------
@@ -194,12 +248,14 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
 
     @Override
     public void updateSumLabel(String newText) {
-        sumLabel.setText(newText + " SEK");
+        sumValue = Integer.parseInt(newText);
+        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
     }
 
     @Override
     public void updateNoItemsLabel(String newText) {
-        noItemsLabel.setText(newText + " varor");
+        itemsCount = Integer.parseInt(newText);
+        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
     }
 
     @Override
@@ -220,12 +276,16 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         try {
             sellerId = Integer.parseInt(seller);
         } catch (NumberFormatException e) {
-            Popup.WARNING.showAndWait("Felaktigt säljnummer", "Säljnummer måste vara ett heltal");
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("cashier.invalid_seller.title"),
+                    LocalizationManager.tr("cashier.invalid_seller.message"));
             return new HashMap<>();
         }
 
         if (!CashierTabController.getInstance().isSellerApproved(sellerId)) {
-            Popup.WARNING.showAndWait("Säljare ej godkänd", "Säljaren är inte godkänd för detta event");
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("cashier.seller_not_approved.title"),
+                    LocalizationManager.tr("cashier.seller_not_approved.message"));
             return new HashMap<>();
         }
 
@@ -237,7 +297,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
                 priceInts[i] = Integer.parseInt(priceStrings[i]);
             }
         } catch (NumberFormatException e) {
-            Popup.WARNING.showAndWait("Felaktigt pris", "Ange korrekta heltal för priser");
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("cashier.invalid_price.title"),
+                    LocalizationManager.tr("cashier.invalid_price.message"));
             return new HashMap<>();
         }
 
@@ -260,8 +322,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface {
         pricesField.setText("");
         payedCashField.setText("");
         changeCashField.setText("");
-        sumLabel.setText("0 SEK");
-        noItemsLabel.setText("0 varor");
+        sumValue = 0;
+        itemsCount = 0;
+        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
+        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
         setFocusToSellerField();
     }
 

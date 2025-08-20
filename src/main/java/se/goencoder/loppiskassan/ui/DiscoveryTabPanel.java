@@ -5,8 +5,11 @@ import se.goencoder.iloppis.model.RevenueSplit;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.controller.DiscoveryControllerInterface;
 import se.goencoder.loppiskassan.controller.DiscoveryTabController;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -14,7 +17,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface {
+public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface, LocalizationAware {
 
     private final DiscoveryControllerInterface controller;
 
@@ -23,10 +26,14 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private final JPanel rootCardPanel;
 
     // Components for discovery mode
+    private JLabel dateFromLabel;
     private JTextField dateFromField;
+    private JButton discoverButton;
     private JTable eventsTable;
+    private DefaultTableModel eventsTableModel;
     private CardLayout detailCardLayout;
     private JPanel detailCardPanel;
+    private JLabel noSelectionLabel;
     private JTextField eventNameField;
     private JTextArea eventDescriptionField;
     private JTextField eventAddressField;
@@ -37,6 +44,15 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JTextField cashierCodeField;
     private JButton getTokenButton;
 
+    private TitledBorder discoveryDetailsBorder;
+    private TitledBorder discoveryRevenueSplitBorder;
+    private JLabel discoveryEventNameStaticLabel;
+    private JLabel discoveryEventDescStaticLabel;
+    private JLabel discoveryEventAddressStaticLabel;
+    private JLabel discoveryMarketOwnerStaticLabel;
+    private JLabel discoveryVendorStaticLabel;
+    private JLabel discoveryPlatformStaticLabel;
+
     // Components for active event mode
     private JLabel activeEventNameLabel;
     private JLabel activeEventDescLabel;
@@ -45,6 +61,16 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JLabel marketOwnerSplitLabel;
     private JLabel vendorSplitLabel;
     private JLabel platformSplitLabel;
+
+    private TitledBorder selectedEventBorder;
+    private TitledBorder detailsBorder;
+    private TitledBorder revenueSplitBorder;
+    private JLabel eventNameStaticLabel;
+    private JLabel eventDescStaticLabel;
+    private JLabel eventAddressStaticLabel;
+    private JLabel marketOwnerStaticLabel;
+    private JLabel vendorStaticLabel;
+    private JLabel platformStaticLabel;
 
     public DiscoveryTabPanel() {
         controller = DiscoveryTabController.getInstance();
@@ -65,6 +91,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
         // Load initial state based on stored configuration
         initializeState();
+
+        reloadTexts();
     }
 
     /**
@@ -85,13 +113,14 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JPanel buildDiscoveryModePanel() {
         JPanel panel = new JPanel(new BorderLayout());
 
-        // Top panel with "Datum från" field and discovery button
+        // Top panel with date from field and discovery button
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        topPanel.add(new JLabel("Datum från:"));
+        dateFromLabel = new JLabel();
+        topPanel.add(dateFromLabel);
         dateFromField = new JTextField(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 10);
         topPanel.add(dateFromField);
 
-        JButton discoverButton = new JButton("Hämta loppisar");
+        discoverButton = new JButton();
         topPanel.add(discoverButton);
         panel.add(topPanel, BorderLayout.NORTH);
 
@@ -107,9 +136,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
         panel.add(splitPane, BorderLayout.CENTER);
 
-        // Bottom panel with "Öppna Kassa" button
+        // Bottom panel with open register button
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        getTokenButton = new JButton("Öppna Kassa");
+        getTokenButton = new JButton();
         bottomPanel.add(getTokenButton);
         panel.add(bottomPanel, BorderLayout.SOUTH);
 
@@ -127,13 +156,13 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
      * Creates the JTable for displaying events and sets up its selection listener.
      */
     private JTable createEventsTable() {
-        DefaultTableModel model = new DefaultTableModel(new Object[][]{}, new String[]{"ID (hidden)", "Loppis", "Stad", "Öppnar", "Stänger"}) {
+        eventsTableModel = new DefaultTableModel(new Object[][]{}, new String[]{"", "", "", "", ""}) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        JTable table = new JTable(model);
+        JTable table = new JTable(eventsTableModel);
         table.removeColumn(table.getColumnModel().getColumn(0)); // Hide the ID column
 
         // Selection listener to update the detail view when an event is selected
@@ -156,7 +185,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         detailCardLayout = new CardLayout();
         JPanel panel = new JPanel(detailCardLayout);
 
-        JLabel noSelectionLabel = new JLabel("Välj en loppis i listan …", SwingConstants.CENTER);
+        noSelectionLabel = new JLabel("", SwingConstants.CENTER);
         panel.add(noSelectionLabel, "noSelection");
 
         JPanel detailFormPanel = buildDiscoveryDetailForm();
@@ -196,7 +225,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildEventDetailsPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Loppisdetaljer"));
+        TitledBorder detailsBorder = BorderFactory.createTitledBorder("");
+        panel.setBorder(detailsBorder);
+        this.discoveryDetailsBorder = detailsBorder;
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -204,7 +235,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Name field
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("Name:"), gbc);
+        discoveryEventNameStaticLabel = new JLabel();
+        panel.add(discoveryEventNameStaticLabel, gbc);
         gbc.gridx = 1;
         eventNameField = new JTextField(20);
         panel.add(eventNameField, gbc);
@@ -212,7 +244,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Description field
         gbc.gridx = 0;
         gbc.gridy = 1;
-        panel.add(new JLabel("Description:"), gbc);
+        discoveryEventDescStaticLabel = new JLabel();
+        panel.add(discoveryEventDescStaticLabel, gbc);
         gbc.gridx = 1;
         eventDescriptionField = new JTextArea(3, 20);
         panel.add(new JScrollPane(eventDescriptionField), gbc);
@@ -220,7 +253,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Address field
         gbc.gridx = 0;
         gbc.gridy = 2;
-        panel.add(new JLabel("Address:"), gbc);
+        discoveryEventAddressStaticLabel = new JLabel();
+        panel.add(discoveryEventAddressStaticLabel, gbc);
         gbc.gridx = 1;
         eventAddressField = new JTextField(20);
         panel.add(eventAddressField, gbc);
@@ -230,7 +264,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildRevenueSplitPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Försäljningsdelning"));
+        TitledBorder revenueBorder = BorderFactory.createTitledBorder("");
+        panel.setBorder(revenueBorder);
+        this.discoveryRevenueSplitBorder = revenueBorder;
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -238,7 +274,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Market Owner Split
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("Market Owner (%):"), gbc);
+        discoveryMarketOwnerStaticLabel = new JLabel();
+        panel.add(discoveryMarketOwnerStaticLabel, gbc);
         gbc.gridx = 1;
         marketOwnerSplitField = new JTextField(5);
         panel.add(marketOwnerSplitField, gbc);
@@ -246,7 +283,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Vendor Split
         gbc.gridx = 0;
         gbc.gridy = 1;
-        panel.add(new JLabel("Vendor (%):"), gbc);
+        discoveryVendorStaticLabel = new JLabel();
+        panel.add(discoveryVendorStaticLabel, gbc);
         gbc.gridx = 1;
         vendorSplitField = new JTextField(5);
         panel.add(vendorSplitField, gbc);
@@ -254,7 +292,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Platform Split
         gbc.gridx = 0;
         gbc.gridy = 2;
-        panel.add(new JLabel("Platform (%):"), gbc);
+        discoveryPlatformStaticLabel = new JLabel();
+        panel.add(discoveryPlatformStaticLabel, gbc);
         gbc.gridx = 1;
         platformSplitField = new JTextField(5);
         panel.add(platformSplitField, gbc);
@@ -264,7 +303,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildCashierCodePanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        cashierCodeLabel = new JLabel("Cashier Code:");
+        cashierCodeLabel = new JLabel();
         cashierCodeField = new JTextField(8);
         panel.add(cashierCodeLabel);
         panel.add(cashierCodeField);
@@ -276,7 +315,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
      */
     private JPanel buildActiveEventPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Vald Loppis"));
+        selectedEventBorder = BorderFactory.createTitledBorder("");
+        panel.setBorder(selectedEventBorder);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -300,7 +340,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel createEventDetailsPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Loppisdetaljer"));
+        TitledBorder detailsBorder = BorderFactory.createTitledBorder("");
+        panel.setBorder(detailsBorder);
+        this.detailsBorder = detailsBorder;
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -308,7 +350,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Event Name
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("Namn:"), gbc);
+        eventNameStaticLabel = new JLabel();
+        panel.add(eventNameStaticLabel, gbc);
         gbc.gridx = 1;
         activeEventNameLabel = new JLabel("???");
         panel.add(activeEventNameLabel, gbc);
@@ -316,7 +359,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Event Description
         gbc.gridx = 0;
         gbc.gridy = 1;
-        panel.add(new JLabel("Beskrivning:"), gbc);
+        eventDescStaticLabel = new JLabel();
+        panel.add(eventDescStaticLabel, gbc);
         gbc.gridx = 1;
         activeEventDescLabel = new JLabel("???");
         panel.add(activeEventDescLabel, gbc);
@@ -324,7 +368,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Event Address
         gbc.gridx = 0;
         gbc.gridy = 2;
-        panel.add(new JLabel("Address:"), gbc);
+        eventAddressStaticLabel = new JLabel();
+        panel.add(eventAddressStaticLabel, gbc);
         gbc.gridx = 1;
         activeEventAddressLabel = new JLabel("???");
         panel.add(activeEventAddressLabel, gbc);
@@ -334,7 +379,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel createRevenueSplitPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Försäljningsdelning"));
+        TitledBorder revenueBorder = BorderFactory.createTitledBorder("");
+        panel.setBorder(revenueBorder);
+        this.revenueSplitBorder = revenueBorder;
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -342,7 +389,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Market Owner Split
         gbc.gridx = 0;
         gbc.gridy = 0;
-        panel.add(new JLabel("Arrangör (%):"), gbc);
+        marketOwnerStaticLabel = new JLabel();
+        panel.add(marketOwnerStaticLabel, gbc);
         gbc.gridx = 1;
         marketOwnerSplitLabel = new JLabel("???");
         panel.add(marketOwnerSplitLabel, gbc);
@@ -350,7 +398,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Vendor Split
         gbc.gridx = 0;
         gbc.gridy = 1;
-        panel.add(new JLabel("Säljare (%):"), gbc);
+        vendorStaticLabel = new JLabel();
+        panel.add(vendorStaticLabel, gbc);
         gbc.gridx = 1;
         vendorSplitLabel = new JLabel("???");
         panel.add(vendorSplitLabel, gbc);
@@ -358,7 +407,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Platform Split
         gbc.gridx = 0;
         gbc.gridy = 2;
-        panel.add(new JLabel("iLoppis (%):"), gbc);
+        platformStaticLabel = new JLabel();
+        panel.add(platformStaticLabel, gbc);
         gbc.gridx = 1;
         platformSplitLabel = new JLabel("???");
         panel.add(platformSplitLabel, gbc);
@@ -368,7 +418,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel createChangeEventButton() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 100));
-        changeEventButton = new JButton("Byt Loppis");
+        changeEventButton = new JButton();
         changeEventButton.addActionListener(e -> controller.changeEventRequested());
         panel.add(changeEventButton);
         return panel;
@@ -395,7 +445,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
     private DefaultTableModel getEventsTableModel() {
-        return (DefaultTableModel) eventsTable.getModel();
+        return eventsTableModel;
     }
 
     // Called once an event is selected
@@ -518,6 +568,74 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         controller.initUIState();
     }
 
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        LocalizationManager.addListener(this::reloadTexts);
+    }
+
+    @Override
+    public void removeNotify() {
+        LocalizationManager.removeListener(this::reloadTexts);
+        super.removeNotify();
+    }
+
+    @Override
+    public void reloadTexts() {
+        // Discovery mode top panel
+        dateFromLabel.setText(LocalizationManager.tr("discovery.date_from"));
+        discoverButton.setText(LocalizationManager.tr("discovery.fetch_events"));
+        getTokenButton.setText(LocalizationManager.tr("discovery.open_register"));
+
+        // Table headers
+        eventsTableModel.setColumnIdentifiers(new String[]{
+                LocalizationManager.tr("discovery.table.id_hidden"),
+                LocalizationManager.tr("discovery.table.event"),
+                LocalizationManager.tr("discovery.table.city"),
+                LocalizationManager.tr("discovery.table.opens"),
+                LocalizationManager.tr("discovery.table.closes")
+        });
+        eventsTable.removeColumn(eventsTable.getColumnModel().getColumn(0));
+
+        // No selection label
+        noSelectionLabel.setText(LocalizationManager.tr("discovery.no_selection"));
+
+        // Discovery detail form
+        discoveryDetailsBorder.setTitle(LocalizationManager.tr("event.details.title"));
+        discoveryRevenueSplitBorder.setTitle(LocalizationManager.tr("revenue_split.title"));
+        discoveryEventNameStaticLabel.setText(LocalizationManager.tr("event.name"));
+        discoveryEventDescStaticLabel.setText(LocalizationManager.tr("event.description"));
+        discoveryEventAddressStaticLabel.setText(LocalizationManager.tr("event.address"));
+        discoveryMarketOwnerStaticLabel.setText(LocalizationManager.tr("revenue_split.market_owner"));
+        discoveryVendorStaticLabel.setText(LocalizationManager.tr("revenue_split.vendor"));
+        discoveryPlatformStaticLabel.setText(LocalizationManager.tr("revenue_split.platform"));
+
+        // Active event panel
+        selectedEventBorder.setTitle(LocalizationManager.tr("discovery.selected_event.title"));
+        detailsBorder.setTitle(LocalizationManager.tr("event.details.title"));
+        revenueSplitBorder.setTitle(LocalizationManager.tr("revenue_split.title"));
+        eventNameStaticLabel.setText(LocalizationManager.tr("event.name"));
+        eventDescStaticLabel.setText(LocalizationManager.tr("event.description"));
+        eventAddressStaticLabel.setText(LocalizationManager.tr("event.address"));
+        marketOwnerStaticLabel.setText(LocalizationManager.tr("revenue_split.market_owner"));
+        vendorStaticLabel.setText(LocalizationManager.tr("revenue_split.vendor"));
+        platformStaticLabel.setText(LocalizationManager.tr("revenue_split.platform"));
+
+        cashierCodeLabel.setText(LocalizationManager.tr("cashier.code"));
+        changeEventButton.setText(LocalizationManager.tr("button.change_event"));
+
+        // Offline event refresh
+        if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+            activeEventNameLabel.setText(LocalizationManager.tr("event.offline.name"));
+            activeEventDescLabel.setText(LocalizationManager.tr("event.offline.description"));
+            activeEventAddressLabel.setText(
+                    LocalizationManager.tr("event.no_street") + ", " +
+                            LocalizationManager.tr("event.no_city"));
+        }
+
+        revalidate();
+        repaint();
+    }
 
 }
 
