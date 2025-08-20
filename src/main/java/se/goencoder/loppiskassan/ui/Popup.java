@@ -51,28 +51,33 @@ public enum Popup {
         if (information instanceof ApiException) {
             String body = ((ApiException) information).getResponseBody();
             if (body != null && !body.isEmpty()) {
-                JSONObject jsonObj = new JSONObject(body);
-                String language = LocalizationManager.getLanguage();
-                String localizedMessage = null;
-                if (jsonObj.has("details")) {
-                    for (Object detailObj : jsonObj.getJSONArray("details")) {
-                        if (detailObj instanceof JSONObject) {
-                            JSONObject detail = (JSONObject) detailObj;
-                            if ("type.googleapis.com/google.rpc.LocalizedMessage".equals(detail.optString("@type"))) {
-                                String localeStr = detail.optString("locale");
-                                Locale detailLocale = Locale.forLanguageTag(localeStr.replace('_', '-'));
-                                if (language.equalsIgnoreCase(detailLocale.getLanguage())) {
-                                    localizedMessage = detail.optString("message", null);
-                                    break;
+                try {
+                    JSONObject jsonObj = new JSONObject(body);
+                    String language = LocalizationManager.getLanguage();
+                    String localizedMessage = null;
+                    if (jsonObj.has("details")) {
+                        for (Object detailObj : jsonObj.getJSONArray("details")) {
+                            if (detailObj instanceof JSONObject) {
+                                JSONObject detail = (JSONObject) detailObj;
+                                if ("type.googleapis.com/google.rpc.LocalizedMessage".equals(detail.optString("@type"))) {
+                                    String localeStr = detail.optString("locale");
+                                    Locale detailLocale = Locale.forLanguageTag(localeStr.replace('_', '-'));
+                                    if (language.equalsIgnoreCase(detailLocale.getLanguage())) {
+                                        localizedMessage = detail.optString("message", null);
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                if (localizedMessage != null) {
-                    info = localizedMessage;
-                } else {
-                    info = ((ApiException)information).getMessage();
+                    if (localizedMessage != null) {
+                        info = localizedMessage;
+                    } else {
+                        info = ((ApiException)information).getMessage();
+                    }
+                } catch (org.json.JSONException ex) {
+                    logger.warning("Failed to parse JSON from ApiException: " + ex.getMessage());
+                    info = ex.getMessage();
                 }
             } else {
                 info = LocalizationManager.tr("error.api_exception.default");
@@ -86,6 +91,7 @@ public enum Popup {
             // Convert the information object to a string if it's not an exception
             info = information.toString();
         }
+
 
         // Use JOptionPane to display the message
         JOptionPane.showMessageDialog(null, Objects.requireNonNull(info).substring(0, Math.min(info.length(), 400)), title, messageType);
