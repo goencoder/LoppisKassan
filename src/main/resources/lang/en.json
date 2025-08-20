@@ -10,6 +10,8 @@
   "error.no_event_selected.title": "No event selected",
   "error.no_event_selected.message": "Please select an event before opening a cash register.",
   "frame.title": "iLoppis Cash Register v1.0",
+  "select_market.title": "Select Market",
+  "select_market.label": "Select market:",
   "popup.confirm": "Confirm",
   "popup.cancel": "Cancel",
   "error.create_dirs.title": "Could not create directories",

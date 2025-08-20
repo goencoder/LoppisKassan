@@ -22,7 +22,8 @@ public enum ConfigurationStore {
     APPROVED_SELLERS_JSON("approved_sellers"),
     OFFLINE_EVENT_BOOL("offline_event"),
     REVENUE_SPLIT_JSON("revenue_split"),
-    LANGUAGE_STR("language");
+    LANGUAGE_STR("language"),
+    APP_VERSION_STR("app_version");
 
     public static final String CONFIG_FILE_PATH = "config.properties";
     private final String key;

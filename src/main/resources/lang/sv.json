@@ -10,6 +10,8 @@
   "error.no_event_selected.title": "Ingen loppis vald",
   "error.no_event_selected.message": "Vänligen välj en loppis att öppna en kassa för först.",
   "frame.title": "iLoppis Kassahantering v1.0",
+  "select_market.title": "Välj Loppis",
+  "select_market.label": "Välj loppis:",
   "popup.confirm": "Bekräfta",
   "popup.cancel": "Avbryt",
   "error.create_dirs.title": "Kunde inte skapa kataloger",
