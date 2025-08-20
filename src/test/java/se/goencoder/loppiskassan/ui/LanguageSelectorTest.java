@@ -18,7 +18,8 @@ class LanguageSelectorTest {
     @BeforeEach
     void resetConfig() {
         ConfigurationStore.reset();
-        LocalizationManager.reloadFromConfig();
+        // Explicitly set language to Swedish for tests
+        ConfigurationStore.LANGUAGE_STR.set("sv");
     }
 
     @Test
@@ -34,7 +35,6 @@ class LanguageSelectorTest {
     @Test
     void usesPersistedLanguageOnInit() {
         ConfigurationStore.LANGUAGE_STR.set("en");
-        LocalizationManager.reloadFromConfig();
 
         LanguageSelector selector = new LanguageSelector();
         assertEquals("en", selector.getSelectedLanguageCode());
