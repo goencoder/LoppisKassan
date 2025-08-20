@@ -25,7 +25,7 @@ public final class FlagIcon implements Icon {
 
     private static BufferedImage load(String path) {
         try (InputStream is = FlagIcon.class.getClassLoader().getResourceAsStream(path)) {
-            if (is == null) throw new IllegalArgumentException("Missing resource: " + path);
+            if (is == null) throw new IllegalArgumentException("Flag resource not found: " + path);
             return ImageIO.read(is);
         } catch (IOException e) {
             throw new RuntimeException("Cannot read resource: " + path, e);
