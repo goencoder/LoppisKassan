@@ -180,7 +180,9 @@ public class HistoryTabController implements HistoryControllerInterface {
 
         filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
         try {
-            payoutWeb();
+            if (!ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+                payoutWeb();
+            }
             saveHistoryToFile();
             filterUpdated();
         } catch (ApiException e) {
