@@ -148,6 +148,10 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             int rowIndex = getSelectedTableRow();
             String eventId = getEventIdForRow(rowIndex);
             String cashierCode = getCashierCode();
+            if (eventId == null || eventId.isEmpty()) {
+                controller.openRegister(eventId, cashierCode);
+                return;
+            }
             boolean isOffline = "offline".equalsIgnoreCase(eventId);
             if (!isOffline && cashierCode.isEmpty()) {
                 Popup.ERROR.showAndWait(
