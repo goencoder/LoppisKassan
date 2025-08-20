@@ -1,5 +1,7 @@
 package se.goencoder.loppiskassan.localization;
 
+import se.goencoder.loppiskassan.config.ConfigurationStore;
+
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +11,7 @@ import java.util.List;
  * to retrieve translations. The default language is Swedish.
  */
 public final class LocalizationManager {
-    private static LocalizationStrategy strategy = new JsonLocalizationStrategy("sv");
+    private static LocalizationStrategy strategy = new JsonLocalizationStrategy(languageFromConfig());
 
     /** Listener for language change events. */
     public interface LanguageChangeListener { void onLanguageChanged(); }
@@ -28,10 +30,19 @@ public final class LocalizationManager {
      * @param languageCode ISO language code (e.g. "sv", "en")
      */
     public static void setLanguage(String languageCode) {
+        ConfigurationStore.LANGUAGE_STR.set(languageCode);
         strategy = new JsonLocalizationStrategy(languageCode);
         for (LanguageChangeListener l : new ArrayList<>(listeners)) {
             l.onLanguageChanged();
         }
+    }
+
+    public static String getLanguage() {
+        return languageFromConfig();
+    }
+
+    public static void reloadFromConfig() {
+        strategy = new JsonLocalizationStrategy(languageFromConfig());
     }
 
     /**
@@ -41,5 +52,10 @@ public final class LocalizationManager {
     public static String tr(String key, Object... args) {
         String value = strategy.get(key);
         return args.length > 0 ? MessageFormat.format(value, args) : value;
+    }
+
+    private static String languageFromConfig() {
+        String value = ConfigurationStore.LANGUAGE_STR.get();
+        return value != null ? value : "sv";
     }
 }

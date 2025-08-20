@@ -145,5 +145,7 @@
   "info.import_done.message": "Entries imported: {0}",
   "error.write_register_file": "Error writing to register file: {0}",
   "error.file_permissions.title": "File permission problem",
-  "error.file_permissions.message": "Ensure the program can read and write the file: {0}"
+  "error.file_permissions.message": "Ensure the program can read and write the file: {0}",
+  "language.swedish": "Swedish",
+  "language.english": "English"
 }
