@@ -3,6 +3,9 @@ package se.goencoder.loppiskassan.ui;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.controller.CashierTabController;
+import se.goencoder.loppiskassan.events.EventBus;
+import se.goencoder.loppiskassan.events.SellerPricesSubmittedEvent;
+import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
@@ -11,8 +14,6 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.util.HashMap;
-import java.util.Map;
 
 import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
 
@@ -55,8 +56,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         controller.setupCheckoutSwishButtonAction(checkoutSwishButton);
         controller.setupCheckoutCashButtonAction(checkoutCashButton);
         controller.setupCancelCheckoutButtonAction(cancelCheckoutButton);
-        controller.setupPricesTextFieldAction(pricesField);
         controller.registerView(this);
+
+        pricesField.addActionListener(e -> EventBus.getInstance().publish(
+                new SellerPricesSubmittedEvent(sellerField.getText(), pricesField.getText())));
 
         // Disable checkout buttons initially
         enableCheckoutButtons(false);
@@ -269,49 +272,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     }
 
     @Override
-    public Map<Integer, Integer[]> getAndClearSellerPrices() {
-        String seller = sellerField.getText();
-        int sellerId;
-
-        try {
-            sellerId = Integer.parseInt(seller);
-        } catch (NumberFormatException e) {
-            Popup.WARNING.showAndWait(
-                    LocalizationManager.tr("cashier.invalid_seller.title"),
-                    LocalizationManager.tr("cashier.invalid_seller.message"));
-            return new HashMap<>();
-        }
-
-        if (!CashierTabController.getInstance().isSellerApproved(sellerId)) {
-            Popup.WARNING.showAndWait(
-                    LocalizationManager.tr("cashier.seller_not_approved.title"),
-                    LocalizationManager.tr("cashier.seller_not_approved.message"));
-            return new HashMap<>();
-        }
-
-        // Parse prices
-        String[] priceStrings = pricesField.getText().split("\\s+");
-        Integer[] priceInts = new Integer[priceStrings.length];
-        try {
-            for (int i = 0; i < priceStrings.length; i++) {
-                priceInts[i] = Integer.parseInt(priceStrings[i]);
-            }
-        } catch (NumberFormatException e) {
-            Popup.WARNING.showAndWait(
-                    LocalizationManager.tr("cashier.invalid_price.title"),
-                    LocalizationManager.tr("cashier.invalid_price.message"));
-            return new HashMap<>();
-        }
-
-        // Return seller-prices mapping
-        Map<Integer, Integer[]> sellerPrices = new HashMap<>();
-        sellerPrices.put(sellerId, priceInts);
-
-        // Clear input fields
+    public void clearSellerAndPricesFields() {
         sellerField.setText("");
         pricesField.setText("");
-
-        return sellerPrices;
     }
 
     @Override

@@ -3,14 +3,12 @@ package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 
-import javax.swing.*;
+import javax.swing.JButton;
 
 public interface CashierControllerInterface {
     void setupCheckoutCashButtonAction(JButton checkoutCashButton);
     void setupCheckoutSwishButtonAction(JButton checkoutSwishButton);
     void setupCancelCheckoutButtonAction(JButton cancelCheckoutButton);
-
-    void setupPricesTextFieldAction(JTextField pricesTextField);
 
     void registerView(CashierPanelInterface view);
 

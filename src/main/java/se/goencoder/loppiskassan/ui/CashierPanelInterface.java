@@ -2,9 +2,7 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.SoldItem;
 
-import java.util.Map;
-
-public interface CashierPanelInterface extends SelectabableTab, UiComponent{
+public interface CashierPanelInterface extends SelectabableTab, UiComponent {
     void setFocusToSellerField();
     void enableCheckoutButtons(boolean enable);
     void addSoldItem(SoldItem item);
@@ -16,9 +14,8 @@ public interface CashierPanelInterface extends SelectabableTab, UiComponent{
     void updateChangeCashField(Integer amount);
 
     /**
-     * Hämtar och rensar säljare och priser från vyn.
-     * @return Map med säljare och priser.
+     * Clears the seller and prices input fields.
      */
-    Map<Integer, Integer[]> getAndClearSellerPrices();
+    void clearSellerAndPricesFields();
     void clearView();
 }

@@ -8,6 +8,8 @@ import se.goencoder.loppiskassan.PaymentMethod;
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
+import se.goencoder.loppiskassan.events.EventBus;
+import se.goencoder.loppiskassan.events.SellerPricesSubmittedEvent;
 import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
@@ -19,14 +21,17 @@ import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
-import javax.swing.*;
+import javax.swing.JButton;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
@@ -55,7 +60,9 @@ public class CashierTabController implements CashierControllerInterface {
     private final List<SoldItem> items = new ArrayList<>();
     private CashierPanelInterface view;
 
-    private CashierTabController() {}
+    private CashierTabController() {
+        EventBus.getInstance().subscribe(SellerPricesSubmittedEvent.class, this::handleSellerPricesSubmitted);
+    }
 
     public static CashierControllerInterface getInstance() {
         return instance;
@@ -78,17 +85,54 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     @Override
-    public void setupPricesTextFieldAction(JTextField pricesTextField) {
-        pricesTextField.addActionListener(e -> {
-            Map<Integer, Integer[]> prices = view.getAndClearSellerPrices();
-            prices.forEach(this::addItem);
-            view.setFocusToSellerField();
-        });
-    }
-
-    @Override
     public void registerView(CashierPanelInterface view) {
         this.view = view;
+    }
+
+    private void handleSellerPricesSubmitted(SellerPricesSubmittedEvent event) {
+        Map<Integer, Integer[]> prices = parseSellerPrices(event.sellerText(), event.pricesText());
+        if (prices.isEmpty() || view == null) {
+            return;
+        }
+        prices.forEach(this::addItem);
+        view.clearSellerAndPricesFields();
+        view.setFocusToSellerField();
+    }
+
+    private Map<Integer, Integer[]> parseSellerPrices(String seller, String prices) {
+        Map<Integer, Integer[]> sellerPrices = new HashMap<>();
+        int sellerId;
+        try {
+            sellerId = Integer.parseInt(seller);
+        } catch (NumberFormatException e) {
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("cashier.invalid_seller.title"),
+                    LocalizationManager.tr("cashier.invalid_seller.message"));
+            return sellerPrices;
+        }
+
+        if (!isSellerApproved(sellerId)) {
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("cashier.seller_not_approved.title"),
+                    LocalizationManager.tr("cashier.seller_not_approved.message"));
+            return sellerPrices;
+        }
+
+        String[] priceStrings = prices.trim().split("\\s+");
+        Integer[] priceInts = new Integer[priceStrings.length];
+        try {
+            for (int i = 0; i < priceStrings.length; i++) {
+                priceInts[i] = Integer.parseInt(priceStrings[i]);
+            }
+        } catch (NumberFormatException e) {
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("cashier.invalid_price.title"),
+                    LocalizationManager.tr("cashier.invalid_price.message"));
+            return sellerPrices;
+        }
+
+        sellerPrices.put(sellerId, priceInts);
+        return sellerPrices;
     }
 
     // --- Item operations ---
