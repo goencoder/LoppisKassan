@@ -12,6 +12,8 @@
   "frame.title": "iLoppis Kassahantering v1.0",
   "popup.confirm": "Bekräfta",
   "popup.cancel": "Avbryt",
+  "popup.ok": "OK",
+  "popup.details": "Detaljer",
   "error.create_dirs.title": "Kunde inte skapa kataloger",
   "error.create_dirs.message": "Behöver skapa kataloger 'data' och 'logs' för att fortsätta. Kontrollera att programmet har rättigheter att skapa kataloger.",
   "discovery.selected_event.title": "Vald Loppis",

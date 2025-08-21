@@ -28,10 +28,8 @@ public class OfflineFlowTest {
         @Override public void setFocusToSellerField() {}
         @Override public void enableCheckoutButtons(boolean enable) {}
         @Override public void addSoldItem(SoldItem item) {}
-        @Override public void updateSumLabel(String newText) {}
-        @Override public void updateNoItemsLabel(String newText) {}
-        @Override public void updatePayedCashField(Integer amount) {}
-        @Override public void updateChangeCashField(Integer amount) {}
+        @Override public void setPaidAmount(int amount) {}
+        @Override public void setChange(int amount) {}
         @Override public Map<Integer, Integer[]> getAndClearSellerPrices() { return Map.of(); }
         @Override public void clearView() {}
         @Override public void selected() {}

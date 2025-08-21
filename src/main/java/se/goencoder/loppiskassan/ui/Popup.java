@@ -3,7 +3,6 @@ package se.goencoder.loppiskassan.ui;
 import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 import javax.swing.JScrollPane;
-import javax.swing.SwingUtilities;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Locale;
@@ -41,95 +40,95 @@ public enum Popup {
         this.messageType = messageType;
     }
 
+    public static void info(String key, Object... args) {
+        INFORMATION.showAndWait(LocalizationManager.tr(key + ".title"), LocalizationManager.tr(key + ".message", args));
+    }
+
+    public static void warn(String key, Object... args) {
+        WARNING.showAndWait(LocalizationManager.tr(key + ".title"), LocalizationManager.tr(key + ".message", args));
+    }
+
+    public static void error(String key, Object... args) {
+        ERROR.showAndWait(LocalizationManager.tr(key + ".title"), LocalizationManager.tr(key + ".message", args));
+    }
+
     /**
-     * Displays the popup window and waits until the user closes it.
-     * If the provided object is an exception, a stack trace will be displayed.
+     * Display a popup with optional expandable details.
      *
-     * @param title       The title of the popup window.
-     * @param information The content of the popup window. Can be a string or an exception.
+     * @param title   dialog title
+     * @param content main message or exception
      */
-    public void showAndWait(String title, Object information) {
-        String info = null;
-        if (information instanceof ApiException) {
-            String body = ((ApiException) information).getResponseBody();
+    public void showAndWait(String title, Object content) {
+        String message = null;
+        String details = null;
+        if (content instanceof ApiException api) {
+            String body = api.getResponseBody();
             if (body != null && !body.isEmpty()) {
                 try {
                     JSONObject jsonObj = new JSONObject(body);
                     String language = LocalizationManager.getLanguage();
-                    String localizedMessage = null;
                     if (jsonObj.has("details")) {
                         for (Object detailObj : jsonObj.getJSONArray("details")) {
-                            if (detailObj instanceof JSONObject) {
-                                JSONObject detail = (JSONObject) detailObj;
+                            if (detailObj instanceof JSONObject detail) {
                                 if ("type.googleapis.com/google.rpc.LocalizedMessage".equals(detail.optString("@type"))) {
                                     String localeStr = detail.optString("locale");
                                     Locale detailLocale = Locale.forLanguageTag(localeStr.replace('_', '-'));
                                     if (language.equalsIgnoreCase(detailLocale.getLanguage())) {
-                                        localizedMessage = detail.optString("message", null);
+                                        message = detail.optString("message", null);
                                         break;
                                     }
                                 }
                             }
                         }
                     }
-                    if (localizedMessage != null) {
-                        info = localizedMessage;
-                    } else {
-                        info = ((ApiException)information).getMessage();
+                    if (message == null) {
+                        message = api.getMessage();
                     }
                 } catch (org.json.JSONException ex) {
                     logger.warning("Failed to parse JSON from ApiException: " + ex.getMessage());
-                    info = ex.getMessage();
+                    message = ex.getMessage();
                 }
             } else {
-                info = LocalizationManager.tr("error.api_exception.default");
+                message = LocalizationManager.tr("error.api_exception.default");
             }
-        } else if (information instanceof Exception) {
-            // Convert the stack trace of an exception into a string
+        } else if (content instanceof Exception ex) {
+            message = ex.getMessage();
             StringWriter sw = new StringWriter();
-            ((Exception) information).printStackTrace(new PrintWriter(sw));
-            info = "See log file for more details:\n" + sw;
-        } else if (information != null) {
-            // Convert the information object to a string if it's not an exception
-            info = information.toString();
+            ex.printStackTrace(new PrintWriter(sw));
+            details = sw.toString();
+        } else if (content != null) {
+            message = content.toString();
         }
 
-
-        // Compact for short messages; scrollable only for long ones. Always on EDT.
-        final String text = Objects.requireNonNullElse(info, "");
-        Runnable show = () -> {
-            if (text.length() <= 140) {
-                // small, standard dialog
-                JOptionPane.showMessageDialog(null, text, title, messageType);
+        final String msg = Objects.requireNonNullElse(message, "");
+        final String det = details;
+        EDT.run(() -> {
+            if (det != null && !det.isBlank()) {
+                Object[] options = {LocalizationManager.tr("popup.ok"), LocalizationManager.tr("popup.details")};
+                int res = JOptionPane.showOptionDialog(null, msg, title, JOptionPane.DEFAULT_OPTION, messageType,
+                        null, options, options[0]);
+                if (res == 1) {
+                    JTextArea area = new JTextArea(det);
+                    area.setEditable(false);
+                    area.setLineWrap(true);
+                    area.setWrapStyleWord(true);
+                    JScrollPane sp = new JScrollPane(area);
+                    sp.setPreferredSize(new Dimension(420, 240));
+                    JOptionPane.showMessageDialog(null, sp, title, messageType);
+                }
             } else {
-                // long content gets a scroll pane, modest default size
-                JTextArea area = new JTextArea(text);
-                area.setEditable(false);
-                area.setLineWrap(true);
-                area.setWrapStyleWord(true);
-                JScrollPane sp = new JScrollPane(area);
-                sp.setPreferredSize(new Dimension(420, 240));
-                JOptionPane.showMessageDialog(null, sp, title, messageType);
+                JOptionPane.showMessageDialog(null, msg, title, messageType);
             }
-        };
-        if (SwingUtilities.isEventDispatchThread()) {
-            show.run();
-        } else {
-            try {
-                SwingUtilities.invokeAndWait(show);
-            } catch (Exception ignored) {
-                // Fallback if invokeAndWait fails
-                JOptionPane.showMessageDialog(null, text, title, messageType);
-            }
-        }
+        });
+
         if (this == INFORMATION) {
-            logger.info(title + ": " + info);
+            logger.info(title + ": " + msg);
         } else if (this == ERROR) {
-            logger.severe(title + ": " + info);
+            logger.severe(title + ": " + msg);
         } else if (this == WARNING) {
-            logger.warning(title + ": " + info);
+            logger.warning(title + ": " + msg);
         } else if (this == FATAL) {
-            logger.severe(title + ": " + info);
+            logger.severe(title + ": " + msg);
             System.exit(-1);
         }
     }

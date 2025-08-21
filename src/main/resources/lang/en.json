@@ -12,6 +12,8 @@
   "frame.title": "iLoppis Cash Register v1.0",
   "popup.confirm": "Confirm",
   "popup.cancel": "Cancel",
+  "popup.ok": "OK",
+  "popup.details": "Details",
   "error.create_dirs.title": "Could not create directories",
   "error.create_dirs.message": "Need to create directories 'data' and 'logs' to continue. Ensure the program has permission to create directories.",
   "discovery.selected_event.title": "Selected Event",

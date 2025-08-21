@@ -28,6 +28,7 @@ import java.time.ZoneOffset;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.logging.Logger;
 
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 import static se.goencoder.loppiskassan.rest.ApiHelper.isLikelyNetworkError;
@@ -37,6 +38,7 @@ public class CashierTabController implements CashierControllerInterface {
     // TODO, check so that the buttons to abort/swish/kontant are enabled only if there is at least one item in the list of items (not before that)
 
     private static final CashierTabController instance = new CashierTabController();
+    private static final Logger log = Logger.getLogger(CashierTabController.class.getName());
 
     /**
      * True if the system encountered a network error and is now in "degraded mode".
@@ -91,10 +93,22 @@ public class CashierTabController implements CashierControllerInterface {
         this.view = view;
     }
 
+    private String logCtx(int sellerId) {
+        boolean online = !ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        return String.format("event=%s seller=%d mode=%s", eventId, sellerId, online ? "online" : "offline");
+    }
+
     // --- Item operations ---
     @Override
     public void deleteItem(String itemId) {
-        items.removeIf(item -> item.getItemId().equals(itemId));
+        items.removeIf(item -> {
+            if (item.getItemId().equals(itemId)) {
+                log.info(() -> String.format("cashier:delete %s", logCtx(item.getSeller())));
+                return true;
+            }
+            return false;
+        });
         reCalculate();
     }
 
@@ -102,7 +116,7 @@ public class CashierTabController implements CashierControllerInterface {
     public void calculateChange(int payedAmount) {
         int totalSum = getSum();
         int change = payedAmount - totalSum;
-        view.updateChangeCashField(change);
+        view.setChange(change);
     }
 
     @Override
@@ -120,6 +134,7 @@ public class CashierTabController implements CashierControllerInterface {
 
     public void addItem(Integer sellerId, Integer[] prices) {
         if (FileHelper.assertRecordFileRights(LOPPISKASSAN_CSV)) {
+            log.info(() -> String.format("cashier:add items=%d %s", prices.length, logCtx(sellerId)));
             for (Integer price : prices) {
                 SoldItem soldItem = new SoldItem(sellerId, price, null);
                 items.add(soldItem);
@@ -151,9 +166,7 @@ public class CashierTabController implements CashierControllerInterface {
                     ex -> {
                         if (isLikelyNetworkError(ex)) {
                             degradedMode = true;
-                            Popup.WARNING.showAndWait(
-                                    LocalizationManager.tr("warning.degraded_mode.title"),
-                                    LocalizationManager.tr("warning.degraded_mode.message"));
+                            Popup.warn("warning.degraded_mode");
                         } else {
                             Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_web"), ex.getMessage());
                         }
@@ -188,7 +201,6 @@ public class CashierTabController implements CashierControllerInterface {
         // 2) Clear the cashier UI
         items.clear();
         view.clearView();
-        view.enableCheckoutButtons(!items.isEmpty());
 
         // 3) If we are in degraded mode, spawn a background thread to attempt a catch-up
         boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
@@ -205,7 +217,6 @@ public class CashierTabController implements CashierControllerInterface {
     public void cancelCheckout() {
         items.clear();
         view.clearView();
-        view.enableCheckoutButtons(!items.isEmpty());
     }
 
     // --- Recalculate totals ---
@@ -216,12 +227,9 @@ public class CashierTabController implements CashierControllerInterface {
 
         view.clearView();
         items.forEach(view::addSoldItem);
-        view.updateSumLabel(String.valueOf(totalSum));
-        view.updateNoItemsLabel(String.valueOf(items.size()));
-        view.updateChangeCashField(change);
-        view.updatePayedCashField(roundedSum);
+        view.setChange(change);
+        view.setPaidAmount(roundedSum);
         view.setFocusToSellerField();
-        view.enableCheckoutButtons(!items.isEmpty());
     }
 
     private int getSum() {
@@ -321,9 +329,7 @@ public class CashierTabController implements CashierControllerInterface {
             } catch (IOException e) {
                 // local file write error is not a reason to remain degraded
                 // but we do show a warning
-                Popup.WARNING.showAndWait(
-                        LocalizationManager.tr("warning.update_items.title"),
-                        LocalizationManager.tr("warning.update_items.message", e.getMessage()));
+                Popup.warn("warning.update_items", e.getMessage());
             }
 
             return true;
@@ -342,9 +348,7 @@ public class CashierTabController implements CashierControllerInterface {
         }
 
         if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
-            Popup.WARNING.showAndWait(
-                    LocalizationManager.tr("warning.partial_upload.title"),
-                    LocalizationManager.tr("warning.partial_upload.message", response.getRejectedItems()));
+            Popup.warn("warning.partial_upload", response.getRejectedItems());
             for (se.goencoder.iloppis.model.RejectedItem rejectedItem : response.getRejectedItems()) {
                 SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
                 if (localItem != null) {
