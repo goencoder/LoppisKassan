@@ -8,6 +8,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import se.goencoder.loppiskassan.controller.CashierTabController;
 
 public class UserInterface extends JFrame implements LocalizationAware {
     private final JTabbedPane tabPane;
@@ -117,7 +118,7 @@ public class UserInterface extends JFrame implements LocalizationAware {
         tabPane.addTab("", null, discoveryTabPanel, "");
         selectabableTabs.add(discoveryTabPanel);
 
-        CashierTabPanel cashierTabPanel = new CashierTabPanel();
+        CashierTabPanel cashierTabPanel = new CashierTabPanel(CashierTabController.getInstance());
         tabPane.addTab("", null, cashierTabPanel, "");
         selectabableTabs.add(cashierTabPanel);
 

@@ -2,13 +2,11 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
-import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
@@ -39,10 +37,13 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private int itemsCount = 0;
     private int sumValue = 0;
 
+    private final CashierControllerInterface controller;
+
     /**
      * Initializes the cashier tab panel with its components and controller setup.
      */
-    public CashierTabPanel() {
+    public CashierTabPanel(CashierControllerInterface controller) {
+        this.controller = controller;
         setLayout(new BorderLayout());
 
         // Initialize and add components
@@ -56,7 +57,6 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         add(buttonPanel, BorderLayout.SOUTH); // Button panel at the bottom
 
         // Set up controller and actions
-        CashierControllerInterface controller = CashierTabController.getInstance();
         controller.setupCheckoutSwishButtonAction(checkoutSwishButton);
         controller.setupCheckoutCashButtonAction(checkoutCashButton);
         controller.setupCancelCheckoutButtonAction(cancelCheckoutButton);
@@ -95,7 +95,6 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
                     int row = cashierTable.getSelectedRow();
                     if (row >= 0) {
                         String itemId = tableModel.getValueAt(row, 2).toString();
-                        CashierControllerInterface controller = CashierTabController.getInstance();
                         controller.deleteItem(itemId); // Delete the item from the table
                     }
                 }
@@ -120,6 +119,14 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         payedCashField = new JTextField();      // stays editable
         changeCashField = new JTextField();     // kept for controller; will be hidden and mirrored to a JLabel
         changeCashField.setEditable(false);
+
+        // Keep the fields clean as the user types (no jumpy caret):
+        // - seller: 3 digits max
+        // - prices: digits & spaces (collapsed)
+        // - paid:   up to 5 digits
+        TextFilters.install(sellerField, new TextFilters.DigitsOnlyFilter(3));
+        TextFilters.install(pricesField, new TextFilters.DigitsAndSpacesFilter(200));
+        TextFilters.install(payedCashField, new TextFilters.DigitsOnlyFilter(5));
 
         // --- init labels ---
         sellerLabel = new JLabel();
@@ -171,12 +178,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
             @Override public void changedUpdate(DocumentEvent e) { sync(); }
         });
 
-        // Add a key listener to calculate change dynamically
+        // Add a key listener to calculate change dynamically (no extra sanitizing needed with filters)
         payedCashField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
-                CashierControllerInterface controller = CashierTabController.getInstance();
-                payedCashField.setText(payedCashField.getText().replaceAll("[^0-9]", ""));
                 try {
                     int payedAmount = payedCashField.getText().isEmpty() ? 0 : Integer.parseInt(payedCashField.getText());
                     controller.calculateChange(payedAmount);
@@ -312,25 +317,32 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
             return new HashMap<>();
         }
 
-        if (!CashierTabController.getInstance().isSellerApproved(sellerId)) {
+        if (!controller.isSellerApproved(sellerId)) {
             Popup.WARNING.showAndWait(
                     LocalizationManager.tr("cashier.seller_not_approved.title"),
                     LocalizationManager.tr("cashier.seller_not_approved.message"));
             return new HashMap<>();
         }
 
-        // Parse prices
-        String[] priceStrings = pricesField.getText().split("\\s+");
-        Integer[] priceInts = new Integer[priceStrings.length];
-        try {
-            for (int i = 0; i < priceStrings.length; i++) {
-                priceInts[i] = Integer.parseInt(priceStrings[i]);
-            }
-        } catch (NumberFormatException e) {
+        // Parse prices (friendly error: tell which token failed)
+        String prices = pricesField.getText();
+        String[] priceStrings = prices.trim().isEmpty() ? new String[0] : prices.trim().split("\\s+");
+        if (priceStrings.length == 0) {
             Popup.WARNING.showAndWait(
                     LocalizationManager.tr("cashier.invalid_price.title"),
                     LocalizationManager.tr("cashier.invalid_price.message"));
             return new HashMap<>();
+        }
+        Integer[] priceInts = new Integer[priceStrings.length];
+        for (int i = 0; i < priceStrings.length; i++) {
+            String tok = priceStrings[i];
+            if (!tok.matches("\\d+")) {
+                Popup.WARNING.showAndWait(
+                        LocalizationManager.tr("cashier.invalid_price.title"),
+                        LocalizationManager.tr("cashier.invalid_price.message", tok));
+                return new HashMap<>();
+            }
+            priceInts[i] = Integer.parseInt(tok);
         }
 
         // Return seller-prices mapping
