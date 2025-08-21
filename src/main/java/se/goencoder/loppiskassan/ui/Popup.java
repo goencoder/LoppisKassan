@@ -1,13 +1,15 @@
 package se.goencoder.loppiskassan.ui;
 
-
-
 import javax.swing.JOptionPane;
+import javax.swing.JTextArea;
+import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Logger;
+import java.awt.Dimension;
 
 import org.json.JSONObject;
 import se.goencoder.iloppis.invoker.ApiException;
@@ -93,8 +95,30 @@ public enum Popup {
         }
 
 
-        // Use JOptionPane to display the message
-        JOptionPane.showMessageDialog(null, Objects.requireNonNull(info).substring(0, Math.min(info.length(), 400)), title, messageType);
+        // Use a scrollable, EDT-safe dialog (no hard truncation)
+        final String text = Objects.requireNonNullElse(info, "");
+        Runnable show = () -> {
+            JTextArea area = new JTextArea(text);
+            area.setEditable(false);
+            area.setLineWrap(true);
+            area.setWrapStyleWord(true);
+            area.setOpaque(false);
+            JScrollPane sp = new JScrollPane(area);
+            sp.setBorder(null);
+            // Sensible size for long messages; still resizable by the user
+            sp.setPreferredSize(new Dimension(600, Math.min(400, Math.max(160, area.getLineCount() * 18))));
+            JOptionPane.showMessageDialog(null, sp, title, messageType);
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            show.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(show);
+            } catch (Exception ignored) {
+                // Fallback if invokeAndWait fails
+                JOptionPane.showMessageDialog(null, text, title, messageType);
+            }
+        }
         if (this == INFORMATION) {
             logger.info(title + ": " + info);
         } else if (this == ERROR) {
