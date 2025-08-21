@@ -1,11 +1,14 @@
 package se.goencoder.loppiskassan.localization;
 
 /**
- * Components that need to update their displayed texts when the language
- * changes should implement this interface.
+ * Marker for views/controllers that need to react when the UI language changes.
  */
 public interface LocalizationAware {
-    /** Reload all user-facing texts from the {@link LocalizationManager}. */
+
+    /**
+     * Reload all user-visible texts from the active {@link se.goencoder.loppiskassan.localization.LocalizationManager}.
+     * Implementations should update labels, tooltips, table headers, and any cached texts.
+     */
     void reloadTexts();
 }
 

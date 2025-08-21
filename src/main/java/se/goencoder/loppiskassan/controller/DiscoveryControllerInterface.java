@@ -2,46 +2,59 @@ package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 
-
-
+/**
+ * Controller contract for discovering events and opening the register.
+ * <p>
+ * Mode behavior:
+ * <ul>
+ *   <li><b>Online:</b> fetch events from the backend; opening the register requires a valid cashier code.</li>
+ *   <li><b>Offline:</b> list locally configured events; opening the register ignores cashier code and uses offline defaults.</li>
+ * </ul>
+ */
 public interface DiscoveryControllerInterface {
 
     /**
-     * Register a view with the controller.
-     * @param view The view to register
+     * Register the associated view.
+     * @param view discovery panel view
      */
     void registerView(DiscoveryPanelInterface view);
 
     /**
-     * Called when the user clicks "Upptäck event".
-     * @param dateFrom
+     * Discover events visible to the user starting from an optional date.
+     * Online mode should query the backend; offline mode should read local storage.
+     *
+     * @param dateFrom ISO-8601 date string (inclusive) or empty for all
      */
     void discoverEvents(String dateFrom);
 
     /**
-     * Called when the user clicks "Hämta API-nyckel".
-     * @param eventId
-     * @param cashierCode
+     * Open the register for a selected event.
+     * <p>
+     * <b>Online:</b> {@code cashierCode} must be present and validated.
+     * <b>Offline:</b> {@code cashierCode} may be ignored and the register opens immediately.
+     *
+     * @param eventId unique event identifier
+     * @param cashierCode cashier/ API code (required online)
      */
     void openRegister(String eventId, String cashierCode);
 
-
     /**
-     * Called when the user selects an event from the table (by row).
-     * The eventId might be "offline" (synthetic) or a real ID from the API.
+     * Notify that the user selected a new event in the UI.
+     * Controller should update detail fields and validation state.
+     *
+     * @param eventId selected event identifier
      */
     void eventSelected(String eventId);
 
-
     /**
-     * Init UI state
+     * Initialize the discovery view to a consistent default state
+     * (clear tables, hide details, set mode, etc.).
      */
     void initUIState();
 
     /**
-     * Called when the user clicks "Ändra event".
+     * Handle the user request to change the currently active event.
+     * Typically returns the UI to the discovery list and resets register state.
      */
     void changeEventRequested();
-
-
 }
