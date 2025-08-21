@@ -333,7 +333,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
             importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT)); // e.g., "Import register"
         } else {
             // Online: show "Update from Web" (string key must exist in resources)
-            importDataButton.setText(LocalizationManager.tr("history.update_from_web"));
+            importDataButton.setText(LocalizationManager.tr("button.update_web"));
         }
         payoutButton.setText(LocalizationManager.tr(BUTTON_PAY_OUT));
         toClipboardButton.setText(LocalizationManager.tr(BUTTON_COPY_TO_CLIPBOARD));
