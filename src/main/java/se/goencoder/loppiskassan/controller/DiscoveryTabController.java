@@ -224,12 +224,12 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             view.showActiveEventInfo(event, split);
             view.setChangeEventButtonVisible(true);
         } catch (Exception ex) {
-            ConfigurationStore.reset();
             if (ex instanceof ApiException) {
                 Popup.ERROR.showAndWait(
                         LocalizationManager.tr("error.fetch_token.title"),
                         ex);
             } else {
+                ConfigurationStore.reset();
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
             }
         }

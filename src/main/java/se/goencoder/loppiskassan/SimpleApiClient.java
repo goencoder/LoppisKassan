@@ -9,6 +9,7 @@ import se.goencoder.iloppis.model.Pagination;
 import se.goencoder.iloppis.invoker.JSON;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -47,7 +48,7 @@ public class SimpleApiClient {
             // Build the request manually with proper content type
             Request httpRequest = new Request.Builder()
                 .url("http://127.0.0.1:8080/v1/events:filter")
-                .post(RequestBody.create(MediaType.parse("application/json"), jsonBody))
+                .post(RequestBody.create(MediaType.get("application/json"), jsonBody.getBytes(StandardCharsets.UTF_8)))
                 .build();
 
             System.out.println("Sending request to: " + httpRequest.url());

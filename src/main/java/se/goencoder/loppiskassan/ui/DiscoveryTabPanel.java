@@ -241,9 +241,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         TitledBorder detailsBorder = BorderFactory.createTitledBorder("");
         panel.setBorder(detailsBorder);
         this.discoveryDetailsBorder = detailsBorder;
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        GridBagConstraints gbc = createDefaultGbc();
 
         // Name field
         gbc.gridx = 0;
@@ -280,9 +278,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         TitledBorder revenueBorder = BorderFactory.createTitledBorder("");
         panel.setBorder(revenueBorder);
         this.discoveryRevenueSplitBorder = revenueBorder;
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        GridBagConstraints gbc = createDefaultGbc();
 
         // Market Owner Split
         gbc.gridx = 0;
@@ -331,9 +327,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         selectedEventBorder = BorderFactory.createTitledBorder("");
         panel.setBorder(selectedEventBorder);
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        GridBagConstraints gbc = createDefaultGbc();
 
         // Event Details Section
         gbc.gridx = 0;
@@ -356,9 +350,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         TitledBorder detailsBorder = BorderFactory.createTitledBorder("");
         panel.setBorder(detailsBorder);
         this.detailsBorder = detailsBorder;
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        GridBagConstraints gbc = createDefaultGbc();
 
         // Event Name
         gbc.gridx = 0;
@@ -395,9 +387,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         TitledBorder revenueBorder = BorderFactory.createTitledBorder("");
         panel.setBorder(revenueBorder);
         this.revenueSplitBorder = revenueBorder;
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        GridBagConstraints gbc = createDefaultGbc();
 
         // Market Owner Split
         gbc.gridx = 0;
@@ -435,6 +425,26 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         changeEventButton.addActionListener(e -> controller.changeEventRequested());
         panel.add(changeEventButton);
         return panel;
+    }
+
+    private GridBagConstraints createDefaultGbc() {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 5, 5, 5);
+        return gbc;
+    }
+
+    private void setEventTexts(TitledBorder detailsBorder, TitledBorder revenueBorder,
+                               JLabel nameLabel, JLabel descLabel, JLabel addressLabel,
+                               JLabel marketOwnerLabel, JLabel vendorLabel, JLabel platformLabel) {
+        detailsBorder.setTitle(LocalizationManager.tr("event.details.title"));
+        revenueBorder.setTitle(LocalizationManager.tr("revenue_split.title"));
+        nameLabel.setText(LocalizationManager.tr("event.name"));
+        descLabel.setText(LocalizationManager.tr("event.description"));
+        addressLabel.setText(LocalizationManager.tr("event.address"));
+        marketOwnerLabel.setText(LocalizationManager.tr("revenue_split.market_owner"));
+        vendorLabel.setText(LocalizationManager.tr("revenue_split.vendor"));
+        platformLabel.setText(LocalizationManager.tr("revenue_split.platform"));
     }
 
     // --------------------------------------------------------------------
@@ -614,25 +624,16 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         noSelectionLabel.setText(LocalizationManager.tr("discovery.no_selection"));
 
         // Discovery detail form
-        discoveryDetailsBorder.setTitle(LocalizationManager.tr("event.details.title"));
-        discoveryRevenueSplitBorder.setTitle(LocalizationManager.tr("revenue_split.title"));
-        discoveryEventNameStaticLabel.setText(LocalizationManager.tr("event.name"));
-        discoveryEventDescStaticLabel.setText(LocalizationManager.tr("event.description"));
-        discoveryEventAddressStaticLabel.setText(LocalizationManager.tr("event.address"));
-        discoveryMarketOwnerStaticLabel.setText(LocalizationManager.tr("revenue_split.market_owner"));
-        discoveryVendorStaticLabel.setText(LocalizationManager.tr("revenue_split.vendor"));
-        discoveryPlatformStaticLabel.setText(LocalizationManager.tr("revenue_split.platform"));
+        setEventTexts(discoveryDetailsBorder, discoveryRevenueSplitBorder,
+                discoveryEventNameStaticLabel, discoveryEventDescStaticLabel,
+                discoveryEventAddressStaticLabel, discoveryMarketOwnerStaticLabel,
+                discoveryVendorStaticLabel, discoveryPlatformStaticLabel);
 
         // Active event panel
         selectedEventBorder.setTitle(LocalizationManager.tr("discovery.selected_event.title"));
-        detailsBorder.setTitle(LocalizationManager.tr("event.details.title"));
-        revenueSplitBorder.setTitle(LocalizationManager.tr("revenue_split.title"));
-        eventNameStaticLabel.setText(LocalizationManager.tr("event.name"));
-        eventDescStaticLabel.setText(LocalizationManager.tr("event.description"));
-        eventAddressStaticLabel.setText(LocalizationManager.tr("event.address"));
-        marketOwnerStaticLabel.setText(LocalizationManager.tr("revenue_split.market_owner"));
-        vendorStaticLabel.setText(LocalizationManager.tr("revenue_split.vendor"));
-        platformStaticLabel.setText(LocalizationManager.tr("revenue_split.platform"));
+        setEventTexts(detailsBorder, revenueSplitBorder,
+                eventNameStaticLabel, eventDescStaticLabel, eventAddressStaticLabel,
+                marketOwnerStaticLabel, vendorStaticLabel, platformStaticLabel);
 
         cashierCodeLabel.setText(LocalizationManager.tr("cashier.code"));
         changeEventButton.setText(LocalizationManager.tr("button.change_event"));
