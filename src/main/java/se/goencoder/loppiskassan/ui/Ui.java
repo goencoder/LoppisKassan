@@ -26,6 +26,8 @@ public final class Ui {
     public static final int SP_XL = 24;
 
     public static final Insets ROW = new Insets(SP_S, SP_L, SP_S, SP_L);
+    public static Insets COMPACT_LABEL_RIGHT = new Insets(SP_S, SP_L, SP_S, SP_XS);
+    public static Insets COMPACT_FIELD_LEFT  = new Insets(SP_S, SP_XS, SP_S, SP_L);
 
     private Ui() { }
 
@@ -53,6 +55,21 @@ public final class Ui {
         gbc.anchor = GridBagConstraints.LINE_START;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = x == 1 ? 1.0 : 0.0;
+        return gbc;
+    }
+
+    public static GridBagConstraints gbcCompactLabel(int x, int y) {
+        GridBagConstraints gbc = gbc(x, y);
+        gbc.insets = COMPACT_LABEL_RIGHT;
+        gbc.anchor = GridBagConstraints.LINE_END;
+        gbc.weightx = 0.0;
+        return gbc;
+    }
+
+    public static GridBagConstraints gbcCompactField(int x, int y, double weightx) {
+        GridBagConstraints gbc = gbc(x, y);
+        gbc.insets = COMPACT_FIELD_LEFT;
+        gbc.weightx = weightx;
         return gbc;
     }
 

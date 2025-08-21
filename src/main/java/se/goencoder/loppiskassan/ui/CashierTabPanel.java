@@ -1,20 +1,32 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.SoldItem;
-import se.goencoder.loppiskassan.controller.CashierControllerInterface;
-import se.goencoder.loppiskassan.controller.CashierTabController;
-import se.goencoder.loppiskassan.localization.LocalizationManager;
-import se.goencoder.loppiskassan.localization.LocalizationAware;
-import se.goencoder.loppiskassan.ui.Ui;
-
-import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
+
+import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.controller.CashierControllerInterface;
+import se.goencoder.loppiskassan.controller.CashierTabController;
+import se.goencoder.loppiskassan.localization.LocalizationAware;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.ui.Ui;
 
 
 /**
@@ -112,69 +124,63 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
      */
     private JPanel initializeInputPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(Ui.SP_S, Ui.SP_L, 0, Ui.SP_L));
 
-        // Initialize input fields
         sellerField = new JTextField();
         pricesField = new JTextField();
         payedCashField = new JTextField();
         changeCashField = new JTextField();
-        changeCashField.setEditable(false); // Change field should not be editable
+        changeCashField.setEditable(false);
 
-        // Seller ID
+        Dimension h = new Dimension(0, Math.max(28, sellerField.getPreferredSize().height));
+        for (JTextField f : new JTextField[]{sellerField, pricesField, payedCashField, changeCashField}) {
+            f.setPreferredSize(new Dimension(f.getPreferredSize().width, h.height));
+        }
+
         sellerLabel = new JLabel();
-        GridBagConstraints gbc = Ui.gbc(0, 0);
-        gbc.anchor = GridBagConstraints.LINE_END;
-        panel.add(sellerLabel, gbc);
-        gbc = Ui.gbc(1, 0);
-        panel.add(sellerField, gbc);
-
-        // Prices
         pricesLabel = new JLabel();
-        gbc = Ui.gbc(0, 1);
-        gbc.anchor = GridBagConstraints.LINE_END;
-        panel.add(pricesLabel, gbc);
-        gbc = Ui.gbc(1, 1);
-        panel.add(pricesField, gbc);
-
-        // Paid
         paidLabel = new JLabel();
-        gbc = Ui.gbc(0, 2);
-        gbc.anchor = GridBagConstraints.LINE_END;
-        panel.add(paidLabel, gbc);
-        gbc = Ui.gbc(1, 2);
-        panel.add(payedCashField, gbc);
-
-        // Change
         changeLabel = new JLabel();
-        gbc = Ui.gbc(0, 3);
-        gbc.anchor = GridBagConstraints.LINE_END;
-        panel.add(changeLabel, gbc);
-        gbc = Ui.gbc(1, 3);
-        panel.add(changeCashField, gbc);
 
-        // Info panel
+        int row = 0;
+
+        panel.add(sellerLabel, Ui.gbcCompactLabel(0, row));
+        panel.add(sellerField, Ui.gbcCompactField(1, row, 0.5));
+        panel.add(pricesLabel, Ui.gbcCompactLabel(2, row));
+        panel.add(pricesField, Ui.gbcCompactField(3, row, 0.5));
+        row++;
+
+        panel.add(paidLabel, Ui.gbcCompactLabel(0, row));
+        GridBagConstraints paidFieldGbc = Ui.gbcCompactField(1, row, 1.0);
+        paidFieldGbc.gridwidth = 3;
+        panel.add(payedCashField, paidFieldGbc);
+        row++;
+
+        panel.add(changeLabel, Ui.gbcCompactLabel(0, row));
+        GridBagConstraints changeFieldGbc = Ui.gbcCompactField(1, row, 1.0);
+        changeFieldGbc.gridwidth = 3;
+        panel.add(changeCashField, changeFieldGbc);
+        row++;
+
         JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, Ui.SP_S, 0));
         noItemsLabel = new JLabel();
         sumLabel = new JLabel();
         infoPanel.add(noItemsLabel);
         infoPanel.add(sumLabel);
-        gbc = Ui.gbc(0, 4);
-        gbc.gridwidth = 2;
-        panel.add(infoPanel, gbc);
 
-        // Add a key listener to calculate change dynamically
+        GridBagConstraints infoGbc = Ui.gbc(0, row);
+        infoGbc.gridwidth = 4;
+        panel.add(infoPanel, infoGbc);
+
+        CashierControllerInterface controller = CashierTabController.getInstance();
         payedCashField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
-                CashierControllerInterface controller = CashierTabController.getInstance();
-                payedCashField.setText(payedCashField.getText().replaceAll("[^0-9]", ""));
                 try {
-                    int payedAmount = payedCashField.getText().isEmpty() ? 0 : Integer.parseInt(payedCashField.getText());
+                    int payedAmount = Integer.parseInt(payedCashField.getText());
                     controller.calculateChange(payedAmount);
                 } catch (NumberFormatException ex) {
-                    Popup.WARNING.showAndWait(
-                            LocalizationManager.tr("cashier.invalid_amount.title"),
-                            LocalizationManager.tr("cashier.invalid_amount.message"));
+                    // ignore
                 }
             }
         });
