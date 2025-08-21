@@ -38,32 +38,18 @@ public interface CashierPanelInterface extends SelectabableTab, UiComponent {
     void addSoldItem(SoldItem item);
 
     /**
-     * Update the sum label with a formatted total (e.g., "Summa: 123 kr").
-     *
-     * @param newText formatted total text
-     */
-    void updateSumLabel(String newText);
-
-    /**
-     * Update the UI text for the count of items (e.g., "0 varor").
-     *
-     * @param newText localized/ formatted text
-     */
-    void updateNoItemsLabel(String newText);
-
-    /**
      * Update the entered cash amount used for change calculation.
      *
      * @param amount amount in whole currency units (e.g., SEK)
      */
-    void updatePayedCashField(Integer amount);
+    void setPaidAmount(int amount);
 
     /**
      * Update the calculated change-to-give field.
      *
      * @param amount change amount in whole currency units
      */
-    void updateChangeCashField(Integer amount);
+    void setChange(int amount);
 
     /**
      * Retrieve and clear the seller→prices mapping from the UI in a single, atomic operation.

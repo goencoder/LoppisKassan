@@ -6,14 +6,15 @@ import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import se.goencoder.loppiskassan.util.Money;
+import se.goencoder.loppiskassan.util.PriceList;
 
 import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
 
@@ -25,10 +26,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
 
     // Components for the cashier table and input fields
     private JTable cashierTable;
-    private JTextField sellerField, pricesField, payedCashField, changeCashField;
+    private JTextField sellerField, pricesField, payedCashField;
     private JLabel noItemsLabel, sumLabel;
     private JLabel sellerLabel, pricesLabel, paidLabel, changeLabel;
-    // New: visible label for change, while keeping the hidden text field for controller updates
     private JLabel changeValueLabel;
 
     // Buttons for checkout actions
@@ -78,24 +78,21 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
                 LocalizationManager.tr("cashier.table.price"),
                 LocalizationManager.tr("cashier.table.item_id")
         };
-        DefaultTableModel tableModel = new DefaultTableModel(null, columnNames) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false; // Prevent cell editing
-            }
-        };
+        SoldItemsTableModel tableModel = new SoldItemsTableModel(columnNames);
         cashierTable = new JTable(tableModel);
-        cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2)); // Hide "Item ID" column
+        cashierTable.getColumnModel().getColumn(1).setCellRenderer(Renderers.rightAligned());
+        cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2));
 
-        // Add a key listener for delete functionality
+        tableModel.addTableModelListener(e -> updateSummary());
+
         cashierTable.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_DELETE) {
                     int row = cashierTable.getSelectedRow();
                     if (row >= 0) {
-                        String itemId = tableModel.getValueAt(row, 2).toString();
-                        controller.deleteItem(itemId); // Delete the item from the table
+                        String itemId = tableModel.getValueAt(row, SoldItemsTableModel.COLUMN_ITEM_ID).toString();
+                        controller.deleteItem(itemId);
                     }
                 }
             }
@@ -116,9 +113,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         // --- init fields ---
         sellerField = new JTextField();
         pricesField = new JTextField();
-        payedCashField = new JTextField();      // stays editable
-        changeCashField = new JTextField();     // kept for controller; will be hidden and mirrored to a JLabel
-        changeCashField.setEditable(false);
+        payedCashField = new JTextField();
+        changeValueLabel = new JLabel();
 
         // Keep the fields clean as the user types (no jumpy caret):
         // - seller: 3 digits max
@@ -169,27 +165,21 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         infoPanel.add(changeValueLabel);
         inputPanel.add(infoPanel);
 
-        // We keep changeCashField but DON'T add it to the layout.
-        // Mirror its text to the visible changeValueLabel so existing controller code keeps working.
-        changeCashField.getDocument().addDocumentListener(new DocumentListener() {
-            private void sync() { changeValueLabel.setText(changeCashField.getText()); }
-            @Override public void insertUpdate(DocumentEvent e) { sync(); }
-            @Override public void removeUpdate(DocumentEvent e) { sync(); }
-            @Override public void changedUpdate(DocumentEvent e) { sync(); }
-        });
-
         // Add a key listener to calculate change dynamically (no extra sanitizing needed with filters)
         payedCashField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
-                try {
-                    int payedAmount = payedCashField.getText().isEmpty() ? 0 : Integer.parseInt(payedCashField.getText());
-                    controller.calculateChange(payedAmount);
-                } catch (NumberFormatException ex) {
-                    Popup.WARNING.showAndWait(
-                            LocalizationManager.tr("cashier.invalid_amount.title"),
-                            LocalizationManager.tr("cashier.invalid_amount.message"));
+                int payedAmount = 0;
+                String txt = payedCashField.getText();
+                if (txt != null && !txt.isEmpty()) {
+                    try {
+                        payedAmount = Integer.parseInt(txt);
+                    } catch (NumberFormatException ignore) {
+                        // digit filter should prevent this; fallback to 0 just in case
+                        payedAmount = 0;
+                    }
                 }
+                controller.calculateChange(payedAmount);
             }
         });
 
@@ -241,8 +231,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         checkoutCashButton.setText(LocalizationManager.tr("cashier.cash"));
         checkoutSwishButton.setText(LocalizationManager.tr("cashier.swish"));
 
-        DefaultTableModel model = (DefaultTableModel) cashierTable.getModel();
-        model.setColumnIdentifiers(new String[]{
+        SoldItemsTableModel model = getTableModel();
+        model.setColumnNames(new String[]{
                 LocalizationManager.tr("cashier.table.seller"),
                 LocalizationManager.tr("cashier.table.price"),
                 LocalizationManager.tr("cashier.table.item_id")
@@ -250,17 +240,29 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         if (cashierTable.getColumnModel().getColumnCount() > 2) {
             cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2));
         }
-
-        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
-        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
+        updateSummary();
     }
 
     // ------------------------------------------------------------------------
     // Methods for interacting with the CashierControllerInterface
     // ------------------------------------------------------------------------
 
-    private DefaultTableModel getTableModel() {
-        return (DefaultTableModel) cashierTable.getModel();
+    private SoldItemsTableModel getTableModel() {
+        return (SoldItemsTableModel) cashierTable.getModel();
+    }
+
+    private void updateSummary() {
+        SoldItemsTableModel model = getTableModel();
+        itemsCount = model.getRowCount();
+        int total = 0;
+        for (SoldItem item : model.getItems()) {
+            total += item.getPrice();
+        }
+        sumValue = total;
+        Locale locale = new Locale(LocalizationManager.getLanguage());
+        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
+        sumLabel.setText(Money.formatAmount(sumValue, locale, LocalizationManager.tr("currency.sek")));
+        enableCheckoutButtons(itemsCount > 0);
     }
 
     @Override
@@ -277,79 +279,47 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
 
     @Override
     public void addSoldItem(SoldItem item) {
-        DefaultTableModel model = getTableModel();
-        model.insertRow(0, new Object[]{item.getSeller(), item.getPrice(), item.getItemId()});
+        getTableModel().addItem(item);
     }
 
     @Override
-    public void updateSumLabel(String newText) {
-        sumValue = Integer.parseInt(newText);
-        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
+    public void setPaidAmount(int amount) {
+        payedCashField.setText(String.valueOf(amount));
     }
 
     @Override
-    public void updateNoItemsLabel(String newText) {
-        itemsCount = Integer.parseInt(newText);
-        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
-    }
-
-    @Override
-    public void updatePayedCashField(Integer amount) {
-        payedCashField.setText(amount.toString());
-    }
-
-    @Override
-    public void updateChangeCashField(Integer amount) {
-        changeCashField.setText(amount.toString());
+    public void setChange(int amount) {
+        Locale locale = new Locale(LocalizationManager.getLanguage());
+        changeValueLabel.setText(Money.formatAmount(amount, locale, LocalizationManager.tr("currency.sek")));
     }
 
     @Override
     public Map<Integer, Integer[]> getAndClearSellerPrices() {
         String seller = sellerField.getText();
         int sellerId;
-
         try {
             sellerId = Integer.parseInt(seller);
         } catch (NumberFormatException e) {
-            Popup.WARNING.showAndWait(
-                    LocalizationManager.tr("cashier.invalid_seller.title"),
-                    LocalizationManager.tr("cashier.invalid_seller.message"));
+            Popup.warn("cashier.invalid_seller");
             return new HashMap<>();
         }
 
         if (!controller.isSellerApproved(sellerId)) {
-            Popup.WARNING.showAndWait(
-                    LocalizationManager.tr("cashier.seller_not_approved.title"),
-                    LocalizationManager.tr("cashier.seller_not_approved.message"));
+            Popup.warn("cashier.seller_not_approved");
             return new HashMap<>();
         }
 
-        // Parse prices (friendly error: tell which token failed)
-        String prices = pricesField.getText();
-        String[] priceStrings = prices.trim().isEmpty() ? new String[0] : prices.trim().split("\\s+");
-        if (priceStrings.length == 0) {
-            Popup.WARNING.showAndWait(
-                    LocalizationManager.tr("cashier.invalid_price.title"),
-                    LocalizationManager.tr("cashier.invalid_price.message"));
+        java.util.List<Integer> prices;
+        try {
+            prices = PriceList.parse(pricesField.getText());
+        } catch (NumberFormatException e) {
+            Popup.warn("cashier.invalid_price");
             return new HashMap<>();
         }
-        Integer[] priceInts = new Integer[priceStrings.length];
-        for (int i = 0; i < priceStrings.length; i++) {
-            String tok = priceStrings[i];
-            if (!tok.matches("\\d+")) {
-                Popup.WARNING.showAndWait(
-                        LocalizationManager.tr("cashier.invalid_price.title"),
-                        LocalizationManager.tr("cashier.invalid_price.message", tok));
-                return new HashMap<>();
-            }
-            priceInts[i] = Integer.parseInt(tok);
-        }
 
-        // Return seller-prices mapping
         Map<Integer, Integer[]> sellerPrices = new HashMap<>();
-        sellerPrices.put(sellerId, priceInts);
+        sellerPrices.put(sellerId, prices.toArray(new Integer[0]));
 
-        // Clear input fields
         sellerField.setText("");
         pricesField.setText("");
 
@@ -358,16 +328,15 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
 
     @Override
     public void clearView() {
-        DefaultTableModel model = getTableModel();
-        model.setRowCount(0); // Clear table
+        SoldItemsTableModel model = getTableModel();
+        model.clear();
         sellerField.setText("");
         pricesField.setText("");
         payedCashField.setText("");
-        changeCashField.setText("");
+        changeValueLabel.setText("");
         sumValue = 0;
         itemsCount = 0;
-        sumLabel.setText(LocalizationManager.tr("cashier.sum", sumValue));
-        noItemsLabel.setText(LocalizationManager.tr("cashier.no_items", itemsCount));
+        updateSummary();
         setFocusToSellerField();
     }
 

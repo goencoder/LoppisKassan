@@ -287,6 +287,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         panel.add(discoveryMarketOwnerStaticLabel, gbc);
         gbc.gridx = 1;
         marketOwnerSplitField = new JTextField(5);
+        TextFilters.install(marketOwnerSplitField, new TextFilters.DigitsOnlyFilter(3));
         panel.add(marketOwnerSplitField, gbc);
 
         // Vendor Split
@@ -296,6 +297,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         panel.add(discoveryVendorStaticLabel, gbc);
         gbc.gridx = 1;
         vendorSplitField = new JTextField(5);
+        TextFilters.install(vendorSplitField, new TextFilters.DigitsOnlyFilter(3));
         panel.add(vendorSplitField, gbc);
 
         // Platform Split
@@ -305,6 +307,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         panel.add(discoveryPlatformStaticLabel, gbc);
         gbc.gridx = 1;
         platformSplitField = new JTextField(5);
+        TextFilters.install(platformSplitField, new TextFilters.DigitsOnlyFilter(3));
         panel.add(platformSplitField, gbc);
 
         return panel;
@@ -314,6 +317,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         cashierCodeLabel = new JLabel();
         cashierCodeField = new JTextField(8);
+        // Accept codes like "B6I-DKU": A–Z, 0–9 and '-' (auto uppercased), length capped generously
+        TextFilters.install(cashierCodeField, new TextFilters.AlnumDashUpperFilter(16));
         panel.add(cashierCodeLabel);
         panel.add(cashierCodeField);
         return panel;
@@ -652,4 +657,3 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
 }
-
