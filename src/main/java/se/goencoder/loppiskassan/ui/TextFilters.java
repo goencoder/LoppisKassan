@@ -49,10 +49,17 @@ public final class TextFilters {
     public static final class DigitsAndSpacesFilter extends DocumentFilter {
         private final int maxLen; // <= 0 means unlimited
         public DigitsAndSpacesFilter(int maxLen) { this.maxLen = maxLen; }
+        /**
+         * Allow digits and spaces. Collapse runs of 2+ spaces to a single space,
+         * but DO NOT trim—so a user-typed trailing space remains visible
+         * (important when entering "12 23 34 ...").
+         */
         private String normalize(String s) {
-            // allow digits and spaces, collapse multiple spaces, trim edges
+            // remove all characters except digits and spaces
             s = s.replaceAll("[^0-9\\s]", "");
-            s = s.trim().replaceAll("\\s+", " ");
+            // collapse multiple spaces anywhere, but keep a trailing single space if present
+            // (no trim here by design)
+            s = s.replaceAll(" {2,}", " ");
             return s;
         }
         @Override public void insertString(FilterBypass fb, int off, String str, AttributeSet a) throws BadLocationException {
@@ -70,4 +77,3 @@ public final class TextFilters {
         }
     }
 }
-

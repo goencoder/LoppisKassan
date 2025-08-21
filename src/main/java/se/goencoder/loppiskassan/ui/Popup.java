@@ -95,19 +95,22 @@ public enum Popup {
         }
 
 
-        // Use a scrollable, EDT-safe dialog (no hard truncation)
+        // Compact for short messages; scrollable only for long ones. Always on EDT.
         final String text = Objects.requireNonNullElse(info, "");
         Runnable show = () -> {
-            JTextArea area = new JTextArea(text);
-            area.setEditable(false);
-            area.setLineWrap(true);
-            area.setWrapStyleWord(true);
-            area.setOpaque(false);
-            JScrollPane sp = new JScrollPane(area);
-            sp.setBorder(null);
-            // Sensible size for long messages; still resizable by the user
-            sp.setPreferredSize(new Dimension(600, Math.min(400, Math.max(160, area.getLineCount() * 18))));
-            JOptionPane.showMessageDialog(null, sp, title, messageType);
+            if (text.length() <= 140) {
+                // small, standard dialog
+                JOptionPane.showMessageDialog(null, text, title, messageType);
+            } else {
+                // long content gets a scroll pane, modest default size
+                JTextArea area = new JTextArea(text);
+                area.setEditable(false);
+                area.setLineWrap(true);
+                area.setWrapStyleWord(true);
+                JScrollPane sp = new JScrollPane(area);
+                sp.setPreferredSize(new Dimension(420, 240));
+                JOptionPane.showMessageDialog(null, sp, title, messageType);
+            }
         };
         if (SwingUtilities.isEventDispatchThread()) {
             show.run();
