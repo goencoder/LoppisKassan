@@ -5,8 +5,10 @@ import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
+import se.goencoder.loppiskassan.ui.Ui;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -14,7 +16,6 @@ import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
 
-import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
 
 /**
  * Represents the cashier tab in the application, allowing users to input transactions,
@@ -46,9 +47,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         JPanel buttonPanel = initializeButtonPanel(); // Action buttons for checkout operations
 
         // Add components to the panel
-        add(new JScrollPane(cashierTable), BorderLayout.CENTER); // ScrollPane wraps the table
-        add(inputPanel, BorderLayout.NORTH); // Input panel at the top
-        add(buttonPanel, BorderLayout.SOUTH); // Button panel at the bottom
+        add(Ui.padded(new JScrollPane(cashierTable), Ui.SP_L), BorderLayout.CENTER);
+        add(Ui.padded(inputPanel, Ui.SP_L), BorderLayout.NORTH);
+        add(Ui.padded(buttonPanel, Ui.SP_L), BorderLayout.SOUTH);
 
         // Set up controller and actions
         CashierControllerInterface controller = CashierTabController.getInstance();
@@ -81,6 +82,12 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         };
         cashierTable = new JTable(tableModel);
         cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2)); // Hide "Item ID" column
+        Ui.zebra(cashierTable);
+        cashierTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        DefaultTableCellRenderer right = new DefaultTableCellRenderer();
+        right.setHorizontalAlignment(SwingConstants.RIGHT);
+        cashierTable.getColumnModel().getColumn(1).setCellRenderer(right);
+        cashierTable.getTableHeader().setPreferredSize(new Dimension(0, 28));
 
         // Add a key listener for delete functionality
         cashierTable.addKeyListener(new KeyAdapter() {
@@ -104,11 +111,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
      * @return Configured input panel.
      */
     private JPanel initializeInputPanel() {
-        JPanel inputPanel = new JPanel();
-        inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
-
-        // Fields panel with GridLayout for structured input fields
-        JPanel fieldsPanel = new JPanel(new GridLayout(0, 2));
+        JPanel panel = new JPanel(new GridBagLayout());
 
         // Initialize input fields
         sellerField = new JTextField();
@@ -117,19 +120,47 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         changeCashField = new JTextField();
         changeCashField.setEditable(false); // Change field should not be editable
 
-        // Add labels and fields to the panel
+        // Seller ID
         sellerLabel = new JLabel();
-        fieldsPanel.add(sellerLabel);
-        fieldsPanel.add(sellerField);
+        GridBagConstraints gbc = Ui.gbc(0, 0);
+        gbc.anchor = GridBagConstraints.LINE_END;
+        panel.add(sellerLabel, gbc);
+        gbc = Ui.gbc(1, 0);
+        panel.add(sellerField, gbc);
+
+        // Prices
         pricesLabel = new JLabel();
-        fieldsPanel.add(pricesLabel);
-        fieldsPanel.add(pricesField);
+        gbc = Ui.gbc(0, 1);
+        gbc.anchor = GridBagConstraints.LINE_END;
+        panel.add(pricesLabel, gbc);
+        gbc = Ui.gbc(1, 1);
+        panel.add(pricesField, gbc);
+
+        // Paid
         paidLabel = new JLabel();
-        fieldsPanel.add(paidLabel);
-        fieldsPanel.add(payedCashField);
+        gbc = Ui.gbc(0, 2);
+        gbc.anchor = GridBagConstraints.LINE_END;
+        panel.add(paidLabel, gbc);
+        gbc = Ui.gbc(1, 2);
+        panel.add(payedCashField, gbc);
+
+        // Change
         changeLabel = new JLabel();
-        fieldsPanel.add(changeLabel);
-        fieldsPanel.add(changeCashField);
+        gbc = Ui.gbc(0, 3);
+        gbc.anchor = GridBagConstraints.LINE_END;
+        panel.add(changeLabel, gbc);
+        gbc = Ui.gbc(1, 3);
+        panel.add(changeCashField, gbc);
+
+        // Info panel
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, Ui.SP_S, 0));
+        noItemsLabel = new JLabel();
+        sumLabel = new JLabel();
+        infoPanel.add(noItemsLabel);
+        infoPanel.add(sumLabel);
+        gbc = Ui.gbc(0, 4);
+        gbc.gridwidth = 2;
+        panel.add(infoPanel, gbc);
 
         // Add a key listener to calculate change dynamically
         payedCashField.addKeyListener(new KeyAdapter() {
@@ -148,18 +179,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
             }
         });
 
-        inputPanel.add(fieldsPanel);
-
-        // Info panel for displaying additional details
-        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        noItemsLabel = new JLabel();
-        sumLabel = new JLabel();
-        infoPanel.add(noItemsLabel);
-        infoPanel.add(sumLabel);
-
-        inputPanel.add(infoPanel);
-
-        return inputPanel;
+        return panel;
     }
 
     /**
@@ -168,19 +188,22 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
      * @return Configured button panel.
      */
     private JPanel initializeButtonPanel() {
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 3));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, Ui.SP_M, 0));
 
         // Initialize buttons
-        cancelCheckoutButton = createButton("", 150, 50);
-        checkoutCashButton = createButton("", 150, 50);
-        checkoutSwishButton = createButton("", 150, 50);
+        cancelCheckoutButton = new JButton();
+        cancelCheckoutButton.putClientProperty("JButton.buttonType", "help");
+        checkoutCashButton = new JButton();
+        Ui.makePrimary(checkoutCashButton);
+        checkoutSwishButton = new JButton();
+        Ui.makePrimary(checkoutSwishButton);
 
         // Add buttons to the panel
-        buttonPanel.add(cancelCheckoutButton);
-        buttonPanel.add(checkoutCashButton);
-        buttonPanel.add(checkoutSwishButton);
+        panel.add(cancelCheckoutButton);
+        panel.add(checkoutCashButton);
+        panel.add(checkoutSwishButton);
 
-        return buttonPanel;
+        return panel;
     }
 
     @Override

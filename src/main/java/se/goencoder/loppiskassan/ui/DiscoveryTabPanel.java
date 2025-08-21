@@ -62,7 +62,6 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JLabel vendorSplitLabel;
     private JLabel platformSplitLabel;
 
-    private TitledBorder selectedEventBorder;
     private TitledBorder detailsBorder;
     private TitledBorder revenueSplitBorder;
     private JLabel eventNameStaticLabel;
@@ -80,7 +79,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         setLayout(new BorderLayout());
         rootCardLayout = new CardLayout();
         rootCardPanel = new JPanel(rootCardLayout);
-        add(rootCardPanel, BorderLayout.CENTER);
+        add(Ui.padded(rootCardPanel, Ui.SP_L), BorderLayout.CENTER);
 
         // Initialize the two main panels
         JPanel discoveryModePanel = buildDiscoveryModePanel();
@@ -323,104 +322,91 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
      * Builds the panel for "active event" mode, which displays read-only event details.
      */
     private JPanel buildActiveEventPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        selectedEventBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(selectedEventBorder);
-
-        GridBagConstraints gbc = createDefaultGbc();
-
-        // Event Details Section
+        JPanel cards = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
-        gbc.gridy = 0;
-        panel.add(createEventDetailsPanel(), gbc);
-
-        // Revenue Split Section
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.insets = new Insets(0, 0, Ui.SP_L, 0);
+        cards.add(createEventDetailsPanel(), gbc);
         gbc.gridy = 1;
-        panel.add(createRevenueSplitPanel(), gbc);
+        gbc.insets = new Insets(0, 0, 0, 0);
+        cards.add(createRevenueSplitPanel(), gbc);
 
-        // Change Event Button
-        gbc.gridy = 2;
-        panel.add(createChangeEventButton(), gbc);
-
-        return panel;
+        JPanel root = new JPanel(new BorderLayout());
+        root.add(cards, BorderLayout.CENTER);
+        root.add(createChangeEventButton(), BorderLayout.SOUTH);
+        return root;
     }
 
     private JPanel createEventDetailsPanel() {
+        JPanel card = Ui.card("");
+        detailsBorder = (TitledBorder) ((javax.swing.border.CompoundBorder) card.getBorder()).getOutsideBorder();
         JPanel panel = new JPanel(new GridBagLayout());
-        TitledBorder detailsBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(detailsBorder);
-        this.detailsBorder = detailsBorder;
-        GridBagConstraints gbc = createDefaultGbc();
+        card.add(panel, BorderLayout.CENTER);
 
-        // Event Name
-        gbc.gridx = 0;
-        gbc.gridy = 0;
+        GridBagConstraints gbc = Ui.gbc(0, 0);
+        gbc.anchor = GridBagConstraints.LINE_END;
         eventNameStaticLabel = new JLabel();
         panel.add(eventNameStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc = Ui.gbc(1, 0);
         activeEventNameLabel = new JLabel("???");
         panel.add(activeEventNameLabel, gbc);
 
-        // Event Description
-        gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc = Ui.gbc(0, 1);
+        gbc.anchor = GridBagConstraints.LINE_END;
         eventDescStaticLabel = new JLabel();
         panel.add(eventDescStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc = Ui.gbc(1, 1);
         activeEventDescLabel = new JLabel("???");
         panel.add(activeEventDescLabel, gbc);
 
-        // Event Address
-        gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc = Ui.gbc(0, 2);
+        gbc.anchor = GridBagConstraints.LINE_END;
         eventAddressStaticLabel = new JLabel();
         panel.add(eventAddressStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc = Ui.gbc(1, 2);
         activeEventAddressLabel = new JLabel("???");
         panel.add(activeEventAddressLabel, gbc);
 
-        return panel;
+        return card;
     }
 
     private JPanel createRevenueSplitPanel() {
+        JPanel card = Ui.card("");
+        revenueSplitBorder = (TitledBorder) ((javax.swing.border.CompoundBorder) card.getBorder()).getOutsideBorder();
         JPanel panel = new JPanel(new GridBagLayout());
-        TitledBorder revenueBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(revenueBorder);
-        this.revenueSplitBorder = revenueBorder;
-        GridBagConstraints gbc = createDefaultGbc();
+        card.add(panel, BorderLayout.CENTER);
 
-        // Market Owner Split
-        gbc.gridx = 0;
-        gbc.gridy = 0;
+        GridBagConstraints gbc = Ui.gbc(0, 0);
+        gbc.anchor = GridBagConstraints.LINE_END;
         marketOwnerStaticLabel = new JLabel();
         panel.add(marketOwnerStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc = Ui.gbc(1, 0);
         marketOwnerSplitLabel = new JLabel("???");
         panel.add(marketOwnerSplitLabel, gbc);
 
-        // Vendor Split
-        gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc = Ui.gbc(0, 1);
+        gbc.anchor = GridBagConstraints.LINE_END;
         vendorStaticLabel = new JLabel();
         panel.add(vendorStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc = Ui.gbc(1, 1);
         vendorSplitLabel = new JLabel("???");
         panel.add(vendorSplitLabel, gbc);
 
-        // Platform Split
-        gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc = Ui.gbc(0, 2);
+        gbc.anchor = GridBagConstraints.LINE_END;
         platformStaticLabel = new JLabel();
         panel.add(platformStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc = Ui.gbc(1, 2);
         platformSplitLabel = new JLabel("???");
         panel.add(platformSplitLabel, gbc);
 
-        return panel;
+        return card;
     }
 
     private JPanel createChangeEventButton() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 100));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, Ui.SP_M, 0));
         changeEventButton = new JButton();
         changeEventButton.addActionListener(e -> controller.changeEventRequested());
         panel.add(changeEventButton);
@@ -630,7 +616,6 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
                 discoveryVendorStaticLabel, discoveryPlatformStaticLabel);
 
         // Active event panel
-        selectedEventBorder.setTitle(LocalizationManager.tr("discovery.selected_event.title"));
         setEventTexts(detailsBorder, revenueSplitBorder,
                 eventNameStaticLabel, eventDescStaticLabel, eventAddressStaticLabel,
                 marketOwnerStaticLabel, vendorStaticLabel, platformStaticLabel);

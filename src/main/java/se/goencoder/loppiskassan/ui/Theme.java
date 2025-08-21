@@ -20,8 +20,8 @@ public final class Theme {
     public static boolean FOLLOW_OS = false;      // true requires flatlaf-system-extensions (not used yet)
     public static final boolean DARK_DEFAULT = false;   // app default if FOLLOW_OS is false or not supported
 
-    public static final int COMPONENT_ARC = 16;
-    public static final int BUTTON_ARC    = 20;
+    public static final int COMPONENT_ARC = 12;
+    public static final int BUTTON_ARC    = 12;
     public static final int TEXT_ARC      = 12;
     public static final int FOCUS_WIDTH   = 1;
 
@@ -62,8 +62,14 @@ public final class Theme {
 
         UIManager.put("ScrollBar.showButtons", SCROLLBAR_BUTTONS);
 
-        UIManager.put("Table.showHorizontalLines", false);
+        UIManager.put("Table.showHorizontalLines", true);
         UIManager.put("Table.showVerticalLines", false);
+        UIManager.put("Table.intercellSpacing", new Dimension(0, 1));
+        Font font = new Font("Inter", Font.PLAIN, 14);
+        if (!"Inter".equals(font.getFamily())) {
+            font = new Font(Font.SANS_SERIF, Font.PLAIN, 14);
+        }
+        UIManager.put("defaultFont", new javax.swing.plaf.FontUIResource(font));
         if (TABLE_STRIPES) {
             // FlatLaf provides alternate row coloring automatically; keep default striping on.
             // (No explicit setting needed; left here as a reminder knob.)

@@ -3,6 +3,7 @@ package se.goencoder.loppiskassan.ui;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
+import se.goencoder.loppiskassan.ui.Ui;
 
 import javax.swing.*;
 import java.awt.*;
@@ -63,19 +64,13 @@ public class UserInterface extends JFrame implements LocalizationAware {
             selectabableTabs.get(selectedTab.getIndex()).selected();
         });
 
-        add(createLanguagePanel(), BorderLayout.NORTH);
+        add(Ui.padded(createLanguagePanel(), Ui.SP_L), BorderLayout.NORTH);
         add(tabPane, BorderLayout.CENTER);
         reloadTexts();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 600);
+        pack();
+        setMinimumSize(new Dimension(900, 600));
         setLocationRelativeTo(null);
-    }
-    static JButton createButton(String text, int width, int height) {
-        JButton button = new JButton(text);
-        button.setPreferredSize(new Dimension(width, height)); // Set the preferred size
-        // You could also set the font here if needed
-        // button.setFont(new Font("Arial", Font.BOLD, 14));
-        return button;
     }
 
     private JPanel createLanguagePanel() {
