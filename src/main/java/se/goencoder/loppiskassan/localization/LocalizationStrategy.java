@@ -1,14 +1,18 @@
 package se.goencoder.loppiskassan.localization;
 
 /**
- * Strategy interface for providing translations.
+ * Lookup strategy for localized strings.
  */
 public interface LocalizationStrategy {
+
     /**
-     * Returns the translation for the given key.
+     * Return a localized message for the given i18n key.
+     * <p>
+     * Implementations should fall back to the key itself if the translation is missing,
+     * and may support parameter interpolation depending on the backing store.
      *
-     * @param key translation key
-     * @return translated string or the key itself if missing
+     * @param key i18n message key (e.g., "cashier.open")
+     * @return localized string, or the key if not found
      */
     String get(String key);
 }
