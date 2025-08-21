@@ -18,21 +18,21 @@ public final class Theme {
 
     // ---- Control knobs (edit these) ----------------------------------------
     public static boolean FOLLOW_OS = false;      // true requires flatlaf-system-extensions (not used yet)
-    public static boolean DARK_DEFAULT = false;   // app default if FOLLOW_OS is false or not supported
+    public static final boolean DARK_DEFAULT = false;   // app default if FOLLOW_OS is false or not supported
 
-    public static int COMPONENT_ARC = 16;
-    public static int BUTTON_ARC    = 20;
-    public static int TEXT_ARC      = 12;
-    public static int FOCUS_WIDTH   = 1;
+    public static final int COMPONENT_ARC = 16;
+    public static final int BUTTON_ARC    = 20;
+    public static final int TEXT_ARC      = 12;
+    public static final int FOCUS_WIDTH   = 1;
 
-    public static boolean SCROLLBAR_BUTTONS = false;
-    public static boolean TABLE_STRIPES     = true;
+    public static final boolean SCROLLBAR_BUTTONS = false;
+    public static final boolean TABLE_STRIPES     = true;
 
     /** Optional brand accent for focus & selection; set to null to use default. */
-    public static Color ACCENT = null; // e.g. new Color(0x228BE6);
+    public static final Color ACCENT = null; // e.g. new Color(0x228BE6);
 
     /** Optional global UI scale in percent (0 = off). Can also be set via -Diloppis.ui.scale=125 */
-    public static int UI_SCALE_PERCENT = Integer.getInteger("iloppis.ui.scale", 0);
+    public static final int UI_SCALE_PERCENT = Integer.getInteger("iloppis.ui.scale", 0);
     // ------------------------------------------------------------------------
 
     private Theme() {}

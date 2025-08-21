@@ -5,6 +5,7 @@ import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.iloppis.invoker.ApiException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * A fixed version of ApiClient that properly handles serialization with content types.
@@ -13,7 +14,7 @@ import se.goencoder.iloppis.invoker.ApiException;
  */
 public class FixedApiClient extends ApiClient {
 
-    private static final MediaType JSON_MEDIA_TYPE = MediaType.parse("application/json");
+    private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json");
 
     /**
      * Override the serialize method to ensure content type is never null
@@ -31,8 +32,8 @@ public class FixedApiClient extends ApiClient {
             String json = getJSON().serialize(obj);
 
             // Create the RequestBody with the correct parameter order for OkHttp 3.x
-            MediaType mediaType = MediaType.parse(contentType);
-            return RequestBody.create(mediaType, json);
+            MediaType mediaType = MediaType.get(contentType);
+            return RequestBody.create(mediaType, json.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             throw new ApiException("Failed to serialize object: " + e.getMessage(), e, 500, Collections.emptyMap());
         }
@@ -57,7 +58,7 @@ public class FixedApiClient extends ApiClient {
     public RequestBody createJsonRequestBody(Object obj) throws ApiException {
         try {
             String json = getJSON().serialize(obj);
-            return RequestBody.create(JSON_MEDIA_TYPE, json);
+            return RequestBody.create(JSON_MEDIA_TYPE, json.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             // Using more meaningful error code (500) and empty map instead of null for headers
             throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 500, Collections.emptyMap());
