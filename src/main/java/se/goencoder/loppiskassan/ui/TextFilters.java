@@ -76,4 +76,33 @@ public final class TextFilters {
             super.replace(fb, 0, fb.getDocument().getLength(), after, a);
         }
     }
+
+    /**
+     * Uppercase alpha-numeric with optional dashes ("-").
+     * Useful for codes like "B6I-DKU". Converts to UPPERCASE automatically.
+     */
+    public static final class AlnumDashUpperFilter extends DocumentFilter {
+        private final int maxLen; // <= 0 means unlimited
+        public AlnumDashUpperFilter(int maxLen) { this.maxLen = maxLen; }
+        private String normalize(String s) {
+            if (s == null) return "";
+            // keep A–Z, a–z, 0–9 and '-'; drop the rest; then uppercase
+            String cleaned = s.replaceAll("[^A-Za-z0-9-]", "");
+            return cleaned.toUpperCase(java.util.Locale.ROOT);
+        }
+        @Override public void insertString(FilterBypass fb, int off, String str, AttributeSet a) throws BadLocationException {
+            if (str == null) return;
+            String before = fb.getDocument().getText(0, fb.getDocument().getLength());
+            String after  = before.substring(0, off) + normalize(str) + before.substring(off);
+            if (maxLen > 0 && after.length() > maxLen) after = after.substring(0, maxLen);
+            super.replace(fb, 0, fb.getDocument().getLength(), after, a);
+        }
+        @Override public void replace(FilterBypass fb, int off, int len, String str, AttributeSet a) throws BadLocationException {
+            String before = fb.getDocument().getText(0, fb.getDocument().getLength());
+            String repl   = (str == null ? "" : normalize(str));
+            String after  = before.substring(0, off) + repl + before.substring(off + len);
+            if (maxLen > 0 && after.length() > maxLen) after = after.substring(0, maxLen);
+            super.replace(fb, 0, fb.getDocument().getLength(), after, a);
+        }
+    }
 }

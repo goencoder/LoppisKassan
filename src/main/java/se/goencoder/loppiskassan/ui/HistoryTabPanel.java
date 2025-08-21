@@ -6,6 +6,7 @@ import se.goencoder.loppiskassan.controller.HistoryControllerInterface;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
+import se.goencoder.loppiskassan.config.ConfigurationStore;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -326,7 +327,14 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         // Buttons
         eraseAllDataButton.setText(LocalizationManager.tr(BUTTON_ERASE));
         archiveFilteredButton.setText(LocalizationManager.tr("button.archive_filtered"));
-        importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT));
+        // Ensure the right-hand top button reflects current mode after language switch
+        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        if (isOffline) {
+            importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT)); // e.g., "Import register"
+        } else {
+            // Online: show "Update from Web" (string key must exist in resources)
+            importDataButton.setText(LocalizationManager.tr("history.update_from_web"));
+        }
         payoutButton.setText(LocalizationManager.tr(BUTTON_PAY_OUT));
         toClipboardButton.setText(LocalizationManager.tr(BUTTON_COPY_TO_CLIPBOARD));
 

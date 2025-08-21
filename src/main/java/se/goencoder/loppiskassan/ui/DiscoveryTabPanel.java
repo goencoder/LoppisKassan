@@ -317,7 +317,8 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         cashierCodeLabel = new JLabel();
         cashierCodeField = new JTextField(8);
-        TextFilters.install(cashierCodeField, new TextFilters.DigitsOnlyFilter(8));
+        // Accept codes like "B6I-DKU": A–Z, 0–9 and '-' (auto uppercased), length capped generously
+        TextFilters.install(cashierCodeField, new TextFilters.AlnumDashUpperFilter(16));
         panel.add(cashierCodeLabel);
         panel.add(cashierCodeField);
         return panel;
@@ -656,4 +657,3 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
 }
-

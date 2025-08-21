@@ -14,6 +14,7 @@
   "popup.cancel": "Avbryt",
   "popup.ok": "OK",
   "popup.details": "Detaljer",
+  "history.update_from_web": "Synka med web",
   "error.create_dirs.title": "Kunde inte skapa kataloger",
   "error.create_dirs.message": "Behöver skapa kataloger 'data' och 'logs' för att fortsätta. Kontrollera att programmet har rättigheter att skapa kataloger.",
   "discovery.selected_event.title": "Vald Loppis",

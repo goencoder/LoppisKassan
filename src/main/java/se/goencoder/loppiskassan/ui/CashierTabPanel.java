@@ -91,7 +91,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
                 if (e.getKeyCode() == KeyEvent.VK_DELETE) {
                     int row = cashierTable.getSelectedRow();
                     if (row >= 0) {
-                        String itemId = tableModel.getValueAt(row, 2).toString();
+                        String itemId = tableModel.getValueAt(row, SoldItemsTableModel.COLUMN_ITEM_ID).toString();
                         controller.deleteItem(itemId);
                     }
                 }
@@ -169,7 +169,16 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         payedCashField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
-                int payedAmount = payedCashField.getText().isEmpty() ? 0 : Integer.parseInt(payedCashField.getText());
+                int payedAmount = 0;
+                String txt = payedCashField.getText();
+                if (txt != null && !txt.isEmpty()) {
+                    try {
+                        payedAmount = Integer.parseInt(txt);
+                    } catch (NumberFormatException ignore) {
+                        // digit filter should prevent this; fallback to 0 just in case
+                        payedAmount = 0;
+                    }
+                }
                 controller.calculateChange(payedAmount);
             }
         });

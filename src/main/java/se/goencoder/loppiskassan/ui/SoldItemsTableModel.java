@@ -10,6 +10,11 @@ import java.util.List;
  * Table model for sold items, with typed columns and no cell editing.
  */
 public final class SoldItemsTableModel extends AbstractTableModel {
+    /** Column indices (model indices) for safer cross-file use. */
+    public static final int COLUMN_SELLER  = 0;
+    public static final int COLUMN_PRICE   = 1;
+    public static final int COLUMN_ITEM_ID = 2;
+
     private String[] columns;
     private final List<SoldItem> items = new ArrayList<>();
 
@@ -40,7 +45,7 @@ public final class SoldItemsTableModel extends AbstractTableModel {
     @Override
     public Class<?> getColumnClass(int columnIndex) {
         return switch (columnIndex) {
-            case 0, 1 -> Integer.class;
+            case COLUMN_SELLER, COLUMN_PRICE -> Integer.class;
             default -> String.class;
         };
     }
@@ -49,10 +54,10 @@ public final class SoldItemsTableModel extends AbstractTableModel {
     public Object getValueAt(int rowIndex, int columnIndex) {
         SoldItem item = items.get(rowIndex);
         return switch (columnIndex) {
-            case 0 -> item.getSeller();
-            case 1 -> item.getPrice();
-            case 2 -> item.getItemId();
-            default -> null;
+            case COLUMN_SELLER  -> item.getSeller();
+            case COLUMN_PRICE   -> item.getPrice();
+            case COLUMN_ITEM_ID -> item.getItemId();
+            default             -> null;
         };
     }
 

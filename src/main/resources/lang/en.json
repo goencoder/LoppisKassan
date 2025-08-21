@@ -14,6 +14,7 @@
   "popup.cancel": "Cancel",
   "popup.ok": "OK",
   "popup.details": "Details",
+  "history.update_from_web": "Update from Web",
   "error.create_dirs.title": "Could not create directories",
   "error.create_dirs.message": "Need to create directories 'data' and 'logs' to continue. Ensure the program has permission to create directories.",
   "discovery.selected_event.title": "Selected Event",
