@@ -6,16 +6,15 @@ import se.goencoder.loppiskassan.controller.HistoryControllerInterface;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
-import se.goencoder.loppiskassan.ui.Ui;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
 import java.util.Set;
 
 import static se.goencoder.loppiskassan.ui.Constants.*;
+import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
 
 /**
  * Represents the "History" tab in the application, allowing users to view and manage sold items.
@@ -46,26 +45,34 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
      * Initializes the History tab panel, including its layout and components.
      */
     public HistoryTabPanel() {
+        // Use BorderLayout for organizing the main sections
         setLayout(new BorderLayout());
         LocalizationManager.addListener(this::reloadTexts);
 
-        JPanel filterPanel = buildFilterPanel();
-        add(Ui.padded(filterPanel, Ui.SP_L), BorderLayout.NORTH);
+        // Create and add the top panel with filters and management buttons
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(initializeFilterPanel(), BorderLayout.CENTER); // Filters
+        topPanel.add(initializeManagementButtons(), BorderLayout.EAST); // Management buttons
+        add(topPanel, BorderLayout.NORTH);
 
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.add(initializeSummaryPanel(), BorderLayout.NORTH);
-        centerPanel.add(new JScrollPane(initializeTable()), BorderLayout.CENTER);
-        add(Ui.padded(centerPanel, Ui.SP_L), BorderLayout.CENTER);
+        // Create and add the center panel with the history table and summary
+        JPanel tablePanel = new JPanel(new BorderLayout());
+        tablePanel.add(initializeSummaryPanel(), BorderLayout.NORTH); // Summary above table
+        tablePanel.add(new JScrollPane(initializeTable()), BorderLayout.CENTER); // Table
+        add(tablePanel, BorderLayout.CENTER);
 
-        add(buildActionStack(), BorderLayout.EAST);
-        add(Ui.padded(initializeFooterPanel(), Ui.SP_L), BorderLayout.SOUTH);
+        // Create and add the bottom panel with action buttons
+        add(initializeActionButtons(), BorderLayout.SOUTH);
 
+        // Register this panel with the controller
         controller.registerView(this);
         reloadTexts();
     }
 
     /**
      * Creates and initializes the history table for displaying sold items.
+     *
+     * @return The initialized JTable.
      */
     private JTable initializeTable() {
         // Define column names for the table
@@ -78,54 +85,103 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         };
         DefaultTableModel model = new DefaultTableModel(null, columnNames);
 
+        // Create the table with a non-editable model
         historyTable = new JTable(model);
-        Ui.zebra(historyTable);
-        historyTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        DefaultTableCellRenderer right = new DefaultTableCellRenderer();
-        right.setHorizontalAlignment(SwingConstants.RIGHT);
-        historyTable.getColumnModel().getColumn(1).setCellRenderer(right);
-        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
-        center.setHorizontalAlignment(SwingConstants.CENTER);
-        historyTable.getColumnModel().getColumn(2).setCellRenderer(center);
         return historyTable;
     }
 
-    private JPanel buildFilterPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        Insets insets = new Insets(Ui.SP_XS, Ui.SP_L, Ui.SP_XS, Ui.SP_L);
+    /**
+     * Creates the filter panel with dropdowns for filtering the history table.
+     *
+     * @return The filter panel.
+     */
+    private JPanel initializeFilterPanel() {
+        JPanel filterPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.NORTHWEST; // Align components to the top-left
+        gbc.insets = new Insets(2, 2, 2, 2); // Add padding between components
+        gbc.weightx = 0; // Do not stretch horizontally
+        gbc.gridy = 0;
+        gbc.gridx = 0;
 
-        GridBagConstraints labelGbc = new GridBagConstraints();
-        labelGbc.anchor = GridBagConstraints.LINE_END;
-        labelGbc.insets = insets;
-
-        GridBagConstraints fieldGbc = new GridBagConstraints();
-        fieldGbc.fill = GridBagConstraints.HORIZONTAL;
-        fieldGbc.weightx = 1.0;
-        fieldGbc.insets = insets;
-
-        int col = 0;
-        paidFilterLabel = new JLabel();
-        labelGbc.gridx = col++; labelGbc.gridy = 0; panel.add(paidFilterLabel, labelGbc);
+        // Paid filter dropdown
         paidFilterDropdown = new JComboBox<>();
-        fieldGbc.gridx = col++; fieldGbc.gridy = 0; panel.add(paidFilterDropdown, fieldGbc);
+        paidFilterLabel = addFilterRow(
+                filterPanel,
+                gbc,
+                LocalizationManager.tr("filter.paid"),
+                paidFilterDropdown,
+                new String[]{
+                        LocalizationManager.tr("filter.all"),
+                        LocalizationManager.tr("filter.yes"),
+                        LocalizationManager.tr("filter.no")
+                }
+        );
 
-        sellerFilterLabel = new JLabel();
-        labelGbc.gridx = col++; panel.add(sellerFilterLabel, labelGbc);
+        // Seller filter dropdown
         sellerFilterDropdown = new JComboBox<>();
-        fieldGbc.gridx = col++; panel.add(sellerFilterDropdown, fieldGbc);
+        sellerFilterLabel = addFilterRow(
+                filterPanel,
+                gbc,
+                LocalizationManager.tr("filter.seller"),
+                sellerFilterDropdown,
+                new String[]{LocalizationManager.tr("filter.all")}
+        );
 
-        paymentFilterLabel = new JLabel();
-        labelGbc.gridx = col++; panel.add(paymentFilterLabel, labelGbc);
+        // Payment method filter dropdown
         paymentTypeFilterDropdown = new JComboBox<>();
-        fieldGbc.gridx = col++; fieldGbc.gridwidth = GridBagConstraints.REMAINDER; panel.add(paymentTypeFilterDropdown, fieldGbc);
+        paymentFilterLabel = addFilterRow(
+                filterPanel,
+                gbc,
+                LocalizationManager.tr("filter.payment_method"),
+                paymentTypeFilterDropdown,
+                new String[]{
+                        LocalizationManager.tr("filter.all"),
+                        LocalizationManager.tr("payment.swish"),
+                        LocalizationManager.tr("payment.cash")
+                }
+        );
 
+        // Add flexible space to push components to the top
+        gbc.weightx = 1;
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
+        filterPanel.add(Box.createHorizontalGlue(), gbc);
+        gbc.gridy++;
+        gbc.weighty = 1;
+        filterPanel.add(Box.createVerticalGlue(), gbc);
+
+        // Add listeners to update the table when filters change
         paidFilterDropdown.addActionListener(e -> controller.filterUpdated());
         sellerFilterDropdown.addActionListener(e -> controller.filterUpdated());
         paymentTypeFilterDropdown.addActionListener(e -> controller.filterUpdated());
-
-        return panel;
+        return filterPanel;
     }
 
+    /**
+     * Adds a row with a label and dropdown to the filter panel.
+     *
+     * @param panel     The filter panel.
+     * @param gbc       The GridBagConstraints for layout.
+     * @param labelText The label text.
+     * @param comboBox  The dropdown component.
+     * @param comboItems The items for the dropdown.
+     */
+    private JLabel addFilterRow(JPanel panel, GridBagConstraints gbc, String labelText, JComboBox<String> comboBox, String[] comboItems) {
+        // Add the label
+        gbc.gridx = 0;
+        JLabel label = new JLabel(labelText);
+        panel.add(label, gbc);
+
+        // Add the dropdown
+        gbc.gridx++;
+        comboBox.setModel(new DefaultComboBoxModel<>(comboItems));
+        panel.add(comboBox, gbc);
+
+        // Move to the next row
+        gbc.gridy++;
+        gbc.gridx = 0;
+        return label;
+    }
 
     /**
      * Creates the summary panel to display total items and total price.
@@ -133,7 +189,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
      * @return The summary panel.
      */
     private JPanel initializeSummaryPanel() {
-        JPanel summaryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, Ui.SP_S, 0));
+        JPanel summaryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         itemsCountLabel = new JLabel();
         totalSumLabel = new JLabel();
         summaryPanel.add(itemsCountLabel);
@@ -141,41 +197,75 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         return summaryPanel;
     }
 
-    private JPanel buildActionStack() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        eraseAllDataButton = new JButton();
-        archiveFilteredButton = new JButton();
-        importDataButton = new JButton();
+    /**
+     * Creates the panel with management buttons like "Erase All" and "Archive Filtered."
+     *
+     * @return The management buttons panel.
+     */
+    private JPanel initializeManagementButtons() {
+        JPanel managementButtonsPanel = new JPanel();
+        managementButtonsPanel.setLayout(new BoxLayout(managementButtonsPanel, BoxLayout.PAGE_AXIS));
 
+        Dimension buttonSize = new Dimension(150, 50);
+
+        // Initialize buttons
+        eraseAllDataButton = createButton("", buttonSize.width, buttonSize.height);
+        archiveFilteredButton = createButton("", buttonSize.width, buttonSize.height);
+        importDataButton = createButton("", buttonSize.width, buttonSize.height);
+
+        // Add buttons to the panel
+        managementButtonsPanel.add(createFlowRightPanel(eraseAllDataButton));
+        managementButtonsPanel.add(createFlowRightPanel(archiveFilteredButton));
+        managementButtonsPanel.add(createFlowRightPanel(importDataButton));
+
+        // Add action listeners for buttons
         eraseAllDataButton.addActionListener(e -> controller.buttonAction(BUTTON_ERASE));
         archiveFilteredButton.addActionListener(e -> controller.buttonAction(BUTTON_ARCHIVE));
         importDataButton.addActionListener(e -> controller.buttonAction(BUTTON_IMPORT));
 
-        panel.add(eraseAllDataButton);
-        panel.add(Box.createVerticalStrut(Ui.SP_S));
-        panel.add(archiveFilteredButton);
-        panel.add(Box.createVerticalStrut(Ui.SP_S));
-        panel.add(importDataButton);
+        // Wrap the panel for better layout
+        JPanel wrapperPanel = new JPanel(new BorderLayout());
+        wrapperPanel.add(managementButtonsPanel, BorderLayout.NORTH);
 
-        for (Component c : panel.getComponents()) {
-            if (c instanceof JButton b) {
-                b.setAlignmentX(Component.CENTER_ALIGNMENT);
-            }
-        }
-
-        return Ui.padded(panel, Ui.SP_L);
+        return wrapperPanel;
     }
 
-    private JPanel initializeFooterPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, Ui.SP_M, 0));
-        payoutButton = new JButton();
-        Ui.makePrimary(payoutButton);
-        toClipboardButton = new JButton();
-        panel.add(payoutButton);
-        panel.add(toClipboardButton);
+    /**
+     * Creates a panel for the action buttons at the bottom of the tab.
+     *
+     * @return The action buttons panel.
+     */
+    private JPanel initializeActionButtons() {
+        JPanel actionButtonsPanel = new JPanel(new BorderLayout());
+        JPanel innerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+
+        // Initialize buttons
+        payoutButton = createButton("", 150, 50);
+        toClipboardButton = createButton("", 150, 50);
+
+        // Add buttons to the inner panel
+        innerPanel.add(payoutButton);
+        innerPanel.add(toClipboardButton);
+
+        // Add action listeners
         payoutButton.addActionListener(e -> controller.buttonAction(BUTTON_PAY_OUT));
         toClipboardButton.addActionListener(e -> controller.buttonAction(BUTTON_COPY_TO_CLIPBOARD));
+
+        actionButtonsPanel.add(innerPanel, BorderLayout.CENTER);
+        actionButtonsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        return actionButtonsPanel;
+    }
+
+    /**
+     * Helper to create a right-aligned panel for a single button.
+     *
+     * @param button The button to add.
+     * @return The right-aligned panel.
+     */
+    private JPanel createFlowRightPanel(JButton button) {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panel.add(button);
         return panel;
     }
 
@@ -239,14 +329,6 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT));
         payoutButton.setText(LocalizationManager.tr(BUTTON_PAY_OUT));
         toClipboardButton.setText(LocalizationManager.tr(BUTTON_COPY_TO_CLIPBOARD));
-
-        int width = Math.max(eraseAllDataButton.getPreferredSize().width,
-                Math.max(archiveFilteredButton.getPreferredSize().width, importDataButton.getPreferredSize().width));
-        int height = eraseAllDataButton.getPreferredSize().height;
-        Dimension size = new Dimension(width, height);
-        eraseAllDataButton.setMaximumSize(size);
-        archiveFilteredButton.setMaximumSize(size);
-        importDataButton.setMaximumSize(size);
 
         // Summary labels
         itemsCountLabel.setText(LocalizationManager.tr("history.items_count", itemsCount));

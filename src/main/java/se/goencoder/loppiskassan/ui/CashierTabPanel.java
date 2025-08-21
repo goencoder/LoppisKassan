@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
@@ -124,7 +125,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
      */
     private JPanel initializeInputPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(Ui.SP_S, Ui.SP_L, 0, Ui.SP_L));
+        panel.setBorder(BorderFactory.createEmptyBorder(8, 12, 0, 12));
 
         sellerField = new JTextField();
         pricesField = new JTextField();
@@ -132,45 +133,49 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         changeCashField = new JTextField();
         changeCashField.setEditable(false);
 
-        Dimension h = new Dimension(0, Math.max(28, sellerField.getPreferredSize().height));
-        for (JTextField f : new JTextField[]{sellerField, pricesField, payedCashField, changeCashField}) {
-            f.setPreferredSize(new Dimension(f.getPreferredSize().width, h.height));
-        }
-
         sellerLabel = new JLabel();
         pricesLabel = new JLabel();
-        paidLabel = new JLabel();
+        paidLabel   = new JLabel();
         changeLabel = new JLabel();
 
-        int row = 0;
+        Insets L = new Insets(6, 8, 6, 6);
+        Insets F = new Insets(6, 6, 6, 8);
 
-        panel.add(sellerLabel, Ui.gbcCompactLabel(0, row));
-        panel.add(sellerField, Ui.gbcCompactField(1, row, 0.5));
-        panel.add(pricesLabel, Ui.gbcCompactLabel(2, row));
-        panel.add(pricesField, Ui.gbcCompactField(3, row, 0.5));
-        row++;
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        panel.add(paidLabel, Ui.gbcCompactLabel(0, row));
-        GridBagConstraints paidFieldGbc = Ui.gbcCompactField(1, row, 1.0);
-        paidFieldGbc.gridwidth = 3;
-        panel.add(payedCashField, paidFieldGbc);
-        row++;
+        gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.LINE_END; gbc.insets = L;
+        panel.add(sellerLabel, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.5; gbc.anchor = GridBagConstraints.LINE_START; gbc.insets = F;
+        panel.add(sellerField, gbc);
 
-        panel.add(changeLabel, Ui.gbcCompactLabel(0, row));
-        GridBagConstraints changeFieldGbc = Ui.gbcCompactField(1, row, 1.0);
-        changeFieldGbc.gridwidth = 3;
-        panel.add(changeCashField, changeFieldGbc);
-        row++;
+        gbc.gridx = 2; gbc.weightx = 0; gbc.anchor = GridBagConstraints.LINE_END; gbc.insets = L;
+        panel.add(pricesLabel, gbc);
+        gbc.gridx = 3; gbc.weightx = 0.5; gbc.anchor = GridBagConstraints.LINE_START; gbc.insets = F;
+        panel.add(pricesField, gbc);
 
-        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, Ui.SP_S, 0));
+        gbc.gridy = 1;
+        gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.LINE_END; gbc.insets = L;
+        panel.add(paidLabel, gbc);
+        gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0; gbc.anchor = GridBagConstraints.LINE_START; gbc.insets = F;
+        panel.add(payedCashField, gbc);
+        gbc.gridwidth = 1;
+
+        gbc.gridy = 2;
+        gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.LINE_END; gbc.insets = L;
+        panel.add(changeLabel, gbc);
+        gbc.gridx = 1; gbc.gridwidth = 3; gbc.weightx = 1.0; gbc.anchor = GridBagConstraints.LINE_START; gbc.insets = F;
+        panel.add(changeCashField, gbc);
+        gbc.gridwidth = 1;
+
+        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 4; gbc.weightx = 1.0; gbc.insets = new Insets(4, 8, 0, 8);
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         noItemsLabel = new JLabel();
         sumLabel = new JLabel();
         infoPanel.add(noItemsLabel);
         infoPanel.add(sumLabel);
-
-        GridBagConstraints infoGbc = Ui.gbc(0, row);
-        infoGbc.gridwidth = 4;
-        panel.add(infoPanel, infoGbc);
+        panel.add(infoPanel, gbc);
 
         CashierControllerInterface controller = CashierTabController.getInstance();
         payedCashField.addKeyListener(new KeyAdapter() {
@@ -179,9 +184,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
                 try {
                     int payedAmount = Integer.parseInt(payedCashField.getText());
                     controller.calculateChange(payedAmount);
-                } catch (NumberFormatException ex) {
-                    // ignore
-                }
+                } catch (NumberFormatException ex) { /* ignore */ }
             }
         });
 

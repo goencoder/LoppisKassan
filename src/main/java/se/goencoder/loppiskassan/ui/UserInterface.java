@@ -3,12 +3,17 @@ package se.goencoder.loppiskassan.ui;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
-import se.goencoder.loppiskassan.ui.Ui;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 
 public class UserInterface extends JFrame implements LocalizationAware {
     private final JTabbedPane tabPane;
@@ -64,13 +69,18 @@ public class UserInterface extends JFrame implements LocalizationAware {
             selectabableTabs.get(selectedTab.getIndex()).selected();
         });
 
-        add(Ui.padded(createLanguagePanel(), Ui.SP_L), BorderLayout.NORTH);
+        add(createLanguagePanel(), BorderLayout.NORTH);
         add(tabPane, BorderLayout.CENTER);
         reloadTexts();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        pack();
-        setMinimumSize(new Dimension(900, 600));
+        setSize(640, 600);
         setLocationRelativeTo(null);
+    }
+
+    static JButton createButton(String text, int width, int height) {
+        JButton button = new JButton(text);
+        button.setPreferredSize(new Dimension(width, height));
+        return button;
     }
 
     private JPanel createLanguagePanel() {

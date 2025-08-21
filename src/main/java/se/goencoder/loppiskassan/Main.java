@@ -23,6 +23,11 @@ public class Main {
         Theme.install(); // Install look & feel before creating components
         UserInterface frame = new UserInterface();
         frame.setTitle(LocalizationManager.tr("frame.title"));
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Ställ in ramens storlek och gör den synlig
+        frame.setSize(640, 600);
+        frame.setLocationRelativeTo(null); // Centrerar fönstret
         frame.setVisible(true);
     }
 
