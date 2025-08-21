@@ -104,34 +104,53 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
      * @return Configured input panel.
      */
     private JPanel initializeInputPanel() {
+        // Root container uses vertical stacking like before.
         JPanel inputPanel = new JPanel();
         inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
 
-        // Fields panel with GridLayout for structured input fields
-        JPanel fieldsPanel = new JPanel(new GridLayout(0, 2));
-
-        // Initialize input fields
+        // --- Fields ---
         sellerField = new JTextField();
         pricesField = new JTextField();
         payedCashField = new JTextField();
         changeCashField = new JTextField();
-        changeCashField.setEditable(false); // Change field should not be editable
+        changeCashField.setEditable(false); // change is read-only
 
-        // Add labels and fields to the panel
+        // --- Labels ---
         sellerLabel = new JLabel();
-        fieldsPanel.add(sellerLabel);
-        fieldsPanel.add(sellerField);
         pricesLabel = new JLabel();
-        fieldsPanel.add(pricesLabel);
-        fieldsPanel.add(pricesField);
-        paidLabel = new JLabel();
+        paidLabel   = new JLabel();
+        changeLabel = new JLabel();
+
+        // --- Top row: Seller ID and Prices on the same line ---
+        JPanel topRow = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(4, 8, 4, 8);
+
+        // Seller label + field
+        gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.LINE_END;
+        topRow.add(sellerLabel, gbc);
+        gbc.gridx = 1; gbc.weightx = 0.5; gbc.anchor = GridBagConstraints.LINE_START;
+        topRow.add(sellerField, gbc);
+
+        // Prices label + field
+        gbc.gridx = 2; gbc.weightx = 0; gbc.anchor = GridBagConstraints.LINE_END;
+        topRow.add(pricesLabel, gbc);
+        gbc.gridx = 3; gbc.weightx = 0.5; gbc.anchor = GridBagConstraints.LINE_START;
+        topRow.add(pricesField, gbc);
+
+        inputPanel.add(topRow);
+
+        // --- Remaining rows: Paid and Change fields ---
+        JPanel fieldsPanel = new JPanel(new GridLayout(0, 2));
         fieldsPanel.add(paidLabel);
         fieldsPanel.add(payedCashField);
-        changeLabel = new JLabel();
         fieldsPanel.add(changeLabel);
         fieldsPanel.add(changeCashField);
+        inputPanel.add(fieldsPanel);
 
-        // Add a key listener to calculate change dynamically
+        // Change calculation logic unchanged
         payedCashField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -148,15 +167,12 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
             }
         });
 
-        inputPanel.add(fieldsPanel);
-
-        // Info panel for displaying additional details
+        // Info panel unchanged
         JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         noItemsLabel = new JLabel();
         sumLabel = new JLabel();
         infoPanel.add(noItemsLabel);
         infoPanel.add(sumLabel);
-
         inputPanel.add(infoPanel);
 
         return inputPanel;
