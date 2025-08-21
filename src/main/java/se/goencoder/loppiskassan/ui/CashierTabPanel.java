@@ -8,6 +8,9 @@ import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -27,6 +30,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private JTextField sellerField, pricesField, payedCashField, changeCashField;
     private JLabel noItemsLabel, sumLabel;
     private JLabel sellerLabel, pricesLabel, paidLabel, changeLabel;
+    // New: visible label for change, while keeping the hidden text field for controller updates
+    private JLabel changeValueLabel;
 
     // Buttons for checkout actions
     private JButton cancelCheckoutButton, checkoutCashButton, checkoutSwishButton;
@@ -106,30 +111,65 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private JPanel initializeInputPanel() {
         JPanel inputPanel = new JPanel();
         inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
+        // Add some breathing room between tabs and the first row of inputs
+        inputPanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 12, 0, 12));
 
-        // Fields panel with GridLayout for structured input fields
-        JPanel fieldsPanel = new JPanel(new GridLayout(0, 2));
-
-        // Initialize input fields
+        // --- init fields ---
         sellerField = new JTextField();
         pricesField = new JTextField();
-        payedCashField = new JTextField();
-        changeCashField = new JTextField();
-        changeCashField.setEditable(false); // Change field should not be editable
+        payedCashField = new JTextField();      // stays editable
+        changeCashField = new JTextField();     // kept for controller; will be hidden and mirrored to a JLabel
+        changeCashField.setEditable(false);
 
-        // Add labels and fields to the panel
+        // --- init labels ---
         sellerLabel = new JLabel();
-        fieldsPanel.add(sellerLabel);
-        fieldsPanel.add(sellerField);
         pricesLabel = new JLabel();
-        fieldsPanel.add(pricesLabel);
-        fieldsPanel.add(pricesField);
-        paidLabel = new JLabel();
-        fieldsPanel.add(paidLabel);
-        fieldsPanel.add(payedCashField);
+        paidLabel   = new JLabel();
         changeLabel = new JLabel();
-        fieldsPanel.add(changeLabel);
-        fieldsPanel.add(changeCashField);
+        changeValueLabel = new JLabel();        // visible "Växel"-value
+
+        // ===== TOP ROW: labels tight to fields (like Historik) =====
+        JPanel topRow = new JPanel(new BorderLayout());
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        left.add(sellerLabel);
+        // Visual width: seller number ~3 digits
+        sellerField.setColumns(3);
+        left.add(sellerField);
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        right.add(pricesLabel);
+        // Visual width: make room for multiple prices like "50 100 50 15 20"
+        pricesField.setColumns(22);
+        right.add(pricesField);
+        topRow.add(left, BorderLayout.WEST);
+        topRow.add(right, BorderLayout.CENTER);
+        inputPanel.add(topRow);
+
+        // ===== INFO LINE: "items & sum • Betalt: [ ] • Växel: <value>" =====
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        noItemsLabel = new JLabel();
+        sumLabel = new JLabel();
+        // Make the total (e.g., "629 SEK") stand out for the cashier
+        sumLabel.setFont(sumLabel.getFont().deriveFont(java.awt.Font.BOLD));
+        infoPanel.add(noItemsLabel);
+        infoPanel.add(sumLabel);
+        // Betalt inline (editable)
+        infoPanel.add(paidLabel);
+        // Visual width: ~5 digits
+        payedCashField.setColumns(5);
+        infoPanel.add(payedCashField);
+        // Växel inline (read-only, as text)
+        infoPanel.add(changeLabel);
+        infoPanel.add(changeValueLabel);
+        inputPanel.add(infoPanel);
+
+        // We keep changeCashField but DON'T add it to the layout.
+        // Mirror its text to the visible changeValueLabel so existing controller code keeps working.
+        changeCashField.getDocument().addDocumentListener(new DocumentListener() {
+            private void sync() { changeValueLabel.setText(changeCashField.getText()); }
+            @Override public void insertUpdate(DocumentEvent e) { sync(); }
+            @Override public void removeUpdate(DocumentEvent e) { sync(); }
+            @Override public void changedUpdate(DocumentEvent e) { sync(); }
+        });
 
         // Add a key listener to calculate change dynamically
         payedCashField.addKeyListener(new KeyAdapter() {
@@ -148,16 +188,6 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
             }
         });
 
-        inputPanel.add(fieldsPanel);
-
-        // Info panel for displaying additional details
-        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        noItemsLabel = new JLabel();
-        sumLabel = new JLabel();
-        infoPanel.add(noItemsLabel);
-        infoPanel.add(sumLabel);
-
-        inputPanel.add(infoPanel);
 
         return inputPanel;
     }
