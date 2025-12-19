@@ -62,6 +62,7 @@
   "filter.paid": "Utbetalt",
   "filter.seller": "Säljnummer",
   "filter.payment_method": "Betalningsmedel",
+  "filter.search": "Sök",
   "filter.all": "Alla",
   "filter.yes": "Ja",
   "filter.no": "Nej",

@@ -62,6 +62,7 @@
   "filter.paid": "Paid out",
   "filter.seller": "Seller ID",
   "filter.payment_method": "Payment method",
+  "filter.search": "Search",
   "filter.all": "All",
   "filter.yes": "Yes",
   "filter.no": "No",

@@ -9,8 +9,14 @@ import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.Dimension;
+import java.awt.Insets;
 import java.util.List;
 import java.util.Set;
 
@@ -33,11 +39,17 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     private JComboBox<String> paidFilterDropdown;
     private JComboBox<String> sellerFilterDropdown;
     private JComboBox<String> paymentTypeFilterDropdown;
+    private JTextField searchField;
+    private JLabel searchLabel;
+    private Dimension filterFieldSize; // shared width/height for dropdowns + search
     private JLabel itemsCountLabel, totalSumLabel;
     private JLabel paidFilterLabel, sellerFilterLabel, paymentFilterLabel;
 
     private int itemsCount = 0;
     private int totalSum = 0;
+
+    // Table filtering/sorting
+    private TableRowSorter<DefaultTableModel> sorter;
 
     // Controller to manage business logic for this panel
     private final HistoryControllerInterface controller = HistoryTabController.getInstance();
@@ -87,7 +99,25 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         DefaultTableModel model = new DefaultTableModel(null, columnNames);
 
         // Create the table with a non-editable model
-        historyTable = new JTable(model);
+        historyTable = new JTable(model) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        historyTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        historyTable.setRowHeight(28);
+        historyTable.putClientProperty("Table.alternateRowColor", Boolean.TRUE);
+
+        // Right-align price column; center the date-time column for readability
+        DefaultTableCellRenderer right = new DefaultTableCellRenderer();
+        right.setHorizontalAlignment(SwingConstants.RIGHT);
+        historyTable.getColumnModel().getColumn(1).setCellRenderer(right);
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+        center.setHorizontalAlignment(SwingConstants.CENTER);
+        historyTable.getColumnModel().getColumn(2).setCellRenderer(center);
+
+        // Sorter (also used for the Search filter)
+        sorter = new TableRowSorter<>(model);
+        historyTable.setRowSorter(sorter);
+
         return historyTable;
     }
 
@@ -97,91 +127,88 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
      * @return The filter panel.
      */
     private JPanel initializeFilterPanel() {
-        JPanel filterPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.anchor = GridBagConstraints.NORTHWEST; // Align components to the top-left
-        gbc.insets = new Insets(2, 2, 2, 2); // Add padding between components
-        gbc.weightx = 0; // Do not stretch horizontally
-        gbc.gridy = 0;
-        gbc.gridx = 0;
+        JPanel panel = new JPanel(new GridBagLayout());
+        Insets insets = new Insets(6, 16, 6, 16);
 
-        // Paid filter dropdown
+        GridBagConstraints lbl = new GridBagConstraints();
+        lbl.anchor = GridBagConstraints.LINE_END;
+        lbl.insets = insets;
+        lbl.gridx = 0;
+
+        GridBagConstraints fld = new GridBagConstraints();
+        fld.gridx = 1;
+        fld.fill = GridBagConstraints.NONE;     // compact, fixed width
+        fld.anchor = GridBagConstraints.LINE_START;
+        fld.insets = insets;
+        fld.weightx = 0.0;
+
+        int row = 0;
+        // Paid out
+        paidFilterLabel = new JLabel();
+        lbl.gridy = row; panel.add(paidFilterLabel, lbl);
         paidFilterDropdown = new JComboBox<>();
-        paidFilterLabel = addFilterRow(
-                filterPanel,
-                gbc,
-                LocalizationManager.tr("filter.paid"),
-                paidFilterDropdown,
-                new String[]{
-                        LocalizationManager.tr("filter.all"),
-                        LocalizationManager.tr("filter.yes"),
-                        LocalizationManager.tr("filter.no")
-                }
-        );
+        fld.gridy = row; panel.add(paidFilterDropdown, fld);
+        row++;
 
-        // Seller filter dropdown
+        // Seller ID
+        sellerFilterLabel = new JLabel();
+        lbl.gridy = row; panel.add(sellerFilterLabel, lbl);
         sellerFilterDropdown = new JComboBox<>();
-        sellerFilterLabel = addFilterRow(
-                filterPanel,
-                gbc,
-                LocalizationManager.tr("filter.seller"),
-                sellerFilterDropdown,
-                new String[]{LocalizationManager.tr("filter.all")}
-        );
+        fld.gridy = row; panel.add(sellerFilterDropdown, fld);
+        row++;
 
-        // Payment method filter dropdown
+        // Payment method
+        paymentFilterLabel = new JLabel();
+        lbl.gridy = row; panel.add(paymentFilterLabel, lbl);
         paymentTypeFilterDropdown = new JComboBox<>();
-        paymentFilterLabel = addFilterRow(
-                filterPanel,
-                gbc,
-                LocalizationManager.tr("filter.payment_method"),
-                paymentTypeFilterDropdown,
-                new String[]{
-                        LocalizationManager.tr("filter.all"),
-                        LocalizationManager.tr("payment.swish"),
-                        LocalizationManager.tr("payment.cash")
-                }
-        );
+        fld.gridy = row; panel.add(paymentTypeFilterDropdown, fld);
+        row++;
 
-        // Add flexible space to push components to the top
-        gbc.weightx = 1;
-        gbc.gridwidth = GridBagConstraints.REMAINDER;
-        filterPanel.add(Box.createHorizontalGlue(), gbc);
-        gbc.gridy++;
-        gbc.weighty = 1;
-        filterPanel.add(Box.createVerticalGlue(), gbc);
-
-        // Add listeners to update the table when filters change
         paidFilterDropdown.addActionListener(e -> controller.filterUpdated());
         sellerFilterDropdown.addActionListener(e -> controller.filterUpdated());
         paymentTypeFilterDropdown.addActionListener(e -> controller.filterUpdated());
-        return filterPanel;
-    }
 
-    /**
-     * Adds a row with a label and dropdown to the filter panel.
-     *
-     * @param panel     The filter panel.
-     * @param gbc       The GridBagConstraints for layout.
-     * @param labelText The label text.
-     * @param comboBox  The dropdown component.
-     * @param comboItems The items for the dropdown.
-     */
-    private JLabel addFilterRow(JPanel panel, GridBagConstraints gbc, String labelText, JComboBox<String> comboBox, String[] comboItems) {
-        // Add the label
-        gbc.gridx = 0;
-        JLabel label = new JLabel(labelText);
-        panel.add(label, gbc);
+        // Search (same constraints as other fields)
+        searchLabel = new JLabel();
+        lbl.gridy = row; panel.add(searchLabel, lbl);
 
-        // Add the dropdown
-        gbc.gridx++;
-        comboBox.setModel(new DefaultComboBoxModel<>(comboItems));
-        panel.add(comboBox, gbc);
+        GridBagConstraints sFld = new GridBagConstraints();
+        sFld.gridx = 1; sFld.gridy = row; sFld.weightx = 0.0;
+        sFld.fill = GridBagConstraints.NONE; sFld.insets = insets;
+        searchField = new JTextField(20);
+        searchLabel.setLabelFor(searchField);
+        panel.add(searchField, sFld);
 
-        // Move to the next row
-        gbc.gridy++;
-        gbc.gridx = 0;
-        return label;
+        // Synchronize a common width for all filter fields (combos + search)
+        syncFilterFieldWidths();
+
+        // Live RowFilter over current table contents (non-destructive; complements controller filtering)
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            private void update() {
+                if (sorter == null) return;
+                String q = searchField.getText();
+                if (q == null || q.isBlank()) {
+                    sorter.setRowFilter(null);
+                } else {
+                    final String needle = q.trim().toLowerCase(java.util.Locale.ROOT);
+                    sorter.setRowFilter(new RowFilter<DefaultTableModel, Integer>() {
+                        @Override public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                            for (int i = 0; i < entry.getValueCount(); i++) {
+                                Object v = entry.getValue(i);
+                                if (v != null && v.toString().toLowerCase(java.util.Locale.ROOT).contains(needle)) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        }
+                    });
+                }
+            }
+            @Override public void insertUpdate(DocumentEvent e) { update(); }
+            @Override public void removeUpdate(DocumentEvent e) { update(); }
+            @Override public void changedUpdate(DocumentEvent e) { update(); }
+        });
+        return panel;
     }
 
     /**
@@ -301,7 +328,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
                 LocalizationManager.tr("filter.yes"),
                 LocalizationManager.tr("filter.no")
         }));
-        paidFilterDropdown.setSelectedIndex(paidIndex);
+        paidFilterDropdown.setSelectedIndex(paidIndex >= 0 ? paidIndex : 0);
         paidFilterLabel.setText(LocalizationManager.tr("filter.paid"));
 
         int sellerIndex = sellerFilterDropdown.getSelectedIndex();
@@ -312,7 +339,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
             sellerModel.addElement(currentSellerModel.getElementAt(i));
         }
         sellerFilterDropdown.setModel(sellerModel);
-        sellerFilterDropdown.setSelectedIndex(sellerIndex);
+        sellerFilterDropdown.setSelectedIndex(sellerIndex >= 0 ? sellerIndex : 0);
         sellerFilterLabel.setText(LocalizationManager.tr("filter.seller"));
 
         int paymentIndex = paymentTypeFilterDropdown.getSelectedIndex();
@@ -321,7 +348,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
                 LocalizationManager.tr("payment.swish"),
                 LocalizationManager.tr("payment.cash")
         }));
-        paymentTypeFilterDropdown.setSelectedIndex(paymentIndex);
+        paymentTypeFilterDropdown.setSelectedIndex(paymentIndex >= 0 ? paymentIndex : 0);
         paymentFilterLabel.setText(LocalizationManager.tr("filter.payment_method"));
 
         // Buttons
@@ -332,15 +359,33 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         if (isOffline) {
             importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT)); // e.g., "Import register"
         } else {
-            // Online: show "Update from Web" (string key must exist in resources)
-            importDataButton.setText(LocalizationManager.tr("history.update_from_web"));
+            // Online: show "Update from Web". If the key is ever missing, fall back gracefully.
+            String online = LocalizationManager.tr("history.update_from_web");
+            // Many LocalizationManager implementations return the key itself when missing.
+            if (online == null || online.startsWith("history.")) {
+                online = LocalizationManager.tr(BUTTON_IMPORT); // fallback to a valid, localized label
+            }
+            importDataButton.setText(online);
         }
+        // Visual: treat "Update from Web" as primary action
+        importDataButton.putClientProperty("JButton.buttonType", "default");
+
         payoutButton.setText(LocalizationManager.tr(BUTTON_PAY_OUT));
         toClipboardButton.setText(LocalizationManager.tr(BUTTON_COPY_TO_CLIPBOARD));
 
         // Summary labels
         itemsCountLabel.setText(LocalizationManager.tr("history.items_count", itemsCount));
         totalSumLabel.setText(LocalizationManager.tr("history.total_sum", totalSum));
+        // Emphasize the amount visually
+        totalSumLabel.setFont(totalSumLabel.getFont().deriveFont(Font.BOLD));
+
+        // Localize the Search label (now kept as a member reference)
+        if (searchLabel != null) {
+            searchLabel.setText(LocalizationManager.tr("filter.search"));
+            if (searchField != null) searchLabel.setLabelFor(searchField);
+        }
+        // Re-sync widths after locale change so selected values remain visible
+        syncFilterFieldWidths();
     }
 
     // Implementations of HistoryPanelInterface methods
@@ -455,5 +500,29 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     @Override
     public Component getComponent() {
         return this;
+    }
+
+    /**
+     * Make all filter controls the same width and aligned relative to labels.
+     * This keeps selected values fully visible and the search field visually consistent.
+     */
+    private void syncFilterFieldWidths() {
+        if (paidFilterDropdown == null || sellerFilterDropdown == null || paymentTypeFilterDropdown == null) return;
+        // Measure current preferred widths and choose a reasonable minimum
+        int min = 180;
+        Dimension d1 = paidFilterDropdown.getPreferredSize();
+        Dimension d2 = sellerFilterDropdown.getPreferredSize();
+        Dimension d3 = paymentTypeFilterDropdown.getPreferredSize();
+        int width = Math.max(min, Math.max(d1.width, Math.max(d2.width, d3.width)));
+        int height = Math.max(Math.max(d1.height, d2.height), d3.height);
+        filterFieldSize = new Dimension(width, height);
+        paidFilterDropdown.setPreferredSize(filterFieldSize);
+        sellerFilterDropdown.setPreferredSize(filterFieldSize);
+        paymentTypeFilterDropdown.setPreferredSize(filterFieldSize);
+        if (searchField != null) {
+            // Match the same width + line up under the others
+            searchField.setPreferredSize(filterFieldSize);
+            searchField.setMinimumSize(filterFieldSize);
+        }
     }
 }
