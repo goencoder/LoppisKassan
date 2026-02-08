@@ -1,7 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.iloppis.model.Event;
-import se.goencoder.iloppis.model.RevenueSplit;
+import se.goencoder.iloppis.model.V1Event;
+import se.goencoder.iloppis.model.V1RevenueSplit;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      * Populate the events table with discovered events.
      * @param events events to display (may be empty)
      */
-    void populateEventsTable(List<Event> events);
+    void populateEventsTable(List<V1Event> events);
 
     /**
      * Set the selected event name in the detail section.
@@ -99,7 +99,7 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      * @param event the active event
      * @param split the associated revenue split
      */
-    void showActiveEventInfo(Event event, RevenueSplit split);
+    void showActiveEventInfo(V1Event event, V1RevenueSplit split);
 
     /**
      * Show or hide the "Change event" button allowing the user to pick a different event.

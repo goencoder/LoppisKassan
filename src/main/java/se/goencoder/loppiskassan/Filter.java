@@ -14,7 +14,7 @@ public enum Filter {
      * if COLLECTED_BY_SELLER and "true" is passed as argument to getFilterFunc,
      * the lambda function will return true for all SoldItems that has been collected by the seller.
      * <p>
-     * if PAYMENT_METHOD and "PaymentMethod.CASH" is passed as argument to getFilterFunc,
+     * if PAYMENT_METHOD and "V1PaymentMethod.CASH" is passed as argument to getFilterFunc,
      * the lambda function will return true for all SoldItems that has been paid with cash.
      */
     public static FilterFunc getFilterFunc(Filter filter, Object value) {
@@ -26,9 +26,9 @@ public enum Filter {
     }
     // Define FilterFunc as a functional interface using java.util.function.Predicate
     @FunctionalInterface
-    public interface FilterFunc extends Predicate<SoldItem> {
+    public interface FilterFunc extends Predicate<V1SoldItem> {
         @Override
-        boolean test(SoldItem item);
+        boolean test(V1SoldItem item);
     }
 }
 

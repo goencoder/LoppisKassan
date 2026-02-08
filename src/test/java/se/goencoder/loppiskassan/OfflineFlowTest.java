@@ -7,8 +7,8 @@ import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
-import se.goencoder.loppiskassan.PaymentMethod;
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1PaymentMethod;
+import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 
@@ -27,7 +27,7 @@ public class OfflineFlowTest {
     static class DummyCashierPanel implements CashierPanelInterface {
         @Override public void setFocusToSellerField() {}
         @Override public void enableCheckoutButtons(boolean enable) {}
-        @Override public void addSoldItem(SoldItem item) {}
+        @Override public void addSoldItem(V1SoldItem item) {}
         @Override public void setPaidAmount(int amount) {}
         @Override public void setChange(int amount) {}
         @Override public Map<Integer, Integer[]> getAndClearSellerPrices() { return Map.of(); }
@@ -40,7 +40,7 @@ public class OfflineFlowTest {
         String sellerFilter;
         String paymentMethodFilter;
         String paidFilter;
-        @Override public void updateHistoryTable(List<SoldItem> items) {}
+        @Override public void updateHistoryTable(List<V1SoldItem> items) {}
         @Override public void updateSumLabel(String sum) {}
         @Override public void updateNoItemsLabel(String noItems) {}
         @Override public String getSellerFilter() { return sellerFilter; }
@@ -70,12 +70,12 @@ public class OfflineFlowTest {
             int sellerId = (i % 10) + 1;
             int price = 10 + i;
             cashier.addItem(sellerId, new Integer[]{price});
-            PaymentMethod pm = sellerId == 1 ? PaymentMethod.Swish : PaymentMethod.Kontant;
+            V1PaymentMethod pm = sellerId == 1 ? V1PaymentMethod.Swish : V1PaymentMethod.Kontant;
             cashier.checkout(pm);
         }
 
         String csv = FileHelper.readFromFile(FileHelper.LOPPISKASSAN_CSV);
-        List<SoldItem> items = FormatHelper.toItems(csv, true);
+        List<V1SoldItem> items = FormatHelper.toItems(csv, true);
         assertEquals(100, items.size());
 
         HistoryTabController history = HistoryTabController.getInstance();
@@ -84,7 +84,7 @@ public class OfflineFlowTest {
         history.loadHistory();
 
         historyView.sellerFilter = "1";
-        historyView.paymentMethodFilter = PaymentMethod.Swish.name();
+        historyView.paymentMethodFilter = V1PaymentMethod.Swish.name();
         historyView.paidFilter = "false";
         history.buttonAction(BUTTON_PAY_OUT);
 
@@ -94,13 +94,13 @@ public class OfflineFlowTest {
         history.buttonAction(BUTTON_PAY_OUT);
 
         String csvAfter = FileHelper.readFromFile(FileHelper.LOPPISKASSAN_CSV);
-        List<SoldItem> updated = FormatHelper.toItems(csvAfter, true);
+        List<V1SoldItem> updated = FormatHelper.toItems(csvAfter, true);
 
         long seller1SwishPaid = updated.stream()
-                .filter(i -> i.getSeller() == 1 && i.getPaymentMethod() == PaymentMethod.Swish && i.isCollectedBySeller())
+                .filter(i -> i.getSeller() == 1 && i.getPaymentMethod() == V1PaymentMethod.Swish && i.isCollectedBySeller())
                 .count();
         long seller1SwishTotal = updated.stream()
-                .filter(i -> i.getSeller() == 1 && i.getPaymentMethod() == PaymentMethod.Swish)
+                .filter(i -> i.getSeller() == 1 && i.getPaymentMethod() == V1PaymentMethod.Swish)
                 .count();
         assertEquals(seller1SwishTotal, seller1SwishPaid);
 

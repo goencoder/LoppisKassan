@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.utils;
 
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
 
@@ -16,7 +16,7 @@ public class FileUtils {
      * @param items
      * @throws IOException
      */
-    public static void saveSoldItems(List<SoldItem> items) throws IOException {
+    public static void saveSoldItems(List<V1SoldItem> items) throws IOException {
         FileHelper.createBackupFile();
         FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
     }
@@ -27,7 +27,7 @@ public class FileUtils {
      * @param items
      * @throws IOException
      */
-    public static void appendSoldItems(List<SoldItem> items) throws IOException {
+    public static void appendSoldItems(List<V1SoldItem> items) throws IOException {
         FileHelper.saveToFile(LOPPISKASSAN_CSV, "", FormatHelper.toCVS(items));
     }
 

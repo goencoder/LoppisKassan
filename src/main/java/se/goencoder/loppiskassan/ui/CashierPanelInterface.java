@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1SoldItem;
 
 import java.util.Map;
 
@@ -35,7 +35,7 @@ public interface CashierPanelInterface extends SelectabableTab, UiComponent {
      *
      * @param item the item that was sold
      */
-    void addSoldItem(SoldItem item);
+    void addSoldItem(V1SoldItem item);
 
     /**
      * Update the entered cash amount used for change calculation.

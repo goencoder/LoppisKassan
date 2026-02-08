@@ -1,7 +1,7 @@
 package se.goencoder.loppiskassan.utils;
 
-import se.goencoder.loppiskassan.PaymentMethod;
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1PaymentMethod;
+import se.goencoder.loppiskassan.V1SoldItem;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,38 +10,38 @@ import java.util.stream.Collectors;
 
 public class SoldItemUtils {
 
-    public static Set<String> getDistinctSellers(List<SoldItem> allHistoryItems) {
+    public static Set<String> getDistinctSellers(List<V1SoldItem> allHistoryItems) {
         return allHistoryItems.stream()
                 .map(item -> String.valueOf(item.getSeller()))
                 .collect(Collectors.toSet());
     }
-    public static se.goencoder.iloppis.model.SoldItem toApiSoldItem(SoldItem item) {
+    public static se.goencoder.iloppis.model.V1SoldItem toApiSoldItem(V1SoldItem item) {
         if (item == null) {
             return null;
         }
-        se.goencoder.iloppis.model.SoldItem apiItem = new se.goencoder.iloppis.model.SoldItem();
+        se.goencoder.iloppis.model.V1SoldItem apiItem = new se.goencoder.iloppis.model.V1SoldItem();
         apiItem.setSeller(item.getSeller());
         apiItem.setPrice(item.getPrice());
         apiItem.setPaymentMethod(
-                item.getPaymentMethod() == PaymentMethod.Kontant
-                        ? se.goencoder.iloppis.model.PaymentMethod.KONTANT
-                        : se.goencoder.iloppis.model.PaymentMethod.SWISH
+                item.getPaymentMethod() == V1PaymentMethod.Kontant
+                        ? se.goencoder.iloppis.model.V1PaymentMethod.KONTANT
+                        : se.goencoder.iloppis.model.V1PaymentMethod.SWISH
         );
         apiItem.setPurchaseId(item.getPurchaseId());
 
         return apiItem;
     }
-    public static SoldItem fromApiSoldItem(se.goencoder.iloppis.model.SoldItem apiSoldItem, boolean uploaded) {
-        PaymentMethod paymentMethod = switch (apiSoldItem.getPaymentMethod()) {
-            case se.goencoder.iloppis.model.PaymentMethod.KONTANT -> PaymentMethod.Kontant;
-            case se.goencoder.iloppis.model.PaymentMethod.SWISH -> PaymentMethod.Swish;
+    public static V1SoldItem fromApiSoldItem(se.goencoder.iloppis.model.V1SoldItem apiSoldItem, boolean uploaded) {
+        V1PaymentMethod paymentMethod = switch (apiSoldItem.getPaymentMethod()) {
+            case se.goencoder.iloppis.model.V1PaymentMethod.KONTANT -> V1PaymentMethod.Kontant;
+            case se.goencoder.iloppis.model.V1PaymentMethod.SWISH -> V1PaymentMethod.Swish;
             default -> throw new IllegalArgumentException("Unknown payment method: " + apiSoldItem.getPaymentMethod());
         };
         LocalDateTime collectedTime = null;
         if (apiSoldItem.getCollectedTime() != null) {
             collectedTime = apiSoldItem.getCollectedTime().toLocalDateTime();
         }
-        return new SoldItem(apiSoldItem.getPurchaseId(),
+        return new V1SoldItem(apiSoldItem.getPurchaseId(),
                 apiSoldItem.getItemId(),
                 apiSoldItem.getSoldTime().toLocalDateTime(),
                 apiSoldItem.getSeller(),

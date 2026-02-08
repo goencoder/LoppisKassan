@@ -6,7 +6,7 @@ import se.goencoder.iloppis.api.EventServiceApi;
 import se.goencoder.iloppis.invoker.ApiCallback;
 import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.iloppis.model.FilterEventsRequest;
+import se.goencoder.iloppis.model.V1FilterEventsRequest;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,7 +30,7 @@ public class FixedEventServiceApi extends EventServiceApi {
      * This implementation avoids modifying global headers which could cause issues in concurrent environments
      */
     @Override
-    public Call eventServiceFilterEventsCall(FilterEventsRequest body, ApiCallback _callback) throws ApiException {
+    public Call eventServiceFilterEventsCall(V1FilterEventsRequest body, ApiCallback _callback) throws ApiException {
         // Create a local copy of headers for this specific request
         Map<String, String> localHeaderParams = new HashMap<>();
         localHeaderParams.put("Content-Type", "application/json");

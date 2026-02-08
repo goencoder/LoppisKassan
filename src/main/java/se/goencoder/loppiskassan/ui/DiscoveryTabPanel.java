@@ -1,7 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.iloppis.model.Event;
-import se.goencoder.iloppis.model.RevenueSplit;
+import se.goencoder.iloppis.model.V1Event;
+import se.goencoder.iloppis.model.V1RevenueSplit;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.controller.DiscoveryControllerInterface;
 import se.goencoder.loppiskassan.controller.DiscoveryTabController;
@@ -16,6 +16,7 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface, LocalizationAware {
 
@@ -142,7 +143,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         bottomPanel.add(getTokenButton);
         panel.add(bottomPanel, BorderLayout.SOUTH);
 
-        // Event listeners for buttons
+        // V1Event listeners for buttons
         discoverButton.addActionListener(e -> controller.discoverEvents(dateFromField.getText().trim()));
         getTokenButton.addActionListener(e -> {
             int rowIndex = getSelectedTableRow();
@@ -216,7 +217,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5,5);
 
-        // Event details (left)
+        // V1Event details (left)
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 0.5;
@@ -280,7 +281,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         this.discoveryRevenueSplitBorder = revenueBorder;
         GridBagConstraints gbc = createDefaultGbc();
 
-        // Market Owner Split
+        // V1Market Owner Split
         gbc.gridx = 0;
         gbc.gridy = 0;
         discoveryMarketOwnerStaticLabel = new JLabel();
@@ -290,7 +291,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         TextFilters.install(marketOwnerSplitField, new TextFilters.DigitsOnlyFilter(3));
         panel.add(marketOwnerSplitField, gbc);
 
-        // Vendor Split
+        // V1Vendor Split
         gbc.gridx = 0;
         gbc.gridy = 1;
         discoveryVendorStaticLabel = new JLabel();
@@ -334,7 +335,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
         GridBagConstraints gbc = createDefaultGbc();
 
-        // Event Details Section
+        // V1Event Details Section
         gbc.gridx = 0;
         gbc.gridy = 0;
         panel.add(createEventDetailsPanel(), gbc);
@@ -343,7 +344,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         gbc.gridy = 1;
         panel.add(createRevenueSplitPanel(), gbc);
 
-        // Change Event Button
+        // Change V1Event Button
         gbc.gridy = 2;
         panel.add(createChangeEventButton(), gbc);
 
@@ -357,7 +358,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         this.detailsBorder = detailsBorder;
         GridBagConstraints gbc = createDefaultGbc();
 
-        // Event Name
+        // V1Event Name
         gbc.gridx = 0;
         gbc.gridy = 0;
         eventNameStaticLabel = new JLabel();
@@ -366,7 +367,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         activeEventNameLabel = new JLabel("???");
         panel.add(activeEventNameLabel, gbc);
 
-        // Event Description
+        // V1Event Description
         gbc.gridx = 0;
         gbc.gridy = 1;
         eventDescStaticLabel = new JLabel();
@@ -375,7 +376,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         activeEventDescLabel = new JLabel("???");
         panel.add(activeEventDescLabel, gbc);
 
-        // Event Address
+        // V1Event Address
         gbc.gridx = 0;
         gbc.gridy = 2;
         eventAddressStaticLabel = new JLabel();
@@ -394,7 +395,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         this.revenueSplitBorder = revenueBorder;
         GridBagConstraints gbc = createDefaultGbc();
 
-        // Market Owner Split
+        // V1Market Owner Split
         gbc.gridx = 0;
         gbc.gridy = 0;
         marketOwnerStaticLabel = new JLabel();
@@ -403,7 +404,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         marketOwnerSplitLabel = new JLabel("???");
         panel.add(marketOwnerSplitLabel, gbc);
 
-        // Vendor Split
+        // V1Vendor Split
         gbc.gridx = 0;
         gbc.gridy = 1;
         vendorStaticLabel = new JLabel();
@@ -486,10 +487,10 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
     @Override
-    public void populateEventsTable(List<Event> events) {
+    public void populateEventsTable(List<V1Event> events) {
         DefaultTableModel model = getEventsTableModel();
         model.setRowCount(0); // Clear first
-        for (Event ev : events) {
+        for (V1Event ev : events) {
             model.addRow(new Object[]{
                     ev.getId(),
                     ev.getName(),
@@ -546,9 +547,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     @Override
     public void setRevenueSplit(float marketOwner, float vendor, float platform) {
-        marketOwnerSplitField.setText(String.valueOf(marketOwner));
-        vendorSplitField.setText(String.valueOf(vendor));
-        platformSplitField.setText(String.valueOf(platform));
+        marketOwnerSplitField.setText(String.format(Locale.US, "%.0f", marketOwner));
+        vendorSplitField.setText(String.format(Locale.US, "%.0f", vendor));
+        platformSplitField.setText(String.format(Locale.US, "%.0f", platform));
     }
 
 
@@ -573,15 +574,15 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
     @Override
-    public void showActiveEventInfo(Event event, RevenueSplit split) {
-        // Update Event Details
+    public void showActiveEventInfo(V1Event event, V1RevenueSplit split) {
+        // Update V1Event Details
         activeEventNameLabel.setText(event.getName());
         activeEventDescLabel.setText(event.getDescription());
         activeEventAddressLabel.setText(event.getAddressStreet() + ", " + event.getAddressCity());
-        marketOwnerSplitLabel.setText(String.valueOf(split.getMarketOwnerPercentage()));
-        vendorSplitLabel.setText(String.valueOf(split.getVendorPercentage()));
-        platformSplitLabel.setText(String.valueOf(split.getPlatformProviderPercentage()));
-        // Switch to Active Event Panel
+        marketOwnerSplitLabel.setText(String.format(Locale.US, "%.0f", split.getMarketOwnerPercentage()));
+        vendorSplitLabel.setText(String.format(Locale.US, "%.0f", split.getVendorPercentage()));
+        platformSplitLabel.setText(String.format(Locale.US, "%.0f", split.getPlatformProviderPercentage()));
+        // Switch to Active V1Event Panel
         rootCardLayout.show(rootCardPanel, "activeEvent");
     }
 

@@ -32,12 +32,12 @@ public class TestRunner {
     public void testManyEntries(){
         int numberOfCustomers = 10;
         String purchaseId;
-        PaymentMethod paymentMethod = PaymentMethod.Swish;
+        V1PaymentMethod paymentMethod = V1PaymentMethod.Swish;
 
         for (int i = 0; i < numberOfCustomers; i++){
             switch (paymentMethod) {
-                case Swish: paymentMethod = PaymentMethod.Kontant; break;
-                case Kontant: paymentMethod = PaymentMethod.Swish; break;
+                case Swish: paymentMethod = V1PaymentMethod.Kontant; break;
+                case Kontant: paymentMethod = V1PaymentMethod.Swish; break;
                 default: break;
             }
             purchaseId = UlidGenerator.generate();
@@ -52,24 +52,24 @@ public class TestRunner {
 
         }
     }
-    private List<SoldItem> createRandomSoldItems(PaymentMethod paymentMethod,
+    private List<V1SoldItem> createRandomSoldItems(V1PaymentMethod paymentMethod,
                                                  String purchaseId){
         int numberOfRecords = random.nextInt(19) + 1;
-        List<SoldItem> items = new ArrayList<>(numberOfRecords);
+        List<V1SoldItem> items = new ArrayList<>(numberOfRecords);
         for (int i = 0 ; i < numberOfRecords; i++){
-            SoldItem item = createRandomSoldItem(paymentMethod, purchaseId);
+            V1SoldItem item = createRandomSoldItem(paymentMethod, purchaseId);
             item.setSoldTime(LocalDateTime.now());
             items.add(item);
 
         }
         return items;
     }
-    private SoldItem createRandomSoldItem(PaymentMethod paymentMethod,
+    private V1SoldItem createRandomSoldItem(V1PaymentMethod paymentMethod,
                                           String purchaseId){
         int seller = Math.abs(random.nextInt() % 9) + 1;
         int price = Math.abs(random.nextInt() % 20) +1 ;
 
-        return new SoldItem(purchaseId,
+        return new V1SoldItem(purchaseId,
                 UUID.randomUUID().toString(),
                 LocalDateTime.now(),
                 seller,

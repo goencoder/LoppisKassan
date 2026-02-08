@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1SoldItem;
 
 import java.util.List;
 import java.util.Set;
@@ -22,7 +22,7 @@ public interface HistoryPanelInterface extends SelectabableTab, UiComponent {
      *
      * @param items sales items to display
      */
-    void updateHistoryTable(List<SoldItem> items);
+    void updateHistoryTable(List<V1SoldItem> items);
 
     /**
      * Update the formatted sum display shown in the history view.

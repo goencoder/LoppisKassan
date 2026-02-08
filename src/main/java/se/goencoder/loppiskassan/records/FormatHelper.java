@@ -1,8 +1,8 @@
 package se.goencoder.loppiskassan.records;
 
 import org.jetbrains.annotations.NotNull;
-import se.goencoder.loppiskassan.PaymentMethod;
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1PaymentMethod;
+import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import java.time.LocalDateTime;
@@ -24,9 +24,9 @@ public class FormatHelper {
             LocalizationManager.tr("csv.header.uploaded");
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    public static String toCVS(List<SoldItem> items) {
+    public static String toCVS(List<V1SoldItem> items) {
         StringBuilder stringBuilder = new StringBuilder();
-        for (SoldItem item : items) {
+        for (V1SoldItem item : items) {
             String collectedTime = "";
             if (item.isCollectedBySeller()) {
                 collectedTime = dateAndTimeToString(item.getCollectedBySellerTime());
@@ -43,13 +43,13 @@ public class FormatHelper {
         return stringBuilder.toString();
     }
 
-    public static List<SoldItem> toItems(String CSV, boolean withHeaderLine) {
+    public static List<V1SoldItem> toItems(String CSV, boolean withHeaderLine) {
         String[] lines = CSV.split(LINE_ENDING);
         int startIndex = 0;
         if (withHeaderLine) {
             startIndex = 1;
         }
-        List<SoldItem> items = new ArrayList<>(lines.length - startIndex);
+        List<V1SoldItem> items = new ArrayList<>(lines.length - startIndex);
 
         for (int i = startIndex; i < lines.length; i++) {
             // Check if line is a comment or empty
@@ -79,40 +79,40 @@ public class FormatHelper {
                 dateTime = stringToDateAndTime(collectedTime);
             }
 
-            // Parse PaymentMethod from columns[6]
-            PaymentMethod pm = PaymentMethod.valueOf(columns[6]);
+            // Parse V1PaymentMethod from columns[6]
+            V1PaymentMethod pm = V1PaymentMethod.valueOf(columns[6]);
 
             // Parse uploaded from columns[7] (if present)
-            SoldItem item = getSoldItem(columns, dateTime, pm);
+            V1SoldItem item = getSoldItem(columns, dateTime, pm);
             items.add(item);
         }
         return items;
     }
 
     @NotNull
-    private static SoldItem getSoldItem(String[] columns, LocalDateTime dateTime, PaymentMethod pm) {
+    private static V1SoldItem getSoldItem(String[] columns, LocalDateTime dateTime, V1PaymentMethod pm) {
         boolean uploaded = false;
         if (columns.length > 7) {
             uploaded = Boolean.parseBoolean(columns[7]);
         }
 
-        // Construct new SoldItem
+        // Construct new V1SoldItem
         // purchaseId
         // itemId
         // soldTime
         // seller
         // price
         // collectedBySellerTime
-        // PaymentMethod
+        // V1PaymentMethod
         // uploaded
-        return new SoldItem(
+        return new V1SoldItem(
                 columns[0],                     // purchaseId
                 columns[1],                     // itemId
                 stringToDateAndTime(columns[2]),// soldTime
                 Integer.parseInt(columns[3]),   // seller
                 Integer.parseInt(columns[4]),   // price
                 dateTime,                       // collectedBySellerTime
-                pm,                             // PaymentMethod
+                pm,                             // V1PaymentMethod
                 uploaded                        // uploaded
         );
     }

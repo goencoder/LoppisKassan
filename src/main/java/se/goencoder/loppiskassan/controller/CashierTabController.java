@@ -2,10 +2,10 @@ package se.goencoder.loppiskassan.controller;
 
 import org.json.JSONObject;
 import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.iloppis.model.CreateSoldItemsResponse;
+import se.goencoder.iloppis.model.V1CreateSoldItemsResponse;
 import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
-import se.goencoder.loppiskassan.PaymentMethod;
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1PaymentMethod;
+import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
@@ -54,7 +54,7 @@ public class CashierTabController implements CashierControllerInterface {
      */
     private final Object lock = new Object();
 
-    private final List<SoldItem> items = new ArrayList<>();
+    private final List<V1SoldItem> items = new ArrayList<>();
     private CashierPanelInterface view;
 
     private CashierTabController() {}
@@ -66,12 +66,12 @@ public class CashierTabController implements CashierControllerInterface {
     // --- Button setup methods ---
     @Override
     public void setupCheckoutCashButtonAction(JButton checkoutCashButton) {
-        checkoutCashButton.addActionListener(e -> checkout(PaymentMethod.Kontant));
+        checkoutCashButton.addActionListener(e -> checkout(V1PaymentMethod.Kontant));
     }
 
     @Override
     public void setupCheckoutSwishButtonAction(JButton checkoutSwishButton) {
-        checkoutSwishButton.addActionListener(e -> checkout(PaymentMethod.Swish));
+        checkoutSwishButton.addActionListener(e -> checkout(V1PaymentMethod.Swish));
     }
 
     @Override
@@ -136,7 +136,7 @@ public class CashierTabController implements CashierControllerInterface {
         if (FileHelper.assertRecordFileRights(LOPPISKASSAN_CSV)) {
             log.info(() -> String.format("cashier:add items=%d %s", prices.length, logCtx(sellerId)));
             for (Integer price : prices) {
-                SoldItem soldItem = new SoldItem(sellerId, price, null);
+                V1SoldItem soldItem = new V1SoldItem(sellerId, price, null);
                 items.add(soldItem);
                 view.addSoldItem(soldItem);
             }
@@ -145,7 +145,7 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     // --- Checkout process ---
-    public void checkout(PaymentMethod paymentMethod) {
+    public void checkout(V1PaymentMethod paymentMethod) {
         boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
 
         LocalDateTime now = LocalDateTime.now();
@@ -182,7 +182,7 @@ public class CashierTabController implements CashierControllerInterface {
     private void finishCheckoutFlow() {
         // 1) Save items locally in all cases
         // If we are in degraded mode, we must update the items to reflect correct uploaded status (false)
-        for (SoldItem item : items) {
+        for (V1SoldItem item : items) {
             if (degradedMode) {
                 item.setUploaded(false);
             }
@@ -233,13 +233,13 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     private int getSum() {
-        return items.stream().mapToInt(SoldItem::getPrice).sum();
+        return items.stream().mapToInt(V1SoldItem::getPrice).sum();
     }
 
     // --- Helpers ---
-    private void prepareItemsForCheckout(List<SoldItem> items, String purchaseId,
-                                         PaymentMethod paymentMethod, LocalDateTime now) {
-        for (SoldItem item : items) {
+    private void prepareItemsForCheckout(List<V1SoldItem> items, String purchaseId,
+                                         V1PaymentMethod paymentMethod, LocalDateTime now) {
+        for (V1SoldItem item : items) {
             item.setSoldTime(now);
             item.setPaymentMethod(paymentMethod);
             item.setPurchaseId(purchaseId);
@@ -256,7 +256,7 @@ public class CashierTabController implements CashierControllerInterface {
      * @throws RuntimeException or other exceptions for network connectivity errors
      *                          (some might bubble as ApiException with code=0)
      */
-    private void saveItemsToWeb(List<SoldItem> items) throws ApiException {
+    private void saveItemsToWeb(List<V1SoldItem> items) throws ApiException {
         // TODO: set an API call timeout of 5 seconds for this request in your HTTP client config
 
         if (items == null || items.isEmpty()) {
@@ -266,16 +266,16 @@ public class CashierTabController implements CashierControllerInterface {
         SoldItemsServiceCreateSoldItemsBody createSoldItems = new SoldItemsServiceCreateSoldItemsBody();
         ZoneOffset currentOffset = OffsetDateTime.now().getOffset();
 
-        Map<String, SoldItem> itemMap = items.stream()
-                .collect(Collectors.toMap(SoldItem::getItemId, x -> x));
+        Map<String, V1SoldItem> itemMap = items.stream()
+                .collect(Collectors.toMap(V1SoldItem::getItemId, x -> x));
 
-        for (SoldItem item : items) {
-            se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
+        for (V1SoldItem item : items) {
+            se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
             apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), currentOffset));
             createSoldItems.addItemsItem(apiItem);
         }
 
-        CreateSoldItemsResponse response = ApiHelper.INSTANCE
+        V1CreateSoldItemsResponse response = ApiHelper.INSTANCE
                 .getSoldItemsServiceApi()
                 .soldItemsServiceCreateSoldItems(ConfigurationStore.EVENT_ID_STR.get(), createSoldItems);
 
@@ -289,7 +289,7 @@ public class CashierTabController implements CashierControllerInterface {
      */
     private boolean pushLocalUnsyncedRecords() {
         synchronized (lock) {
-            List<SoldItem> allItems;
+            List<V1SoldItem> allItems;
             try {
                 Path localCsv = FileHelper.getRecordFilePath(LOPPISKASSAN_CSV);
                 allItems = FormatHelper.toItems(FileHelper.readFromFile(localCsv), true);
@@ -297,7 +297,7 @@ public class CashierTabController implements CashierControllerInterface {
                 return false;
             }
 
-            List<SoldItem> notUploaded = allItems.stream()
+            List<V1SoldItem> notUploaded = allItems.stream()
                     .filter(item -> !item.isUploaded())
                     .collect(Collectors.toList());
 
@@ -336,11 +336,11 @@ public class CashierTabController implements CashierControllerInterface {
         }
     }
 
-    private void updateLocalItemsStatus(CreateSoldItemsResponse response,
-                                        Map<String, SoldItem> itemMap) {
+    private void updateLocalItemsStatus(V1CreateSoldItemsResponse response,
+                                        Map<String, V1SoldItem> itemMap) {
         if (response.getAcceptedItems() != null) {
-            for (se.goencoder.iloppis.model.SoldItem acceptedItem : response.getAcceptedItems()) {
-                SoldItem localItem = itemMap.get(acceptedItem.getItemId());
+            for (se.goencoder.iloppis.model.V1SoldItem acceptedItem : response.getAcceptedItems()) {
+                V1SoldItem localItem = itemMap.get(acceptedItem.getItemId());
                 if (localItem != null) {
                     localItem.setUploaded(true);
                 }
@@ -349,8 +349,8 @@ public class CashierTabController implements CashierControllerInterface {
 
         if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
             Popup.warn("warning.partial_upload", response.getRejectedItems());
-            for (se.goencoder.iloppis.model.RejectedItem rejectedItem : response.getRejectedItems()) {
-                SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
+            for (se.goencoder.iloppis.model.V1RejectedItem rejectedItem : response.getRejectedItems()) {
+                V1SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
                 if (localItem != null) {
                     localItem.setUploaded(false);
                 }
