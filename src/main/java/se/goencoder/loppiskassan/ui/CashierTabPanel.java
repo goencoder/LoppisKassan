@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
@@ -255,7 +255,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         SoldItemsTableModel model = getTableModel();
         itemsCount = model.getRowCount();
         int total = 0;
-        for (SoldItem item : model.getItems()) {
+        for (V1SoldItem item : model.getItems()) {
             total += item.getPrice();
         }
         sumValue = total;
@@ -278,7 +278,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     }
 
     @Override
-    public void addSoldItem(SoldItem item) {
+    public void addSoldItem(V1SoldItem item) {
         getTableModel().addItem(item);
     }
 

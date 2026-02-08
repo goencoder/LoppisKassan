@@ -1,7 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.SoldItem;
-import se.goencoder.loppiskassan.PaymentMethod;
+import se.goencoder.loppiskassan.V1SoldItem;
+import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.controller.HistoryControllerInterface;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -390,7 +390,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
 
     // Implementations of HistoryPanelInterface methods
     @Override
-    public void updateHistoryTable(List<SoldItem> items) {
+    public void updateHistoryTable(List<V1SoldItem> items) {
         // Ensure table updates happen on the EDT to avoid threading issues
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater(() -> updateHistoryTable(items));
@@ -406,13 +406,13 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         // Only add rows if we have items
         if (items != null && !items.isEmpty()) {
             // Add data in batches to improve performance
-            for (SoldItem item : items) {
+            for (V1SoldItem item : items) {
                 model.addRow(new Object[]{
                         item.getSeller(),
                         item.getPrice() + " " + LocalizationManager.tr("currency.sek"),
                         item.getSoldTime().toString(),
                         item.isCollectedBySeller() ? LocalizationManager.tr("common.yes") : LocalizationManager.tr("common.no"),
-                        LocalizationManager.tr(item.getPaymentMethod() == PaymentMethod.Kontant ?
+                        LocalizationManager.tr(item.getPaymentMethod() == V1PaymentMethod.Kontant ?
                                 "payment.cash" : "payment.swish")
                 });
             }
@@ -454,8 +454,8 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     @Override
     public String getPaymentMethodFilter() {
         return switch (paymentTypeFilterDropdown.getSelectedIndex()) {
-            case 1 -> PaymentMethod.Swish.name();
-            case 2 -> PaymentMethod.Kontant.name();
+            case 1 -> V1PaymentMethod.Swish.name();
+            case 2 -> V1PaymentMethod.Kontant.name();
             default -> null;
         };
     }

@@ -3,13 +3,13 @@ package se.goencoder.loppiskassan.ui;
 import javax.swing.SwingUtilities;
 
 /**
- * Utility to ensure code runs on the Swing Event Dispatch Thread.
+ * Utility to ensure code runs on the Swing V1Event Dispatch Thread.
  */
 public final class EDT {
     private EDT() {}
 
     /**
-     * Run the given runnable on the Event Dispatch Thread.
+     * Run the given runnable on the V1Event Dispatch Thread.
      *
      * @param r runnable to execute
      */

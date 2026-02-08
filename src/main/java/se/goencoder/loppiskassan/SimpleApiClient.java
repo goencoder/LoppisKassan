@@ -3,9 +3,9 @@ package se.goencoder.loppiskassan;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import okhttp3.*;
-import se.goencoder.iloppis.model.EventFilter;
-import se.goencoder.iloppis.model.FilterEventsRequest;
-import se.goencoder.iloppis.model.Pagination;
+import se.goencoder.iloppis.model.V1EventFilter;
+import se.goencoder.iloppis.model.V1FilterEventsRequest;
+import se.goencoder.iloppis.model.V1Pagination;
 import se.goencoder.iloppis.invoker.JSON;
 
 import java.io.IOException;
@@ -22,13 +22,13 @@ public class SimpleApiClient {
         System.out.println("Starting simple API client test...");
 
         try {
-            // Create a request similar to what FilterEventsRequest would do
-            FilterEventsRequest request = new FilterEventsRequest();
-            EventFilter filter = new EventFilter();
-            filter.setDateFrom("2025-01-01");
+            // Create a request similar to what V1FilterEventsRequest would do
+            V1FilterEventsRequest request = new V1FilterEventsRequest();
+            V1EventFilter filter = new V1EventFilter();
+            filter.setDateFrom(java.time.OffsetDateTime.parse("2025-01-01T00:00:00+00:00"));
             request.setFilter(filter);
 
-            Pagination pagination = new Pagination();
+            V1Pagination pagination = new V1Pagination();
             pagination.setPageSize(100);
             request.setPagination(pagination);
 

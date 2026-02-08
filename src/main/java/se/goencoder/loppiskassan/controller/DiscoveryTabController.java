@@ -28,7 +28,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     private static final int APPROVED_SELLERS_PAGE_SIZE = 500;
 
     private DiscoveryPanelInterface view;
-    private List<Event> eventList;
+    private List<V1Event> eventList;
 
     private DiscoveryTabController() {
     }
@@ -48,7 +48,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         view.clearEventsTable();
 
         // Add the offline synthetic event.
-        Event offlineEvent = new Event();
+        V1Event offlineEvent = new V1Event();
         EventUtils.populateOfflineEvent(offlineEvent);
 
         eventList = new ArrayList<>();
@@ -59,18 +59,18 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             EventServiceApi eventApi = ApiHelper.INSTANCE.getEventServiceApi();
 
             // Create the components separately to avoid serialization issues
-            EventFilter eventFilter = new EventFilter();
-            eventFilter.setDateFrom(dateFrom);
+            V1EventFilter eventFilter = new V1EventFilter();
+            eventFilter.setDateFrom(java.time.OffsetDateTime.parse(dateFrom.contains("T") ? dateFrom : dateFrom + "T00:00:00+00:00"));
 
-            Pagination pagination = new Pagination();
+            V1Pagination pagination = new V1Pagination();
             pagination.setPageSize(100);
 
-            FilterEventsRequest request = new FilterEventsRequest();
+            V1FilterEventsRequest request = new V1FilterEventsRequest();
             request.setFilter(eventFilter);
             request.setPagination(pagination);
 
-            FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
-            List<Event> discovered = response.getEvents();
+            V1FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
+            List<V1Event> discovered = response.getEvents();
             eventList.addAll(Objects.requireNonNull(discovered));
 
             view.populateEventsTable(eventList);
@@ -92,14 +92,14 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                     LocalizationManager.tr("error.no_event_selected.message"));
             return;
         }
-        Event event = fromId(eventId);
+        V1Event event = fromId(eventId);
         ConfigurationStore.EVENT_JSON.set(Objects.requireNonNull(event).toJson());
 
         // Determine if the event is offline.
         boolean isOffline = "offline".equalsIgnoreCase(eventId);
-        RevenueSplit split;
+        V1RevenueSplit split;
         try {
-            split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+            split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
         } catch (IOException e) {
             Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
             ConfigurationStore.reset();
@@ -117,7 +117,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     public void eventSelected(String eventId) {
         view.showDetailForm(true);
 
-        Event selectedEvent = fromId(eventId);
+        V1Event selectedEvent = fromId(eventId);
         view.setEventName(Objects.requireNonNull(selectedEvent).getName());
         view.setEventDescription(selectedEvent.getDescription());
         view.setEventAddress(selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity());
@@ -138,8 +138,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
         if (eventId != null && !eventId.isEmpty()) {
             try {
-                Event event = Event.fromJson(ConfigurationStore.EVENT_JSON.get());
-                RevenueSplit split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+                V1Event event = V1Event.fromJson(ConfigurationStore.EVENT_JSON.get());
+                V1RevenueSplit split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
                 view.showActiveEventInfo(event, split);
             } catch (IOException e) {
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_event.title"), e.getMessage());
@@ -175,11 +175,11 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         view.setCashierButtonEnabled(true);
     }
 
-    private Event fromId(String eventId) {
+    private V1Event fromId(String eventId) {
         // if event list is null or empty, look in Configuration store
         if (eventList == null || eventList.isEmpty()) {
             try {
-                Event event = Event.fromJson(ConfigurationStore.EVENT_JSON.get());
+                V1Event event = V1Event.fromJson(ConfigurationStore.EVENT_JSON.get());
                 if (event != null && event.getId().equals(eventId)) {
                     return event;
                 }
@@ -194,7 +194,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         return EventUtils.findEventById(eventList, eventId);
     }
 
-    private void configureOfflineMode(Event event, RevenueSplit split) {
+    private void configureOfflineMode(V1Event event, V1RevenueSplit split) {
         ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(true);
         ConfigurationStore.EVENT_ID_STR.set("offline");
 
@@ -203,10 +203,10 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         view.setChangeEventButtonVisible(true);
     }
 
-    private void configureOnlineMode(String eventId, String cashierCode, Event event, RevenueSplit split) {
+    private void configureOnlineMode(String eventId, String cashierCode, V1Event event, V1RevenueSplit split) {
         try {
             ApiKeyServiceApi apiKeyServiceApi = ApiHelper.INSTANCE.getApiKeyServiceApi();
-            GetApiKeyResponse response = apiKeyServiceApi.apiKeyServiceGetApiKey(eventId, cashierCode);
+            V1GetApiKeyResponse response = apiKeyServiceApi.apiKeyServiceGetApiKey(eventId, cashierCode, null);
 
             ApiHelper.INSTANCE.setCurrentApiKey(response.getApiKey());
             ConfigurationStore.EVENT_ID_STR.set(eventId);
@@ -236,10 +236,10 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     }
 
     private void fetchApprovedSellers(String eventId) throws ApiException {
-        ListVendorsResponse res = ApiHelper.INSTANCE.getVendorServiceApi()
-            .vendorServiceListVendors(eventId, Integer.valueOf(APPROVED_SELLERS_PAGE_SIZE), "", "");
+        V1ListVendorsResponse res = ApiHelper.INSTANCE.getVendorServiceApi()
+            .vendorServiceListVendors(eventId, Integer.valueOf(APPROVED_SELLERS_PAGE_SIZE), "", "", null, null, null);
         Set<Integer> approvedSellers = new HashSet<>();
-        for (Vendor vendor : Objects.requireNonNull(res.getVendors())) {
+        for (V1Vendor vendor : Objects.requireNonNull(res.getVendors())) {
             if ("APPROVED".equalsIgnoreCase(vendor.getStatus())) {
                 approvedSellers.add(vendor.getSellerNumber());
             }
@@ -249,12 +249,12 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         ConfigurationStore.APPROVED_SELLERS_JSON.set(jsonObject.toString());
     }
 
-    private void handleOfflineEvent(Event selectedEvent) {
+    private void handleOfflineEvent(V1Event selectedEvent) {
         view.setRevenueSplitEditable(true);
 
-        RevenueSplit split;
+        V1RevenueSplit split;
         if (ConfigurationStore.REVENUE_SPLIT_JSON.get() == null) {
-            split = new RevenueSplit();
+            split = new V1RevenueSplit();
             split.setCharityPercentage(0f);
             split.setMarketOwnerPercentage(85f);
             split.setVendorPercentage(10f);
@@ -262,10 +262,10 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             ConfigurationStore.REVENUE_SPLIT_JSON.set(split.toJson());
         } else {
             try {
-                split = RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+                split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
             } catch (IOException e) {
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
-                split = new RevenueSplit();
+                split = new V1RevenueSplit();
             }
         }
 
@@ -283,12 +283,12 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 split.getPlatformProviderPercentage());
     }
 
-    private void handleOnlineEvent(Event selectedEvent) {
+    private void handleOnlineEvent(V1Event selectedEvent) {
         view.setRevenueSplitEditable(false);
 
-        Market market = null;
+        V1Market market = null;
         try {
-            GetMarketResponse response = ApiHelper.INSTANCE.getApprovedMarketServiceApi()
+            V1GetMarketResponse response = ApiHelper.INSTANCE.getApprovedMarketServiceApi()
                     .approvedMarketServiceGetMarket(selectedEvent.getMarketId());
             market = response.getMarket();
         } catch (ApiException e) {
@@ -297,7 +297,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                     LocalizationManager.tr("warning.fetch_market_info.message", e.getMessage()));
         }
 
-        RevenueSplit revenueSplit = Objects.requireNonNull(market).getRevenueSplit();
+        V1RevenueSplit revenueSplit = Objects.requireNonNull(market).getRevenueSplit();
+        
         view.setRevenueSplit(
                 revenueSplit.getMarketOwnerPercentage(),
                 revenueSplit.getVendorPercentage(),

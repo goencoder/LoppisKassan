@@ -2,7 +2,7 @@ package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
@@ -30,8 +30,8 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static se.goencoder.iloppis.model.PaidFilter.PAID_FILTER_UNSPECIFIED;
-import static se.goencoder.iloppis.model.PaymentMethodFilter.PAYMENT_METHOD_FILTER_UNSPECIFIED;
+import static se.goencoder.iloppis.model.V1PaidFilter.PAID_FILTER_UNSPECIFIED;
+import static se.goencoder.iloppis.model.V1PaymentMethodFilter.PAYMENT_METHOD_FILTER_UNSPECIFIED;
 import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 import static se.goencoder.loppiskassan.ui.Constants.*;
 
@@ -46,7 +46,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     private static final int SOLD_TIME_TOLERANCE_SECONDS = 60;
 
     private HistoryPanelInterface view;
-    private List<SoldItem> allHistoryItems;
+    private List<V1SoldItem> allHistoryItems;
 
     private HistoryTabController() {}
 
@@ -78,11 +78,11 @@ public class HistoryTabController implements HistoryControllerInterface {
         updateImportButton();
 
         // Apply the current filters and update the view accordingly.
-        List<SoldItem> filteredItems = applyFilters();
+        List<V1SoldItem> filteredItems = applyFilters();
 
         view.updateHistoryTable(filteredItems);
         view.updateNoItemsLabel(String.valueOf(filteredItems.size()));
-        view.updateSumLabel(String.valueOf(filteredItems.stream().mapToDouble(SoldItem::getPrice).sum()));
+        view.updateSumLabel(String.valueOf(filteredItems.stream().mapToDouble(V1SoldItem::getPrice).sum()));
 
         boolean enablePayout = isPayoutEnabled(filteredItems);
         view.enableButton(BUTTON_PAY_OUT, enablePayout);
@@ -107,7 +107,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     private void downloadSoldItems() {
         // Retrieve all sold items from the web, merge with local items, and save them to the local file.
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
-        Map<String, SoldItem> fetchedItems = fetchItemsFromWeb(eventId);
+        Map<String, V1SoldItem> fetchedItems = fetchItemsFromWeb(eventId);
         mergeFetchedItems(fetchedItems);
         saveHistoryToFile();
         updateDistinctSellers();
@@ -145,7 +145,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void archiveFilteredItems() {
         // Archive filtered items to a CSV file and remove them from the history list.
-        List<SoldItem> filteredItems = applyFilters();
+        List<V1SoldItem> filteredItems = applyFilters();
 
         if (filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller())) {
             Popup.ERROR.showAndWait(
@@ -175,7 +175,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void payout() {
         // Mark filtered items as paid out and update the history.
-        List<SoldItem> filteredItems = applyFilters();
+        List<V1SoldItem> filteredItems = applyFilters();
         LocalDateTime now = LocalDateTime.now();
 
         filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
@@ -202,7 +202,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         }
 
         try {
-            PaymentMethodFilter paymentMethodFilter = PaymentMethodFilter.fromValue(view.getPaymentMethodFilter());
+            V1PaymentMethodFilter paymentMethodFilter = V1PaymentMethodFilter.fromValue(view.getPaymentMethodFilter());
             payoutBody.setPaymentMethodFilter(paymentMethodFilter);
         } catch (IllegalArgumentException e) {
             // Do nothing if payment method filter isn't valid
@@ -219,14 +219,14 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void copyToClipboard() {
         // Copy a summary of filtered items to the system clipboard.
-        List<SoldItem> filteredItems = applyFilters();
+        List<V1SoldItem> filteredItems = applyFilters();
         String summary = generateSummary(filteredItems);
 
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         clipboard.setContents(new StringSelection(summary), null);
     }
 
-    private List<SoldItem> applyFilters() {
+    private List<V1SoldItem> applyFilters() {
         // Apply the current filters to the history items.
         return FilterUtils.applyFilters(
                 allHistoryItems,
@@ -258,15 +258,15 @@ public class HistoryTabController implements HistoryControllerInterface {
         }
     }
 
-    private Map<String, SoldItem> fetchItemsFromWeb(String eventId) {
+    private Map<String, V1SoldItem> fetchItemsFromWeb(String eventId) {
         // Fetch items from the web service.
-        Map<String, SoldItem> fetchedItems = new HashMap<>();
+        Map<String, V1SoldItem> fetchedItems = new HashMap<>();
         try {
             String pageToken = "";
             boolean fetchedAll = false;
 
             while (!fetchedAll) {
-                ListSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi()
+                V1ListSoldItemsResponse result = ApiHelper.INSTANCE.getSoldItemsServiceApi()
                         .soldItemsServiceListSoldItems(
                                 eventId,                              // eventId
                                 null,                                 // purchaseId
@@ -281,7 +281,7 @@ public class HistoryTabController implements HistoryControllerInterface {
                         );
 
                 result.getItems().forEach(item -> {
-                    SoldItem soldItem = SoldItemUtils.fromApiSoldItem(item, true);
+                    V1SoldItem soldItem = SoldItemUtils.fromApiSoldItem(item, true);
                     fetchedItems.put(soldItem.getItemId(), soldItem);
                 });
 
@@ -295,13 +295,13 @@ public class HistoryTabController implements HistoryControllerInterface {
         return fetchedItems;
     }
 
-    private void mergeFetchedItems(Map<String, SoldItem> fetchedItems) {
+    private void mergeFetchedItems(Map<String, V1SoldItem> fetchedItems) {
         // Track items that have been added to prevent duplicates
         Set<String> processedItems = new HashSet<>();
 
         // First pass: Update existing items
         allHistoryItems.forEach(existingItem -> {
-            SoldItem fetchedItem = fetchedItems.get(existingItem.getItemId());
+            V1SoldItem fetchedItem = fetchedItems.get(existingItem.getItemId());
             if (fetchedItem != null) {
                 // Update existing item
                 existingItem.setCollectedBySellerTime(fetchedItem.getCollectedBySellerTime());
@@ -311,7 +311,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         });
 
         // Second pass: Add new items, but check for potential duplicates
-        for (SoldItem fetchedItem : fetchedItems.values()) {
+        for (V1SoldItem fetchedItem : fetchedItems.values()) {
             if (processedItems.contains(fetchedItem.getItemId())) {
                 // Already processed this item
                 continue;
@@ -356,7 +356,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         }
     }
 
-    private void archiveItemsToFile(List<SoldItem> filteredItems) {
+    private void archiveItemsToFile(List<V1SoldItem> filteredItems) {
         // Save filtered items to an archive file with a timestamped filename.
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss"));
         String fileName = LocalizationManager.tr("history.archive_prefix") + timestamp + ".csv";
@@ -375,19 +375,19 @@ public class HistoryTabController implements HistoryControllerInterface {
         }
     }
 
-    private void removeFilteredItems(List<SoldItem> filteredItems) {
+    private void removeFilteredItems(List<V1SoldItem> filteredItems) {
         // Remove archived items from the history list.
         Set<String> filteredItemIds = filteredItems.stream()
-                .map(SoldItem::getItemId)
+                .map(V1SoldItem::getItemId)
                 .collect(Collectors.toSet());
 
         allHistoryItems.removeIf(item -> filteredItemIds.contains(item.getItemId()));
     }
 
-    private String generateSummary(List<SoldItem> filteredItems) {
+    private String generateSummary(List<V1SoldItem> filteredItems) {
         // Generate a summary string for filtered items.
         int totalItems = filteredItems.size();
-        int totalSum = filteredItems.stream().mapToInt(SoldItem::getPrice).sum();
+        int totalSum = filteredItems.stream().mapToInt(V1SoldItem::getPrice).sum();
         int provision = (int) (0.1 * totalSum);
 
         StringBuilder summary = new StringBuilder(LocalizationManager.tr("history.summary.header"));
@@ -403,7 +403,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     // TODO: If we have incorret items in the list not uploaded (eg incorrect seller id) and we try to sync - we do not show popup telling that some items could not be uploaded
     private boolean uploadSoldItems() {
         // 1) Hitta alla poster som inte redan är uppladdade
-        List<SoldItem> notUploaded = allHistoryItems.stream()
+        List<V1SoldItem> notUploaded = allHistoryItems.stream()
                 .filter(item -> !item.isUploaded())
                 .collect(Collectors.toList());
 
@@ -412,17 +412,17 @@ public class HistoryTabController implements HistoryControllerInterface {
             return true;
         }
 
-        List<RejectedItem> allRejected = new ArrayList<>();
+        List<V1RejectedItem> allRejected = new ArrayList<>();
         boolean networkError = false; // För att särskilja nätverksfel
 
         // 2) Kör i sub‐batchar om 100 poster
         for (int i = 0; i < notUploaded.size(); i += 100) {
             int end = Math.min(i + 100, notUploaded.size());
-            List<SoldItem> subBatch = notUploaded.subList(i, end);
+            List<V1SoldItem> subBatch = notUploaded.subList(i, end);
 
             try {
                 // 2.1) Skicka upp subBatch
-                List<RejectedItem> rejectedItems = uploadBatch(subBatch);
+                List<V1RejectedItem> rejectedItems = uploadBatch(subBatch);
                 // 2.2) Spara eventuella avvisade
                 allRejected.addAll(rejectedItems);
 
@@ -454,7 +454,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         // 6) Show rejected items due to API errors
         if (!allRejected.isEmpty()) {
             StringBuilder msg = new StringBuilder(LocalizationManager.tr("error.upload_rejected.header"));
-            for (RejectedItem rejectedItem : allRejected) {
+            for (V1RejectedItem rejectedItem : allRejected) {
                 msg.append(LocalizationManager.tr(
                         "error.upload_rejected.entry",
                         rejectedItem.getItem().getItemId(),
@@ -471,9 +471,9 @@ public class HistoryTabController implements HistoryControllerInterface {
         return true;
     }
 
-    private List<RejectedItem> uploadBatch(List<SoldItem> batch) throws ApiException {
+    private List<V1RejectedItem> uploadBatch(List<V1SoldItem> batch) throws ApiException {
         // Group items by purchase ID to ensure server compatibility
-        Map<String, List<SoldItem>> purchaseGroups = batch.stream()
+        Map<String, List<V1SoldItem>> purchaseGroups = batch.stream()
                 .collect(Collectors.groupingBy(item -> {
                     String purchaseId = item.getPurchaseId();
                     if (purchaseId == null || purchaseId.trim().isEmpty()) {
@@ -483,14 +483,14 @@ public class HistoryTabController implements HistoryControllerInterface {
                     return purchaseId;
                 }));
 
-        List<RejectedItem> allRejected = new ArrayList<>();
+        List<V1RejectedItem> allRejected = new ArrayList<>();
 
         // Upload each purchase group separately to avoid "purchaseId mismatch" errors
-        for (List<SoldItem> purchaseItems : purchaseGroups.values()) {
+        for (List<V1SoldItem> purchaseItems : purchaseGroups.values()) {
             SoldItemsServiceCreateSoldItemsBody requestBody = new SoldItemsServiceCreateSoldItemsBody();
 
-            for (SoldItem localItem : purchaseItems) {
-                se.goencoder.iloppis.model.SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
+            for (V1SoldItem localItem : purchaseItems) {
+                se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
                 apiItem.setSoldTime(OffsetDateTime.of(
                         localItem.getSoldTime(),
                         OffsetDateTime.now().getOffset()
@@ -498,16 +498,16 @@ public class HistoryTabController implements HistoryControllerInterface {
                 requestBody.addItemsItem(apiItem);
             }
 
-            CreateSoldItemsResponse response = ApiHelper.INSTANCE.getSoldItemsServiceApi()
+            V1CreateSoldItemsResponse response = ApiHelper.INSTANCE.getSoldItemsServiceApi()
                     .soldItemsServiceCreateSoldItems(ConfigurationStore.EVENT_ID_STR.get(), requestBody);
 
             // Mark accepted items as uploaded
             if (response.getAcceptedItems() != null) {
-                Map<String, SoldItem> localMap = purchaseItems.stream()
-                        .collect(Collectors.toMap(SoldItem::getItemId, Function.identity()));
+                Map<String, V1SoldItem> localMap = purchaseItems.stream()
+                        .collect(Collectors.toMap(V1SoldItem::getItemId, Function.identity()));
 
-                for (se.goencoder.iloppis.model.SoldItem accepted : response.getAcceptedItems()) {
-                    SoldItem localItem = localMap.get(accepted.getItemId());
+                for (se.goencoder.iloppis.model.V1SoldItem accepted : response.getAcceptedItems()) {
+                    V1SoldItem localItem = localMap.get(accepted.getItemId());
                     if (localItem != null) {
                         localItem.setUploaded(true);
                     }
@@ -523,7 +523,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         return allRejected;
     }
 
-    private boolean isPayoutEnabled(List<SoldItem> filteredItems) {
+    private boolean isPayoutEnabled(List<V1SoldItem> filteredItems) {
         // Enable payout if there are unpaid items for the selected seller.
         return filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller());
     }
@@ -556,10 +556,10 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void importSoldItemsFromFile(File file) throws IOException {
         // Import sold items from the selected file, avoiding duplicates.
-        List<SoldItem> importedItems = FormatHelper.toItems(FileHelper.readFromFile(file.toPath()), true);
+        List<V1SoldItem> importedItems = FormatHelper.toItems(FileHelper.readFromFile(file.toPath()), true);
 
         Set<String> existingItemIds = allHistoryItems.stream()
-                .map(SoldItem::getItemId)
+                .map(V1SoldItem::getItemId)
                 .collect(Collectors.toSet());
 
         importedItems.stream()

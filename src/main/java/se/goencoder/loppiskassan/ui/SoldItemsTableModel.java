@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.SoldItem;
+import se.goencoder.loppiskassan.V1SoldItem;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ public final class SoldItemsTableModel extends AbstractTableModel {
     public static final int COLUMN_ITEM_ID = 2;
 
     private String[] columns;
-    private final List<SoldItem> items = new ArrayList<>();
+    private final List<V1SoldItem> items = new ArrayList<>();
 
     public SoldItemsTableModel(String[] columnNames) {
         this.columns = columnNames;
@@ -52,7 +52,7 @@ public final class SoldItemsTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
-        SoldItem item = items.get(rowIndex);
+        V1SoldItem item = items.get(rowIndex);
         return switch (columnIndex) {
             case COLUMN_SELLER  -> item.getSeller();
             case COLUMN_PRICE   -> item.getPrice();
@@ -69,7 +69,7 @@ public final class SoldItemsTableModel extends AbstractTableModel {
     /**
      * Insert item at the top.
      */
-    public void addItem(SoldItem item) {
+    public void addItem(V1SoldItem item) {
         items.add(0, item);
         fireTableRowsInserted(0, 0);
     }
@@ -82,7 +82,7 @@ public final class SoldItemsTableModel extends AbstractTableModel {
         }
     }
 
-    public List<SoldItem> getItems() {
+    public List<V1SoldItem> getItems() {
         return items;
     }
 }
