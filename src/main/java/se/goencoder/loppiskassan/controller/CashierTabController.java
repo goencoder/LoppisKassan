@@ -21,7 +21,6 @@ import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -75,34 +74,26 @@ public class CashierTabController implements CashierControllerInterface {
         return state;
     }
 
-    // --- Button setup methods ---
-    @Override
-    public void setupCheckoutCashButtonAction(JButton checkoutCashButton) {
-        checkoutCashButton.addActionListener(e -> checkout(V1PaymentMethod.Kontant));
-    }
-
-    @Override
-    public void setupCheckoutSwishButtonAction(JButton checkoutSwishButton) {
-        checkoutSwishButton.addActionListener(e -> checkout(V1PaymentMethod.Swish));
-    }
-
-    @Override
-    public void setupCancelCheckoutButtonAction(JButton cancelCheckoutButton) {
-        cancelCheckoutButton.addActionListener(e -> cancelCheckout());
-    }
-
-    @Override
-    public void setupPricesTextFieldAction(JTextField pricesTextField) {
-        pricesTextField.addActionListener(e -> {
-            Map<Integer, Integer[]> prices = view.getAndClearSellerPrices();
-            prices.forEach(this::addItem);
-            view.setFocusToSellerField();
-        });
-    }
-
     @Override
     public void registerView(CashierPanelInterface view) {
         this.view = view;
+    }
+
+    @Override
+    public void onPricesSubmitted() {
+        Map<Integer, Integer[]> prices = view.getAndClearSellerPrices();
+        prices.forEach(this::addItem);
+        view.setFocusToSellerField();
+    }
+
+    @Override
+    public void onCheckout(V1PaymentMethod paymentMethod) {
+        checkout(paymentMethod);
+    }
+
+    @Override
+    public void onCancelCheckout() {
+        cancelCheckout();
     }
 
     private String logCtx(int sellerId) {

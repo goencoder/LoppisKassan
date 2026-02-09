@@ -52,6 +52,8 @@ public class OfflineFlowTest {
         @Override public void setImportButtonText(String text) {}
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
+        @Override public java.io.File[] selectFilesForImport(java.io.File initialDir) { return null; }
+        @Override public void copyToClipboard(String text) {}
     }
 
     @Test

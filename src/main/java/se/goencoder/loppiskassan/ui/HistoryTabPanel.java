@@ -525,4 +525,22 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
             searchField.setMinimumSize(filterFieldSize);
         }
     }
+
+    @Override
+    public java.io.File[] selectFilesForImport(java.io.File initialDir) {
+        JFileChooser fileChooser = new JFileChooser(initialDir);
+        fileChooser.setDialogTitle(LocalizationManager.tr("history.open_other_register"));
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                LocalizationManager.tr("history.jsonl_files"), "jsonl"));
+        fileChooser.setMultiSelectionEnabled(true);
+
+        int result = fileChooser.showOpenDialog(this);
+        return result == JFileChooser.APPROVE_OPTION ? fileChooser.getSelectedFiles() : null;
+    }
+
+    @Override
+    public void copyToClipboard(String text) {
+        java.awt.datatransfer.Clipboard clipboard = java.awt.Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(new java.awt.datatransfer.StringSelection(text), null);
+    }
 }

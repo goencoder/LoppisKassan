@@ -12,13 +12,11 @@ import se.goencoder.loppiskassan.model.discovery.DiscoveryState;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
-import se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog;
 import se.goencoder.loppiskassan.utils.EventUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.storage.LocalEvent;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
 
-import java.awt.Frame;
 import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -26,7 +24,6 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import javax.swing.JOptionPane;
 
 import static se.goencoder.loppiskassan.config.ConfigurationStore.CONFIG_FILE_PATH;
 
@@ -531,42 +528,23 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 return;
             }
 
-            // Find the Frame parent for the dialog
-            Frame parentFrame = null;
-            for (Frame frame : Frame.getFrames()) {
-                if (frame.isDisplayable() && frame.getName().equals("MainFrame")) {
-                    parentFrame = frame;
-                    break;
-                }
-            }
-            if (parentFrame == null) {
-                parentFrame = Frame.getFrames().length > 0 ? Frame.getFrames()[0] : null;
-            }
-
-            // Show upload dialog
-            BulkUploadDialog dialog = new BulkUploadDialog(parentFrame, localEvent);
-            BulkUploadResult result = dialog.showDialog();
+            // Show upload dialog via view
+            BulkUploadResult result = view.showBulkUploadDialog(localEvent);
 
             if (result != null && result.hasResults()) {
                 if (result.isFullSuccess()) {
-                    JOptionPane.showMessageDialog(
-                        parentFrame,
-                        String.format("✅ %d items uploaded successfully", 
-                            result.acceptedItems.size()),
+                    Popup.INFORMATION.showAndWait(
                         LocalizationManager.tr("bulk_upload.success"),
-                        JOptionPane.INFORMATION_MESSAGE);
+                        String.format("✅ %d items uploaded successfully", 
+                            result.acceptedItems.size()));
                 } else if (result.isPartialSuccess()) {
-                    JOptionPane.showMessageDialog(
-                        parentFrame,
-                        result.getSummaryText(),
+                    Popup.WARNING.showAndWait(
                         LocalizationManager.tr("bulk_upload.summary"),
-                        JOptionPane.WARNING_MESSAGE);
+                        result.getSummaryText());
                 } else if (!result.errorMessages.isEmpty()) {
-                    JOptionPane.showMessageDialog(
-                        parentFrame,
-                        String.join("\n", result.errorMessages),
+                    Popup.ERROR.showAndWait(
                         LocalizationManager.tr("error"),
-                        JOptionPane.ERROR_MESSAGE);
+                        String.join("\n", result.errorMessages));
                 }
             }
         } catch (IOException e) {

@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.V1SoldItem;
 
+import java.io.File;
 import java.util.List;
 import java.util.Set;
 
@@ -75,4 +76,19 @@ public interface HistoryPanelInterface extends SelectabableTab, UiComponent {
      * @param text localized button text
      */
     void setImportButtonText(String text);
+
+    /**
+     * Show a file chooser dialog to select JSONL files for import.
+     *
+     * @param initialDir initial directory to show in the file chooser
+     * @return array of selected files, or null if user cancelled
+     */
+    File[] selectFilesForImport(File initialDir);
+
+    /**
+     * Copy the given text to the system clipboard.
+     *
+     * @param text text to copy to clipboard
+     */
+    void copyToClipboard(String text);
 }

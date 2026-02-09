@@ -1,5 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
+import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -56,16 +57,23 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         add(inputPanel, BorderLayout.NORTH); // Input panel at the top
         add(buttonPanel, BorderLayout.SOUTH); // Button panel at the bottom
 
-        // Set up controller and actions
-        controller.setupCheckoutSwishButtonAction(checkoutSwishButton);
-        controller.setupCheckoutCashButtonAction(checkoutCashButton);
-        controller.setupCancelCheckoutButtonAction(cancelCheckoutButton);
-        controller.setupPricesTextFieldAction(pricesField);
+        // Register view and set up local action listeners
         controller.registerView(this);
+        setupActionListeners();
 
         // Disable checkout buttons initially
         enableCheckoutButtons(false);
         reloadTexts();
+    }
+
+    /**
+     * Sets up action listeners for UI components to call controller intent methods.
+     */
+    private void setupActionListeners() {
+        checkoutSwishButton.addActionListener(e -> controller.onCheckout(V1PaymentMethod.Swish));
+        checkoutCashButton.addActionListener(e -> controller.onCheckout(V1PaymentMethod.Kontant));
+        cancelCheckoutButton.addActionListener(e -> controller.onCancelCheckout());
+        pricesField.addActionListener(e -> controller.onPricesSubmitted());
     }
 
     /**

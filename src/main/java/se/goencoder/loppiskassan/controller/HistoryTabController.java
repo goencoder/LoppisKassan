@@ -19,11 +19,7 @@ import se.goencoder.loppiskassan.utils.FilterUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
+import javax.swing.SwingUtilities;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -269,8 +265,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         List<V1SoldItem> filteredItems = applyFilters();
         String summary = generateSummary(filteredItems);
 
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        clipboard.setContents(new StringSelection(summary), null);
+        view.copyToClipboard(summary);
     }
 
     private List<V1SoldItem> applyFilters() {
@@ -604,13 +599,8 @@ public class HistoryTabController implements HistoryControllerInterface {
         File initialDir = eventId == null
                 ? LocalEventPaths.getEventsDir().toFile()
                 : LocalEventPaths.getEventDir(eventId).toFile();
-        JFileChooser fileChooser = new JFileChooser(initialDir);
-        fileChooser.setDialogTitle(LocalizationManager.tr("history.open_other_register"));
-        fileChooser.setFileFilter(new FileNameExtensionFilter(LocalizationManager.tr("history.jsonl_files"), "jsonl"));
-        fileChooser.setMultiSelectionEnabled(true);
-
-        int result = fileChooser.showOpenDialog(null);
-        return result == JFileChooser.APPROVE_OPTION ? fileChooser.getSelectedFiles() : null;
+        
+        return view.selectFilesForImport(initialDir);
     }
 
     private ImportResult importSoldItemsFromFile(File file) throws IOException {

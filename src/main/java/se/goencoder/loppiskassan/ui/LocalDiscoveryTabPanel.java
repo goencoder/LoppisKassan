@@ -617,4 +617,24 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
         revalidate();
         repaint();
     }
+
+    @Override
+    public se.goencoder.loppiskassan.model.BulkUploadResult showBulkUploadDialog(se.goencoder.loppiskassan.storage.LocalEvent localEvent) {
+        // Find the Frame parent for the dialog
+        Frame parentFrame = null;
+        for (Frame frame : Frame.getFrames()) {
+            if (frame.isDisplayable() && frame.getName().equals("MainFrame")) {
+                parentFrame = frame;
+                break;
+            }
+        }
+        if (parentFrame == null && Frame.getFrames().length > 0) {
+            parentFrame = Frame.getFrames()[0];
+        }
+
+        // Show upload dialog
+        se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog dialog = 
+            new se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog(parentFrame, localEvent);
+        return dialog.showDialog();
+    }
 }

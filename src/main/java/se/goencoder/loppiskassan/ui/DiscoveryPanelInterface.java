@@ -112,4 +112,11 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      * @param eventId event id to select
      */
     void selectEventById(String eventId);
+
+    /**
+     * Show a bulk upload dialog for the given local event and return the result.
+     * @param localEvent the local event to upload items for
+     * @return the upload result, or null if cancelled
+     */
+    se.goencoder.loppiskassan.model.BulkUploadResult showBulkUploadDialog(se.goencoder.loppiskassan.storage.LocalEvent localEvent);
 }
