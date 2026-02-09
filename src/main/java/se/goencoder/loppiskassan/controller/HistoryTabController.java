@@ -4,6 +4,7 @@ import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.model.history.HistoryState;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
@@ -49,11 +50,22 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private HistoryPanelInterface view;
     private List<V1SoldItem> allHistoryItems;
+    private final HistoryState state = new HistoryState();
 
     private HistoryTabController() {}
 
     public static HistoryTabController getInstance() {
         return instance;
+    }
+
+    /**
+     * Get the current history state for observers.
+     * Views can register PropertyChangeListeners on this state to react to changes.
+     *
+     * @return the history state
+     */
+    public HistoryState getState() {
+        return state;
     }
 
     @Override
@@ -75,6 +87,11 @@ public class HistoryTabController implements HistoryControllerInterface {
                 allHistoryItems = JsonlHelper.readItems(historyPath);
             }
             Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
+            
+            // Update state
+            state.setAllItems(allHistoryItems);
+            state.setDistinctSellers(distinctSellers);
+            
             SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
         } catch (IOException e) {
             String pathInfo = historyPath == null ? e.getMessage() : historyPath.toString();
@@ -91,16 +108,24 @@ public class HistoryTabController implements HistoryControllerInterface {
         // Apply the current filters and update the view accordingly.
         List<V1SoldItem> filteredItems = applyFilters();
 
-        view.updateHistoryTable(filteredItems);
-        view.updateNoItemsLabel(String.valueOf(filteredItems.size()));
-        view.updateSumLabel(String.valueOf(filteredItems.stream().mapToDouble(V1SoldItem::getPrice).sum()));
+        // Update state with filtered results
+        state.setFilteredItems(filteredItems);
+        state.setItemCount(filteredItems.size());
+        int sum = (int) filteredItems.stream().mapToDouble(V1SoldItem::getPrice).sum();
+        state.setTotalSum(sum);
 
         boolean enablePayout = isPayoutEnabled(filteredItems);
-        view.enableButton(BUTTON_PAY_OUT, enablePayout);
+        state.setPayoutEnabled(enablePayout);
 
         boolean enableArchive = isArchiveEnabled();
-        view.enableButton(BUTTON_ARCHIVE, enableArchive);
+        state.setArchiveEnabled(enableArchive);
 
+        // Update view (keeping existing behavior)
+        view.updateHistoryTable(filteredItems);
+        view.updateNoItemsLabel(String.valueOf(filteredItems.size()));
+        view.updateSumLabel(String.valueOf(sum));
+        view.enableButton(BUTTON_PAY_OUT, enablePayout);
+        view.enableButton(BUTTON_ARCHIVE, enableArchive);
     }
 
     @Override

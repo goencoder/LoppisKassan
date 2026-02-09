@@ -7,6 +7,7 @@ import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.model.cashier.CashierState;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
@@ -55,12 +56,23 @@ public class CashierTabController implements CashierControllerInterface {
     private final Object lock = new Object();
 
     private final List<V1SoldItem> items = new ArrayList<>();
+    private final CashierState state = new CashierState();
     private CashierPanelInterface view;
 
     private CashierTabController() {}
 
     public static CashierControllerInterface getInstance() {
         return instance;
+    }
+
+    /**
+     * Get the current cashier state for observers.
+     * Views can register PropertyChangeListeners on this state to react to changes.
+     *
+     * @return the cashier state
+     */
+    public CashierState getState() {
+        return state;
     }
 
     // --- Button setup methods ---
@@ -219,6 +231,7 @@ public class CashierTabController implements CashierControllerInterface {
         // 2) Clear the cashier UI
         items.clear();
         view.clearView();
+        state.reset();  // Reset state to initial values
 
         // 3) If we are in degraded mode, spawn a background thread to attempt a catch-up
         boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
@@ -235,6 +248,7 @@ public class CashierTabController implements CashierControllerInterface {
     public void cancelCheckout() {
         items.clear();
         view.clearView();
+        state.reset();  // Reset state to initial values
     }
 
     // --- Recalculate totals ---
@@ -248,10 +262,34 @@ public class CashierTabController implements CashierControllerInterface {
         view.setChange(change);
         view.setPaidAmount(roundedSum);
         view.setFocusToSellerField();
+        
+        // Sync state after recalculation
+        syncStateFromItems();
     }
 
     private int getSum() {
         return items.stream().mapToInt(V1SoldItem::getPrice).sum();
+    }
+
+    /**
+     * Synchronizes the CashierState with the current items list.
+     * Updates item count, total sum, and checkout button enabled state.
+     * Called after any operation that modifies the items list.
+     */
+    private void syncStateFromItems() {
+        state.setItems(new ArrayList<>(items));
+        state.setItemCount(items.size());
+        int total = getSum();
+        state.setTotalSum(total);
+        state.setCheckoutEnabled(!items.isEmpty());
+        
+        // Calculate rounded paid amount and change (for Swedish rounding to nearest 100 öre)
+        int roundedSum = (total + 99) / 100 * 100;
+        state.setPaidAmount(roundedSum);
+        state.setChange(roundedSum - total);
+        
+        // Format strings will be set by the view based on current locale
+        // For now, we just update the raw numbers
     }
 
     // --- Helpers ---

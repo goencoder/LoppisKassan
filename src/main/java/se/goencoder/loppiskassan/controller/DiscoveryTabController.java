@@ -8,6 +8,7 @@ import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.model.BulkUploadResult;
+import se.goencoder.loppiskassan.model.discovery.DiscoveryState;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
@@ -39,6 +40,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     private DiscoveryPanelInterface view;
     private volatile List<V1Event> eventList;
     private volatile Map<String, LocalEvent> localEventMap = new HashMap<>();
+    private final DiscoveryState state = new DiscoveryState();
     private ScheduledExecutorService refreshScheduler;
     private String lastDateFrom;
 
@@ -47,6 +49,16 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
     public static DiscoveryTabController getInstance() {
         return instance;
+    }
+
+    /**
+     * Get the current discovery state for observers.
+     * Views can register PropertyChangeListeners on this state to react to changes.
+     *
+     * @return the discovery state
+     */
+    public DiscoveryState getState() {
+        return state;
     }
 
     @Override
@@ -108,6 +120,10 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         // Swap atomically — volatile write ensures visibility to EDT
         eventList = newEventList;
         localEventMap = newLocalEventMap;
+
+        // Update state with the loaded events
+        state.setEvents(newEventList);
+        state.setDateFrom(dateFrom);
 
         se.goencoder.loppiskassan.ui.EDT.run(() -> view.populateEventsTable(eventList));
     }
@@ -204,11 +220,18 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         boolean isLocal = eventId != null && eventId.startsWith("local-");
         view.setLocalMode(isLocal);
         ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(isLocal);
+        
+        // Update state
+        state.setLocalMode(isLocal);
+        state.setDetailFormVisible(true);
 
         V1Event selectedEvent = fromId(eventId);
         if (selectedEvent == null) {
             return;
         }
+
+        // Update state with selected event
+        state.setSelectedEvent(selectedEvent);
 
         view.setEventName(selectedEvent.getName());
         view.setEventDescription(selectedEvent.getDescription());
@@ -268,6 +291,13 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         view.setRegisterOpened(false);
         view.showDetailForm(false);
         view.setCashierButtonEnabled(true);
+
+        // Reset state
+        state.setRegisterOpened(false);
+        state.setSelectedEvent(null);
+        state.setRevenueSplit(null);
+        state.setDetailFormVisible(false);
+        state.setCashierButtonEnabled(true);
 
         loadAllEvents();
     }
