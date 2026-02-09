@@ -35,10 +35,10 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
     
     public ArchiveTabPanel() {
         setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+        setBackground(AppColors.WHITE);
         
         JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBackground(AppColors.WHITE);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
         
         // Header
@@ -62,7 +62,7 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
     private JPanel createHeaderPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(Color.WHITE);
+        panel.setBackground(AppColors.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
         
         titleLabel = new JLabel();
@@ -74,7 +74,7 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
         
         descriptionLabel = new JLabel();
         descriptionLabel.setFont(descriptionLabel.getFont().deriveFont(13f));
-        descriptionLabel.setForeground(new Color(0x718096));
+        descriptionLabel.setForeground(AppColors.TEXT_MUTED);
         descriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(descriptionLabel);
         
@@ -83,7 +83,7 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
     
     private JPanel createTablePanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(Color.WHITE);
+        panel.setBackground(AppColors.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
         
         // Tabell
@@ -98,12 +98,12 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
         archiveTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         archiveTable.setRowHeight(32);
         archiveTable.setShowGrid(true);
-        archiveTable.setGridColor(new Color(0xE2E8F0));
+        archiveTable.setGridColor(AppColors.BORDER);
         archiveTable.getTableHeader().setReorderingAllowed(false);
         archiveTable.setFont(archiveTable.getFont().deriveFont(13f));
         
         JScrollPane scrollPane = new JScrollPane(archiveTable);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(0xE2E8F0), 1));
+        scrollPane.setBorder(BorderFactory.createLineBorder(AppColors.BORDER, 1));
         panel.add(scrollPane, BorderLayout.CENTER);
         
         return panel;
@@ -111,7 +111,7 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
     
     private JPanel createButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        panel.setBackground(Color.WHITE);
+        panel.setBackground(AppColors.WHITE);
         
         openFileButton = UserInterface.createButton("", 140, 36);
         openFileButton.addActionListener(e -> handleOpenFile());

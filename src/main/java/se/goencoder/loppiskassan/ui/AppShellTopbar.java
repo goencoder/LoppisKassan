@@ -21,21 +21,21 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
     
     public AppShellTopbar() {
         setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+        setBackground(AppColors.WHITE);
         setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(0xE2E8F0)),
+            BorderFactory.createMatteBorder(0, 0, 1, 0, AppColors.BORDER),
             BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
         
         // Vänster: Appnamn
         appNameLabel = new JLabel("iLoppis Kassa");
         appNameLabel.setFont(appNameLabel.getFont().deriveFont(Font.BOLD, 16f));
-        appNameLabel.setForeground(new Color(0x2D3748));
+        appNameLabel.setForeground(AppColors.TEXT_PRIMARY);
         
         // Mitten: Evenemangsbadge
         eventBadgeLabel = new JLabel();
         eventBadgeLabel.setFont(eventBadgeLabel.getFont().deriveFont(Font.PLAIN, 14f));
-        eventBadgeLabel.setForeground(new Color(0x2D3748));
+        eventBadgeLabel.setForeground(AppColors.TEXT_PRIMARY);
         eventBadgeLabel.setHorizontalAlignment(SwingConstants.CENTER);
         updateEventBadge();
         

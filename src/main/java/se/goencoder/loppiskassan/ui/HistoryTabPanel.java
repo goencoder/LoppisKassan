@@ -258,11 +258,11 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     private JPanel createSellerSummaryPanel() {
         JPanel panel = new JPanel();
         panel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(0xE2E8F0), 2, true),
+            BorderFactory.createLineBorder(AppColors.BORDER, 2, true),
             BorderFactory.createEmptyBorder(12, 16, 12, 16)
         ));
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(new Color(0xF7FAFC));
+        panel.setBackground(AppColors.SURFACE);
 
         // Title
         sellerSummaryTitle = new JLabel();

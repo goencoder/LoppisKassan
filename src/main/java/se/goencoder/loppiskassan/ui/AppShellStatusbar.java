@@ -20,9 +20,9 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
     
     public AppShellStatusbar() {
         setLayout(new BorderLayout());
-        setBackground(new Color(0xF7FAFC));
+        setBackground(AppColors.SURFACE);
         setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(0xE2E8F0)),
+            BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.BORDER),
             BorderFactory.createEmptyBorder(8, 16, 8, 16)
         ));
         
@@ -34,7 +34,7 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
         // Höger: Tidstämpel
         timestampLabel = new JLabel();
         timestampLabel.setFont(timestampLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        timestampLabel.setForeground(new Color(0x718096));
+        timestampLabel.setForeground(AppColors.TEXT_MUTED);
         
         add(statusLabel, BorderLayout.WEST);
         add(timestampLabel, BorderLayout.EAST);

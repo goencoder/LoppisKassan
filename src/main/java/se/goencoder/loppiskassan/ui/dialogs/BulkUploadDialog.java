@@ -12,6 +12,7 @@ import se.goencoder.loppiskassan.model.BulkUploadResult;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.storage.LocalEvent;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
+import se.goencoder.loppiskassan.ui.AppColors;
 import se.goencoder.loppiskassan.ui.ProgressDialog;
 
 import javax.swing.*;
@@ -92,7 +93,7 @@ public class BulkUploadDialog extends JDialog {
         codeField.setToolTipText("XXX-XXX");
         
         previewLabel = new JLabel("");
-        previewLabel.setForeground(new Color(80, 80, 80));
+        previewLabel.setForeground(AppColors.PREVIEW_TEXT);
         previewLabel.setFont(new Font("Monospaced", Font.PLAIN, 12));
         
         uploadButton = new JButton(LocalizationManager.tr("bulk_upload.upload"));
@@ -157,8 +158,8 @@ public class BulkUploadDialog extends JDialog {
         contentPanel.add(Box.createVerticalStrut(5));
         
         JPanel previewBoxPanel = new JPanel(new BorderLayout());
-        previewBoxPanel.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
-        previewBoxPanel.setBackground(new Color(245, 245, 245));
+        previewBoxPanel.setBorder(BorderFactory.createLineBorder(AppColors.PREVIEW_BORDER));
+        previewBoxPanel.setBackground(AppColors.PREVIEW_BG);
         previewBoxPanel.add(previewLabel, BorderLayout.CENTER);
         previewLabel.setBorder(new EmptyBorder(10, 10, 10, 10));
         previewBoxPanel.setAlignmentX(Component.LEFT_ALIGNMENT);

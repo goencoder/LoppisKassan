@@ -133,13 +133,13 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     
     private JPanel createPlaceholderView(String title, String description) {
         JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(Color.WHITE);
+        panel.setBackground(AppColors.WHITE);
         
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(Color.WHITE);
+        card.setBackground(AppColors.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(0xE2E8F0), 1),
+            BorderFactory.createLineBorder(AppColors.BORDER, 1),
             BorderFactory.createEmptyBorder(32, 32, 32, 32)
         ));
         
@@ -149,7 +149,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         
         JLabel descLabel = new JLabel(description);
         descLabel.setFont(descLabel.getFont().deriveFont(13f));
-        descLabel.setForeground(new Color(0x718096));
+        descLabel.setForeground(AppColors.TEXT_MUTED);
         descLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         descLabel.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
         

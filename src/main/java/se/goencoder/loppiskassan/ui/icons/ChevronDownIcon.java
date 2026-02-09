@@ -1,5 +1,7 @@
 package se.goencoder.loppiskassan.ui.icons;
 
+import se.goencoder.loppiskassan.ui.AppColors;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -22,7 +24,7 @@ public final class ChevronDownIcon implements Icon {
         int cy = y + h / 2;
         int mid = (x1 + x2) / 2;
 
-        g2.setColor(new Color(60, 60, 60));
+        g2.setColor(AppColors.ICON_STROKE);
         g2.drawLine(x1, cy - 2, mid, cy + 2);
         g2.drawLine(mid, cy + 2, x2, cy - 2);
         g2.dispose();

@@ -29,8 +29,8 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
         this.onNavigate = onNavigate;
         
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBackground(new Color(0xF7FAFC));
-        setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(0xE2E8F0)));
+        setBackground(AppColors.SURFACE);
+        setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, AppColors.BORDER));
         setPreferredSize(new Dimension(180, 0));
         
         add(Box.createVerticalStrut(8));
@@ -140,9 +140,9 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
         
         private void updateAppearance() {
             if (selected) {
-                setForeground(Color.WHITE);
+                setForeground(AppColors.WHITE);
             } else {
-                setForeground(new Color(0x2D3748));
+                setForeground(AppColors.TEXT_PRIMARY);
             }
         }
         
@@ -152,7 +152,7 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             
             if (selected) {
-                g2.setColor(new Color(0x4A90D9));
+                g2.setColor(AppColors.ACCENT);
                 g2.fillRoundRect(4, 0, getWidth() - 8, getHeight(), 8, 8);
             }
             

@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.ui.dialogs;
 
 import se.goencoder.loppiskassan.config.AppMode;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.ui.AppColors;
 import se.goencoder.loppiskassan.ui.LanguageSelector;
 import se.goencoder.loppiskassan.ui.icons.MonitorIcon;
 import se.goencoder.loppiskassan.ui.icons.ShopIcon;
@@ -95,7 +96,7 @@ public class ModeSelectionDialog extends JDialog {
         buttonsPanel.setBorder(new EmptyBorder(20, 0, 8, 0));
 
         JButton localButton = createModeButton(
-                new MonitorIcon(48, new Color(0x4A90D9)),
+                new MonitorIcon(48, AppColors.ACCENT),
                 LocalizationManager.tr("splash.local"),
                 LocalizationManager.tr("splash.local.desc")
         );
@@ -108,7 +109,7 @@ public class ModeSelectionDialog extends JDialog {
         });
 
         JButton iloppisButton = createModeButton(
-                new ShopIcon(48, new Color(0xE05A5A)),
+                new ShopIcon(48, AppColors.DANGER_SECONDARY),
                 LocalizationManager.tr("splash.iloppis"),
                 LocalizationManager.tr("splash.iloppis.desc")
         );
