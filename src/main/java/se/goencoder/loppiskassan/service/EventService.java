@@ -29,22 +29,26 @@ public interface EventService {
 
     /**
      * Mark items as paid out/collected by seller.
-     * Online mode: calls API then updates local file
-     * Local mode: updates local file only
+     * Online mode: calls API with filters then updates local file
+     * Local mode: updates local file only (filters not used)
      * 
+     * @param eventId event identifier
+     * @param sellerFilter seller filter from UI (may be empty)
+     * @param paymentMethodFilter payment method filter from UI (may be empty)
      * @throws ApiException if online API call fails
      */
-    void performPayout() throws ApiException;
+    void performPayout(String eventId, String sellerFilter, String paymentMethodFilter) throws ApiException;
 
     /**
-     * Handle import action.
-     * Online mode: syncs with server (upload unsent, download new)
-     * Local mode: imports from selected files
+     * Synchronize/import items based on mode.
+     * The service handles the orchestration: local runs import callback,
+     * online runs upload/download in a progress dialog.
      * 
-     * @throws ApiException if server sync fails
+     * @param context provides callbacks and UI components for coordination
+     * @throws ApiException if server operations fail
      * @throws IOException if file operations fail
      */
-    void handleImport() throws ApiException, IOException;
+    void synchronizeItems(SyncContext context) throws ApiException, IOException;
 
     /**
      * Check if this is a local-only event service.

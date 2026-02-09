@@ -25,15 +25,17 @@ public class LocalEventService implements EventService {
     }
 
     @Override
-    public void performPayout() throws ApiException {
-        // Local mode: no API call needed
-        // Payout handling stays in controller for now
+    public void performPayout(String eventId, String sellerFilter, String paymentMethodFilter) throws ApiException {
+        // Local mode: no-op for payout API call (items already marked in controller)
+        // The file save happens in the controller after this returns
     }
 
     @Override
-    public void handleImport() throws ApiException, IOException {
-        // Local mode: file import
-        // Import handling stays in controller for now
+    public void synchronizeItems(SyncContext context) throws ApiException, IOException {
+        // Local mode: execute the import operation callback
+        if (context != null && context.getLocalImportOperation() != null) {
+            context.getLocalImportOperation().run();
+        }
     }
 
     @Override

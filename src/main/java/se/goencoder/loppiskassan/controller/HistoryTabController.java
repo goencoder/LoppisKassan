@@ -234,41 +234,18 @@ public class HistoryTabController implements HistoryControllerInterface {
 
         filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
         try {
-            if (!getEventService().isLocal()) {
-                payoutWeb();
-            }
+            // Delegate to service (online mode calls API, local mode no-op)
+            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            getEventService().performPayout(
+                eventId,
+                view.getSellerFilter(),
+                view.getPaymentMethodFilter()
+            );
             saveHistoryToFile();
             filterUpdated();
         } catch (ApiException e) {
             Popup.ERROR.showAndWait(LocalizationManager.tr("error.payout"), e.getMessage());
         }
-    }
-
-    private void payoutWeb() throws ApiException {
-        // Create a payout request with the current filter settings
-        SoldItemsServicePayoutBody payoutBody = new SoldItemsServicePayoutBody();
-
-        try {
-            int seller = Integer.parseInt(view.getSellerFilter());
-            payoutBody.setSeller(seller);
-        } catch (NumberFormatException e) {
-            // Do nothing if seller filter isn't a valid number
-        }
-
-        try {
-            V1PaymentMethodFilter paymentMethodFilter = V1PaymentMethodFilter.fromValue(view.getPaymentMethodFilter());
-            payoutBody.setPaymentMethodFilter(paymentMethodFilter);
-        } catch (IllegalArgumentException e) {
-            // Do nothing if payment method filter isn't valid
-        }
-
-        payoutBody.setUntilTimestamp(OffsetDateTime.now());
-
-        // Call the API to process the payout
-        ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServicePayout(
-                ConfigurationStore.EVENT_ID_STR.get(),
-                payoutBody
-        );
     }
 
     private void copyToClipboard() {
@@ -290,23 +267,26 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void handleImportAction() {
-        if (getEventService().isLocal()) {
-            importData();
-        } else {
-            ProgressDialog.runTask(
-                    view.getComponent(),
-                    LocalizationManager.tr("history.progress.updating_items"),
-                    LocalizationManager.tr("history.progress.syncing"),
-                    () -> {
-                        uploadSoldItems();
-                        downloadSoldItems();
-                        return null;
-                    },
-                    unused -> {
-                    },
-                    e -> Popup.ERROR.showAndWait(
-                            LocalizationManager.tr("error.network_fetch_history.title"),
-                            LocalizationManager.tr("error.network_fetch_history.message"))
+        // Create context with both local and online operations - service chooses which to use
+        se.goencoder.loppiskassan.service.SyncContext context =
+            new se.goencoder.loppiskassan.service.SyncContext(
+                view.getComponent(),
+                this::importData,  // Local mode operation
+                () -> {  // Online mode operation
+                    uploadSoldItems();
+                    downloadSoldItems();
+                    return null;
+                },
+                LocalizationManager.tr("history.progress.updating_items"),
+                LocalizationManager.tr("history.progress.syncing")
+            );
+        
+        try {
+            getEventService().synchronizeItems(context);
+        } catch (Exception e) {
+            Popup.ERROR.showAndWait(
+                LocalizationManager.tr("error.network_fetch_history.title"),
+                e.getMessage()
             );
         }
     }
