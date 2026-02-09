@@ -78,10 +78,15 @@ public class HistoryTabController implements HistoryControllerInterface {
     @Override
     public void registerView(HistoryPanelInterface view) {
         this.view = view;
+        // Reset cached event service so it re-evaluates local/online mode
+        this.eventService = null;
     }
 
     @Override
     public void loadHistory() {
+        // Ensure import button visibility matches current mode on every load
+        updateImportButton();
+
         java.nio.file.Path historyPath = null;
         try {
             // Load the history from the local JSONL file and populate the seller dropdown with distinct sellers.
@@ -574,14 +579,18 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void updateImportButton() {
-        // Update the import button text and enable it based on the current mode.
+        // Update the import button visibility and text based on the current mode.
         boolean isLocal = getEventService().isLocal();
         if (isLocal) {
-            view.setImportButtonText(LocalizationManager.tr(BUTTON_IMPORT));
+            // Local mode: hide the button entirely (no web sync available)
+            view.setImportButtonVisible(false);
+            view.enableButton(BUTTON_IMPORT, false);
         } else {
+            // Online mode: show and enable the button
+            view.setImportButtonVisible(true);
             view.setImportButtonText(LocalizationManager.tr("button.update_web"));
+            view.enableButton(BUTTON_IMPORT, true);
         }
-        view.enableButton(BUTTON_IMPORT, true);
     }
 
     private File[] selectFilesForImport() {

@@ -7,6 +7,7 @@ import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.util.SwedishDateFormatter;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -17,6 +18,7 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -45,8 +47,20 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     private JLabel itemsCountLabel, totalSumLabel;
     private JLabel paidFilterLabel, sellerFilterLabel, paymentFilterLabel;
 
+    // Seller summary card
+    private CardLayout summaryCardLayout;
+    private JPanel summaryCardPanel;
+    private JPanel sellerSummaryPanel;
+    private JLabel sellerSummaryTitle;
+    private JLabel sellerItemsLabel;
+    private JLabel sellerTotalLabel;
+    private JLabel sellerProvisionLabel;
+    private JLabel sellerPayoutLabel;
+
     private int itemsCount = 0;
     private int totalSum = 0;
+    private Integer filteredSeller = null;
+    private double provisionPercent = 0.0;
 
     // Table filtering/sorting
     private TableRowSorter<DefaultTableModel> sorter;
@@ -212,17 +226,71 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     }
 
     /**
-     * Creates the summary panel to display total items and total price.
+     * Creates the summary panel with CardLayout to switch between simple and detailed views.
      *
      * @return The summary panel.
      */
     private JPanel initializeSummaryPanel() {
-        JPanel summaryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        summaryCardLayout = new CardLayout();
+        summaryCardPanel = new JPanel(summaryCardLayout);
+
+        // Simple summary (shown for "Alla")
+        JPanel simpleSummary = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 8));
         itemsCountLabel = new JLabel();
         totalSumLabel = new JLabel();
-        summaryPanel.add(itemsCountLabel);
-        summaryPanel.add(totalSumLabel);
-        return summaryPanel;
+        simpleSummary.add(itemsCountLabel);
+        simpleSummary.add(totalSumLabel);
+
+        // Detailed seller summary (shown when specific seller selected)
+        sellerSummaryPanel = createSellerSummaryPanel();
+
+        summaryCardPanel.add(simpleSummary, "simple");
+        summaryCardPanel.add(sellerSummaryPanel, "seller");
+
+        return summaryCardPanel;
+    }
+
+    /**
+     * Creates detailed seller summary panel with provision calculation.
+     *
+     * @return The seller summary panel.
+     */
+    private JPanel createSellerSummaryPanel() {
+        JPanel panel = new JPanel();
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(0xE2E8F0), 2, true),
+            BorderFactory.createEmptyBorder(12, 16, 12, 16)
+        ));
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(new Color(0xF7FAFC));
+
+        // Title
+        sellerSummaryTitle = new JLabel();
+        sellerSummaryTitle.setFont(sellerSummaryTitle.getFont().deriveFont(Font.BOLD, 14f));
+        sellerSummaryTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(sellerSummaryTitle);
+        panel.add(Box.createVerticalStrut(8));
+
+        // Stats grid
+        JPanel statsGrid = new JPanel(new GridLayout(2, 2, 24, 4));
+        statsGrid.setOpaque(false);
+        statsGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        sellerItemsLabel = new JLabel();
+        sellerTotalLabel = new JLabel();
+        sellerProvisionLabel = new JLabel();
+        sellerPayoutLabel = new JLabel();
+
+        sellerPayoutLabel.setFont(sellerPayoutLabel.getFont().deriveFont(Font.BOLD));
+
+        statsGrid.add(sellerItemsLabel);
+        statsGrid.add(sellerTotalLabel);
+        statsGrid.add(sellerProvisionLabel);
+        statsGrid.add(sellerPayoutLabel);
+
+        panel.add(statsGrid);
+
+        return panel;
     }
 
     /**
@@ -250,6 +318,10 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         eraseAllDataButton.addActionListener(e -> controller.buttonAction(BUTTON_ERASE));
         archiveFilteredButton.addActionListener(e -> controller.buttonAction(BUTTON_ARCHIVE));
         importDataButton.addActionListener(e -> controller.buttonAction(BUTTON_IMPORT));
+
+        // Initial visibility: hide update button for local mode
+        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        importDataButton.setVisible(!isLocal);
 
         // Wrap the panel for better layout
         JPanel wrapperPanel = new JPanel(new BorderLayout());
@@ -357,18 +429,20 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         // Ensure the right-hand top button reflects current mode after language switch
         boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
         if (isLocal) {
-            importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT)); // e.g., "Import register"
+            // Local mode: hide the update button entirely (no web sync available)
+            importDataButton.setVisible(false);
         } else {
-            // Online: show "Update from Web". If the key is ever missing, fall back gracefully.
+            // Online mode: show "Update from Web" button
+            importDataButton.setVisible(true);
             String online = LocalizationManager.tr("history.update_from_web");
             // Many LocalizationManager implementations return the key itself when missing.
             if (online == null || online.startsWith("history.")) {
                 online = LocalizationManager.tr(BUTTON_IMPORT); // fallback to a valid, localized label
             }
             importDataButton.setText(online);
+            // Visual: treat "Update from Web" as primary action
+            importDataButton.putClientProperty("JButton.buttonType", "default");
         }
-        // Visual: treat "Update from Web" as primary action
-        importDataButton.putClientProperty("JButton.buttonType", "default");
 
         payoutButton.setText(LocalizationManager.tr(BUTTON_PAY_OUT));
         toClipboardButton.setText(LocalizationManager.tr(BUTTON_COPY_TO_CLIPBOARD));
@@ -407,10 +481,15 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         if (items != null && !items.isEmpty()) {
             // Add data in batches to improve performance
             for (V1SoldItem item : items) {
+                // Format sold time using Swedish date formatter
+                LocalDateTime soldTime = item.getSoldTime();
+                String formattedTime = soldTime != null ? 
+                    SwedishDateFormatter.formatDateWithTime(soldTime) : "";
+                
                 model.addRow(new Object[]{
                         item.getSeller(),
                         item.getPrice() + " " + LocalizationManager.tr("currency.sek"),
-                        item.getSoldTime().toString(),
+                        formattedTime,
                         item.isCollectedBySeller() ? LocalizationManager.tr("common.yes") : LocalizationManager.tr("common.no"),
                         LocalizationManager.tr(item.getPaymentMethod() == V1PaymentMethod.Kontant ?
                                 "payment.cash" : "payment.swish")
@@ -428,6 +507,9 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         // Parse as double first to handle decimal numbers, then convert to int
         totalSum = (int) Double.parseDouble(sum);
         totalSumLabel.setText(LocalizationManager.tr("history.total_sum", totalSum));
+        
+        // Update seller summary if specific seller selected
+        updateSellerSummary();
     }
 
     @Override
@@ -435,6 +517,63 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         // Parse as double first to handle decimal numbers, then convert to int
         itemsCount = (int) Double.parseDouble(noItems);
         itemsCountLabel.setText(LocalizationManager.tr("history.items_count", itemsCount));
+        
+        // Update seller summary if specific seller selected
+        updateSellerSummary();
+    }
+
+    /**
+     * Update detailed seller summary panel and switch card layout based on filter selection.
+     */
+    private void updateSellerSummary() {
+        String sellerFilter = getSellerFilter();
+        
+        if (sellerFilter == null) {
+            // Show simple summary
+            summaryCardLayout.show(summaryCardPanel, "simple");
+            filteredSeller = null;
+        } else {
+            // Show detailed seller summary
+            try {
+                filteredSeller = Integer.parseInt(sellerFilter);
+                
+                // Load revenue split for provision calculation
+                String eventId = ConfigurationStore.EVENT_ID_STR.get();
+                if (eventId != null && !eventId.isBlank()) {
+                    try {
+                        se.goencoder.loppiskassan.storage.LocalEvent localEvent = 
+                            se.goencoder.loppiskassan.storage.LocalEventRepository.load(eventId);
+                        if (localEvent != null && localEvent.getRevenueSplit() != null) {
+                            provisionPercent = localEvent.getRevenueSplit().getMarketOwnerPercentage() +
+                                             localEvent.getRevenueSplit().getPlatformProviderPercentage();
+                        } else {
+                            provisionPercent = 15.0; // Default
+                        }
+                    } catch (java.io.IOException e) {
+                        provisionPercent = 15.0; // Fallback
+                    }
+                } else {
+                    provisionPercent = 15.0; // Default
+                }
+                
+                // Calculate provision and payout
+                int provisionAmount = (int) Math.round(totalSum * provisionPercent / 100.0);
+                int payoutAmount = totalSum - provisionAmount;
+                
+                // Update labels
+                sellerSummaryTitle.setText("Sammanfattning för säljare " + filteredSeller);
+                sellerItemsLabel.setText("Sålda varor: " + itemsCount);
+                sellerTotalLabel.setText("Totalt: " + totalSum + " kr");
+                sellerProvisionLabel.setText(String.format("Provision (%.0f%%): %d kr", provisionPercent, provisionAmount));
+                sellerPayoutLabel.setText("Utbetalas: " + payoutAmount + " kr");
+                
+                summaryCardLayout.show(summaryCardPanel, "seller");
+            } catch (NumberFormatException e) {
+                // Invalid seller number, show simple summary
+                summaryCardLayout.show(summaryCardPanel, "simple");
+                filteredSeller = null;
+            }
+        }
     }
 
     @Override
@@ -489,6 +628,16 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     @Override
     public void setImportButtonText(String text) {
         importDataButton.setText(text);
+    }
+
+    @Override
+    public void setImportButtonVisible(boolean visible) {
+        importDataButton.setVisible(visible);
+    }
+
+    @Override
+    public boolean isImportButtonVisible() {
+        return importDataButton.isVisible();
     }
 
     @Override

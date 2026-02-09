@@ -79,4 +79,10 @@ public interface DiscoveryControllerInterface {
      */
     void saveLocalEventEdits(String eventId, String name, String description, String address,
                              float marketOwner, float vendor, float platform);
+
+    /**
+     * Delete a local event and all its data.
+     * @param eventId the event ID to delete
+     */
+    void deleteLocalEvent(String eventId);
 }

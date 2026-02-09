@@ -374,6 +374,32 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         }
     }
 
+    @Override
+    public void deleteLocalEvent(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+        LocalEvent existing = localEventMap.get(eventId);
+        if (existing == null) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("local_event.delete_failed.title"),
+                    LocalizationManager.tr("local_event.delete_failed.not_found"));
+            return;
+        }
+
+        try {
+            LocalEventRepository.delete(eventId);
+            localEventMap.remove(eventId);
+            Popup.INFORMATION.showAndWait(
+                    LocalizationManager.tr("local_event.delete_success.title"),
+                    LocalizationManager.tr("local_event.delete_success.message"));
+        } catch (IOException e) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("local_event.delete_failed.title"),
+                    LocalizationManager.tr("local_event.delete_failed.message", e.getMessage()));
+        }
+    }
+
     private String[] splitAddress(String address) {
         if (address == null || address.isBlank()) {
             return new String[]{"", ""};

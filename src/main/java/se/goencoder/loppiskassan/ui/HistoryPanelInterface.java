@@ -78,6 +78,19 @@ public interface HistoryPanelInterface extends SelectabableTab, UiComponent {
     void setImportButtonText(String text);
 
     /**
+     * Show or hide the import/update button.
+     * Must be hidden for local events (no web sync available).
+     *
+     * @param visible {@code true} to show, {@code false} to hide
+     */
+    void setImportButtonVisible(boolean visible);
+
+    /**
+     * @return {@code true} if the import/update button is currently visible
+     */
+    boolean isImportButtonVisible();
+
+    /**
      * Show a file chooser dialog to select JSONL files for import.
      *
      * @param initialDir initial directory to show in the file chooser

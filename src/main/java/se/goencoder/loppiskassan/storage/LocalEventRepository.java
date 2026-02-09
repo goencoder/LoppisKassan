@@ -87,4 +87,29 @@ public class LocalEventRepository {
         }
         return events;
     }
+
+    /**
+     * Delete a local event and all its data files.
+     * @param eventId The event ID to delete
+     * @throws IOException if deletion fails
+     */
+    public static void delete(String eventId) throws IOException {
+        Path eventDir = LocalEventPaths.getEventDir(eventId);
+        if (!Files.exists(eventDir)) {
+            return; // Already deleted
+        }
+        // Delete all files and subdirectories recursively
+        deleteRecursively(eventDir);
+    }
+
+    private static void deleteRecursively(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            try (Stream<Path> children = Files.list(path)) {
+                for (Path child : children.toList()) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        Files.deleteIfExists(path);
+    }
 }

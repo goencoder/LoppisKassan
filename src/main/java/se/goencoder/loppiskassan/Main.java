@@ -6,7 +6,7 @@ import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
-import se.goencoder.loppiskassan.ui.UserInterface;
+import se.goencoder.loppiskassan.ui.AppShellFrame;
 import se.goencoder.loppiskassan.ui.Theme;
 import se.goencoder.loppiskassan.ui.dialogs.ModeSelectionDialog;
 
@@ -36,13 +36,7 @@ public class Main {
         }
         AppModeManager.setMode(mode);
 
-        UserInterface frame = new UserInterface();
-        frame.setTitle(LocalizationManager.tr("frame.title"));
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        // Ställ in ramens storlek och gör den synlig
-        frame.setSize(640, 600);
-        frame.setLocationRelativeTo(null); // Centrerar fönstret
+        AppShellFrame frame = new AppShellFrame();
         frame.setVisible(true);
     }
 

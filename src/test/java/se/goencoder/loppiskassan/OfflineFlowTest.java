@@ -49,7 +49,10 @@ public class OfflineFlowTest {
         @Override public String getPaidFilter() { return paidFilter; }
         @Override public void updateSellerDropdown(Set<String> sellers) {}
         @Override public void enableButton(String buttonName, boolean enable) {}
+        boolean importButtonVisible = true;
         @Override public void setImportButtonText(String text) {}
+        @Override public void setImportButtonVisible(boolean visible) { importButtonVisible = visible; }
+        @Override public boolean isImportButtonVisible() { return importButtonVisible; }
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
         @Override public java.io.File[] selectFilesForImport(java.io.File initialDir) { return null; }
@@ -114,5 +117,35 @@ public class OfflineFlowTest {
                 .filter(i -> i.getSeller() != 1 && i.getSeller() != 2 && i.isCollectedBySeller())
                 .count();
         assertEquals(0, otherPaid);
+    }
+
+    @Test
+    void importButtonIsHiddenForLocalEvents() throws Exception {
+        Path tempDir = Files.createTempDirectory("loppiskassan-test-btn");
+        System.setProperty("user.home", tempDir.toString());
+
+        LocalEventRepository.ensureEventStorage("local-test");
+        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(true);
+        ConfigurationStore.EVENT_ID_STR.set("local-test");
+        LocalizationManager.initialize();
+
+        DummyHistoryPanel historyView = new DummyHistoryPanel();
+        // Button starts visible by default
+        assertEquals(true, historyView.isImportButtonVisible(),
+                "Import button should start visible before controller initializes");
+
+        HistoryTabController history = HistoryTabController.getInstance();
+        history.registerView(historyView);
+        history.loadHistory();
+
+        // After controller init in local mode, button must be hidden
+        assertEquals(false, historyView.isImportButtonVisible(),
+                "Import/update button must be hidden for local events");
+
+        // Also verify it stays hidden after filter changes
+        historyView.sellerFilter = "1";
+        history.filterUpdated();
+        assertEquals(false, historyView.isImportButtonVisible(),
+                "Import/update button must stay hidden after filter change in local mode");
     }
 }
