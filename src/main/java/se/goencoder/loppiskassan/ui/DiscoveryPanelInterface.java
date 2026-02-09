@@ -11,7 +11,7 @@ import java.util.List;
  * Mode awareness:
  * <ul>
  *   <li><b>Online:</b> shows remote events and requires a valid cashier code to open the register.</li>
- *   <li><b>Offline:</b> shows locally configured events and should gate features accordingly.</li>
+ *   <li><b>Local:</b> shows locally configured events and should gate features accordingly.</li>
  * </ul>
  */
 public interface DiscoveryPanelInterface extends SelectabableTab {
@@ -44,16 +44,16 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
     void setEventAddress(String address);
 
     /**
-     * Indicate whether the UI is in offline mode.
+     * Indicate whether the UI is in local mode.
      * Implementations should hide/disable online-only controls (e.g., API key/ cashier code).
      *
-     * @param offline {@code true} for offline mode, {@code false} for online
+     * @param local {@code true} for local mode, {@code false} for online
      */
-    void setOfflineMode(boolean offline);
+    void setLocalMode(boolean local);
 
     /**
      * Enable/disable editing of revenue split percentages.
-     * Typically editable offline; read-only when sourced from the server online.
+     * Typically editable for local events; read-only when sourced from the server online.
      *
      * @param editable {@code true} to allow editing
      */
@@ -106,4 +106,10 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      * @param visible {@code true} to show, {@code false} to hide
      */
     void setChangeEventButtonVisible(boolean visible);
+
+    /**
+     * Re-select an event in the table by id (best-effort).
+     * @param eventId event id to select
+     */
+    void selectEventById(String eventId);
 }

@@ -1,5 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
@@ -114,9 +115,17 @@ public class UserInterface extends JFrame implements LocalizationAware {
     }
 
     private void initializeTabs() {
-        DiscoveryTabPanel discoveryTabPanel = new DiscoveryTabPanel();
-        tabPane.addTab("", null, discoveryTabPanel, "");
-        selectabableTabs.add(discoveryTabPanel);
+        JPanel discoveryPanel;
+        if (AppModeManager.isLocalMode()) {
+            LocalDiscoveryTabPanel localPanel = new LocalDiscoveryTabPanel();
+            discoveryPanel = localPanel;
+            selectabableTabs.add(localPanel);
+        } else {
+            DiscoveryTabPanel onlinePanel = new DiscoveryTabPanel();
+            discoveryPanel = onlinePanel;
+            selectabableTabs.add(onlinePanel);
+        }
+        tabPane.addTab("", null, discoveryPanel, "");
 
         CashierTabPanel cashierTabPanel = new CashierTabPanel(CashierTabController.getInstance());
         tabPane.addTab("", null, cashierTabPanel, "");

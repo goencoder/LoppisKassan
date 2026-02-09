@@ -20,7 +20,7 @@ public enum ConfigurationStore {
     EVENT_ID_STR("event_id"),
     API_KEY_STR("api_key"),
     APPROVED_SELLERS_JSON("approved_sellers"),
-    OFFLINE_EVENT_BOOL("offline_event"),
+    LOCAL_EVENT_BOOL("local_event"),
     REVENUE_SPLIT_JSON("revenue_split"),
     LANGUAGE_STR("language");
 
@@ -40,11 +40,20 @@ public enum ConfigurationStore {
                 if (configFile.createNewFile()) {
                     // Set sensible defaults
                     properties.setProperty("language", "sv");
-                    properties.setProperty("offline_event", "false");
+                    properties.setProperty("local_event", "false");
 
                     try (OutputStream output = new FileOutputStream(configFile)) {
                         properties.store(output, "Application Configuration");
                     }
+                }
+            }
+
+            // Migrate legacy offline_event flag if present
+            if (properties.getProperty("local_event") == null) {
+                String legacyOffline = properties.getProperty("offline_event");
+                properties.setProperty("local_event", legacyOffline != null ? legacyOffline : "false");
+                try (OutputStream output = new FileOutputStream(CONFIG_FILE_PATH)) {
+                    properties.store(output, "Application Configuration");
                 }
             }
 
@@ -71,7 +80,7 @@ public enum ConfigurationStore {
         properties.clear();
         // Set sensible defaults after reset
         properties.setProperty("language", lang);
-        properties.setProperty("offline_event", "false");
+        properties.setProperty("local_event", "false");
         saveProperties();
     }
 

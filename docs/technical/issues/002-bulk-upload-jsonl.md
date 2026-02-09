@@ -1,11 +1,19 @@
 # Issue 002: Bulk-upload av JSONL till iLoppis-backend
 
-**Status:** Design  
+**Status:** Design → Proto changes ✅ → Implementation  
 **Skapad:** 2026-02-09  
+**Uppdaterad:** 2026-02-09  
 **Prioritet:** Medel  
 **Epic:** Kassasystem refaktorering  
 **Scope:** LoppisKassan (Java desktop) + iLoppis backend (Go)  
 **Beroende:** [Issue 001](001-jsonl-unified-local-events.md) — JSONL-lagring och lokala events
+
+#### Proto-ändringar (2026-02-09) ✅
+- Added `BulkUploadResult` message for explicit partial-success handling
+- Enhanced documentation for `CreateSoldItems` with bulk-upload use case
+- Clarified `DUPLICATE_RECEIPT` error code behavior for idempotent uploads
+- Reserved future `BulkUploadSoldItems` endpoint for potential optimization
+- ✅ `buf generate` successfully regenerated Go code
 
 ---
 

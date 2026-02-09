@@ -7,18 +7,27 @@ import se.goencoder.iloppis.api.EventServiceApi;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
-import se.goencoder.loppiskassan.records.FileHelper;
+import se.goencoder.loppiskassan.model.BulkUploadResult;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog;
 import se.goencoder.loppiskassan.utils.EventUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.storage.LocalEvent;
+import se.goencoder.loppiskassan.storage.LocalEventRepository;
 
+import java.awt.Frame;
+import javax.swing.SwingUtilities;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import javax.swing.JOptionPane;
 
 import static se.goencoder.loppiskassan.config.ConfigurationStore.CONFIG_FILE_PATH;
-import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 
 public class DiscoveryTabController implements DiscoveryControllerInterface {
 
@@ -28,7 +37,10 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     private static final int APPROVED_SELLERS_PAGE_SIZE = 500;
 
     private DiscoveryPanelInterface view;
-    private List<V1Event> eventList;
+    private volatile List<V1Event> eventList;
+    private volatile Map<String, LocalEvent> localEventMap = new HashMap<>();
+    private ScheduledExecutorService refreshScheduler;
+    private String lastDateFrom;
 
     private DiscoveryTabController() {
     }
@@ -42,17 +54,32 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         this.view = view;
     }
 
-    @Override
-    public void discoverEvents(String dateFrom) {
-        // Clear the events table before populating new data.
-        view.clearEventsTable();
+    private void loadAllEvents() {
+        String dateFrom = lastDateFrom;
+        if (dateFrom == null || dateFrom.isBlank()) {
+            dateFrom = LocalDate.now().toString();
+        }
 
-        // Add the offline synthetic event.
-        V1Event offlineEvent = new V1Event();
-        EventUtils.populateOfflineEvent(offlineEvent);
+        se.goencoder.loppiskassan.ui.EDT.run(view::clearEventsTable);
 
-        eventList = new ArrayList<>();
-        eventList.add(offlineEvent);
+        // Build lists in local variables to avoid exposing a half-built list
+        // to the EDT (eventSelected reads eventList/localEventMap).
+        List<V1Event> newEventList = new ArrayList<>();
+        Map<String, LocalEvent> newLocalEventMap = new HashMap<>();
+
+        // Load local events from disk
+        try {
+            List<LocalEvent> localEvents = LocalEventRepository.loadAll();
+            for (LocalEvent localEvent : localEvents) {
+                V1Event event = toLocalV1Event(localEvent);
+                newEventList.add(event);
+                newLocalEventMap.put(localEvent.getEventId(), localEvent);
+            }
+        } catch (IOException e) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("error.load_local_events.title"),
+                    LocalizationManager.tr("error.load_local_events.message", e.getMessage()));
+        }
 
         // Fetch and add real events from iLoppis.
         try {
@@ -71,17 +98,56 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
             V1FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
             List<V1Event> discovered = response.getEvents();
-            eventList.addAll(Objects.requireNonNull(discovered));
-
-            view.populateEventsTable(eventList);
+            newEventList.addAll(Objects.requireNonNull(discovered));
         } catch (ApiException ex) {
-            ex.printStackTrace();
             Popup.ERROR.showAndWait(LocalizationManager.tr("error.fetch_events.title"), ex.getMessage());
-            view.populateEventsTable(eventList); // Display only the offline event if an error occurs.
         } catch (Exception ex) {
             Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
-            view.populateEventsTable(eventList);
         }
+
+        // Swap atomically — volatile write ensures visibility to EDT
+        eventList = newEventList;
+        localEventMap = newLocalEventMap;
+
+        se.goencoder.loppiskassan.ui.EDT.run(() -> view.populateEventsTable(eventList));
+    }
+
+    private void startAutoRefresh() {
+        if (refreshScheduler != null) {
+            return;
+        }
+        refreshScheduler = Executors.newSingleThreadScheduledExecutor();
+        loadAllEvents();
+        refreshScheduler.scheduleAtFixedRate(
+                this::loadAllEvents,
+                60_000,
+                60_000,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private V1Event toLocalV1Event(LocalEvent localEvent) {
+        V1Event event = new V1Event();
+        event.setId(localEvent.getEventId());
+        event.setName(localEvent.getName());
+        event.setDescription(localEvent.getDescription());
+        String street = localEvent.getAddressStreet();
+        String city = localEvent.getAddressCity();
+        event.setAddressStreet(street == null || street.isBlank()
+                ? LocalizationManager.tr("event.no_street")
+                : street);
+        event.setAddressCity(city == null || city.isBlank()
+                ? LocalizationManager.tr("event.no_city")
+                : city);
+        event.setStartTime(localEvent.getCreatedAt());
+        event.setEndTime(null);
+        return event;
+    }
+
+    @Override
+    public void discoverEvents(String dateFrom) {
+        lastDateFrom = dateFrom;
+        loadAllEvents();
     }
 
     @Override
@@ -93,22 +159,37 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             return;
         }
         V1Event event = fromId(eventId);
-        ConfigurationStore.EVENT_JSON.set(Objects.requireNonNull(event).toJson());
-
-        // Determine if the event is offline.
-        boolean isOffline = "offline".equalsIgnoreCase(eventId);
-        V1RevenueSplit split;
-        try {
-            split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
-        } catch (IOException e) {
-            Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
-            ConfigurationStore.reset();
+        if (event == null) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("error.no_event_selected.title"),
+                    LocalizationManager.tr("error.no_event_selected.message"));
             return;
         }
+        ConfigurationStore.EVENT_JSON.set(event.toJson());
 
-        if (isOffline) {
-            configureOfflineMode(event, split);
+        // Determine if the event is local.
+        boolean isLocal = localEventMap.containsKey(eventId);
+        V1RevenueSplit split;
+        if (isLocal) {
+            LocalEvent localEvent = localEventMap.get(eventId);
+            split = localEvent == null ? null : localEvent.getRevenueSplit();
+            if (split == null) {
+                split = new V1RevenueSplit();
+                split.setCharityPercentage(0f);
+                split.setMarketOwnerPercentage(10f);
+                split.setVendorPercentage(85f);
+                split.setPlatformProviderPercentage(5f);
+            }
+            ConfigurationStore.REVENUE_SPLIT_JSON.set(split.toJson());
+            configureLocalMode(eventId, split);
         } else {
+            try {
+                split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+            } catch (IOException e) {
+                Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
+                ConfigurationStore.reset();
+                return;
+            }
             configureOnlineMode(eventId, cashierCode, event, split);
         }
     }
@@ -117,17 +198,26 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     public void eventSelected(String eventId) {
         view.showDetailForm(true);
 
+        // Determine local mode from the event ID pattern so we can set it
+        // before the fromId lookup — this ensures cashier code visibility
+        // is correct even if the event lookup fails (e.g. during auto-refresh).
+        boolean isLocal = eventId != null && eventId.startsWith("local-");
+        view.setLocalMode(isLocal);
+        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(isLocal);
+
         V1Event selectedEvent = fromId(eventId);
-        view.setEventName(Objects.requireNonNull(selectedEvent).getName());
+        if (selectedEvent == null) {
+            return;
+        }
+
+        view.setEventName(selectedEvent.getName());
         view.setEventDescription(selectedEvent.getDescription());
-        view.setEventAddress(selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity());
+        String address = selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity();
+        view.setEventAddress(address.replaceFirst("^,\\s*", ""));
 
-        boolean isOffline = "offline".equalsIgnoreCase(eventId);
-        view.setOfflineMode(isOffline);
-        ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(isOffline);
-
-        if (isOffline) {
-            handleOfflineEvent(selectedEvent);
+        if (isLocal) {
+            LocalEvent localEvent = localEventMap.get(eventId);
+            handleLocalEvent(localEvent);
         } else {
             handleOnlineEvent(selectedEvent);
         }
@@ -135,18 +225,31 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
     @Override
     public void initUIState() {
+        loadAllEvents();
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
-        if (eventId != null && !eventId.isEmpty()) {
+        if (eventId != null && !eventId.isEmpty()
+                && !"offline".equalsIgnoreCase(eventId)
+                && !"local".equalsIgnoreCase(eventId)) {
             try {
-                V1Event event = V1Event.fromJson(ConfigurationStore.EVENT_JSON.get());
-                V1RevenueSplit split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
-                view.showActiveEventInfo(event, split);
+                V1Event event = fromId(eventId);
+                if (event == null) {
+                    ConfigurationStore.reset();
+                    view.setRegisterOpened(false);
+                    view.setCashierButtonEnabled(true);
+                } else {
+                    V1RevenueSplit split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+                    view.setLocalMode(localEventMap.containsKey(eventId));
+                    ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(localEventMap.containsKey(eventId));
+                    view.showActiveEventInfo(event, split);
+                }
             } catch (IOException e) {
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_event.title"), e.getMessage());
             }
         } else {
             view.setCashierButtonEnabled(true);
         }
+
+        startAutoRefresh();
     }
 
     @Override
@@ -160,19 +263,88 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
 
         ConfigurationStore.reset(); // Reset configuration to clear stored data.
 
-        try {
-            FileHelper.createBackupFile(); // Backup current data.
-        } catch (IOException e) {
-            Popup.ERROR.showAndWait(
-                    LocalizationManager.tr("error.clear_register_file", LOPPISKASSAN_CSV),
-                    e.getMessage());
-        }
-
         // Reset the UI to the discovery mode.
         view.clearEventsTable();
         view.setRegisterOpened(false);
         view.showDetailForm(false);
         view.setCashierButtonEnabled(true);
+
+        loadAllEvents();
+    }
+
+    @Override
+    public void saveLocalEventEdits(String eventId, String name, String description, String address,
+                                    float marketOwner, float vendor, float platform) {
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+        LocalEvent existing = localEventMap.get(eventId);
+        if (existing == null) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("local_event.save_failed.title"),
+                    LocalizationManager.tr("local_event.save_failed.message", eventId));
+            return;
+        }
+
+        if (name == null || name.isBlank()) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("local_event.error.title"),
+                    LocalizationManager.tr("local_event.error.name_required"));
+            return;
+        }
+
+        float sum = marketOwner + vendor + platform;
+        if (Math.abs(sum - 100f) > 0.01f) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("local_event.error.title"),
+                    LocalizationManager.tr("local_event.error.invalid_split"));
+            return;
+        }
+
+        String[] addressParts = splitAddress(address);
+        String street = addressParts[0];
+        String city = addressParts[1];
+
+        V1RevenueSplit split = new V1RevenueSplit();
+        split.setCharityPercentage(0f);
+        split.setMarketOwnerPercentage(marketOwner);
+        split.setVendorPercentage(vendor);
+        split.setPlatformProviderPercentage(platform);
+
+        LocalEvent updated = new LocalEvent(
+                existing.getEventId(),
+                existing.getEventType(),
+                name,
+                description,
+                street,
+                city,
+                existing.getCreatedAt(),
+                split
+        );
+
+        try {
+            LocalEventRepository.save(updated);
+            localEventMap.put(eventId, updated);
+            loadAllEvents();
+            view.selectEventById(eventId);
+            Popup.INFORMATION.showAndWait(
+                    LocalizationManager.tr("local_event.save_success.title"),
+                    LocalizationManager.tr("local_event.save_success.message"));
+        } catch (IOException e) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("local_event.save_failed.title"),
+                    LocalizationManager.tr("local_event.save_failed.message", e.getMessage()));
+        }
+    }
+
+    private String[] splitAddress(String address) {
+        if (address == null || address.isBlank()) {
+            return new String[]{"", ""};
+        }
+        String[] parts = address.split(",", 2);
+        String street = parts[0].trim();
+        String city = parts.length > 1 ? parts[1].trim() : "";
+        return new String[]{street, city};
     }
 
     private V1Event fromId(String eventId) {
@@ -194,12 +366,19 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         return EventUtils.findEventById(eventList, eventId);
     }
 
-    private void configureOfflineMode(V1Event event, V1RevenueSplit split) {
-        ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(true);
-        ConfigurationStore.EVENT_ID_STR.set("offline");
+    private void configureLocalMode(String eventId, V1RevenueSplit split) {
+        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(true);
+        ConfigurationStore.EVENT_ID_STR.set(eventId);
+
+        V1Event localEvent = fromId(eventId);
+        if (localEvent == null) {
+            localEvent = new V1Event();
+            localEvent.setId(eventId);
+            localEvent.setName(eventId);
+        }
 
         view.setRegisterOpened(true);
-        view.showActiveEventInfo(event, split);
+        view.showActiveEventInfo(localEvent, split);
         view.setChangeEventButtonVisible(true);
     }
 
@@ -249,33 +428,38 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         ConfigurationStore.APPROVED_SELLERS_JSON.set(jsonObject.toString());
     }
 
-    private void handleOfflineEvent(V1Event selectedEvent) {
+    private void handleLocalEvent(LocalEvent localEvent) {
+        if (localEvent == null) {
+            return;
+        }
         view.setRevenueSplitEditable(true);
 
-        V1RevenueSplit split;
-        if (ConfigurationStore.REVENUE_SPLIT_JSON.get() == null) {
+        V1RevenueSplit split = localEvent.getRevenueSplit();
+        if (split == null) {
             split = new V1RevenueSplit();
             split.setCharityPercentage(0f);
-            split.setMarketOwnerPercentage(85f);
-            split.setVendorPercentage(10f);
+            split.setMarketOwnerPercentage(10f);
+            split.setVendorPercentage(85f);
             split.setPlatformProviderPercentage(5f);
-            ConfigurationStore.REVENUE_SPLIT_JSON.set(split.toJson());
-        } else {
-            try {
-                split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
-            } catch (IOException e) {
-                Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
-                split = new V1RevenueSplit();
-            }
         }
 
-        selectedEvent.setAddressCity(LocalizationManager.tr("event.no_city"));
-        selectedEvent.setDescription(LocalizationManager.tr("event.no_description_offline"));
-        selectedEvent.setAddressStreet(LocalizationManager.tr("event.no_street"));
+        ConfigurationStore.REVENUE_SPLIT_JSON.set(split.toJson());
 
-        view.setEventName(selectedEvent.getName());
-        view.setEventDescription(selectedEvent.getDescription());
-        view.setEventAddress(selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity());
+        String description = localEvent.getDescription();
+        if (description == null || description.isBlank()) {
+            description = LocalizationManager.tr("event.no_description_local");
+        }
+        view.setEventName(localEvent.getName());
+        view.setEventDescription(description);
+        String street = localEvent.getAddressStreet();
+        String city = localEvent.getAddressCity();
+        if (street == null || street.isBlank()) {
+            street = LocalizationManager.tr("event.no_street");
+        }
+        if (city == null || city.isBlank()) {
+            city = LocalizationManager.tr("event.no_city");
+        }
+        view.setEventAddress(street + ", " + city);
 
         view.setRevenueSplit(
                 split.getMarketOwnerPercentage(),
@@ -304,5 +488,61 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 revenueSplit.getVendorPercentage(),
                 revenueSplit.getPlatformProviderPercentage());
         ConfigurationStore.REVENUE_SPLIT_JSON.set(revenueSplit.toJson());
+    }
+
+    @Override
+    public void uploadLocalEventRequested(String eventId) {
+        try {
+            LocalEvent localEvent = LocalEventRepository.load(eventId);
+            if (localEvent == null) {
+                Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("error"),
+                    "Local event not found: " + eventId);
+                return;
+            }
+
+            // Find the Frame parent for the dialog
+            Frame parentFrame = null;
+            for (Frame frame : Frame.getFrames()) {
+                if (frame.isDisplayable() && frame.getName().equals("MainFrame")) {
+                    parentFrame = frame;
+                    break;
+                }
+            }
+            if (parentFrame == null) {
+                parentFrame = Frame.getFrames().length > 0 ? Frame.getFrames()[0] : null;
+            }
+
+            // Show upload dialog
+            BulkUploadDialog dialog = new BulkUploadDialog(parentFrame, localEvent);
+            BulkUploadResult result = dialog.showDialog();
+
+            if (result != null && result.hasResults()) {
+                if (result.isFullSuccess()) {
+                    JOptionPane.showMessageDialog(
+                        parentFrame,
+                        String.format("✅ %d items uploaded successfully", 
+                            result.acceptedItems.size()),
+                        LocalizationManager.tr("bulk_upload.success"),
+                        JOptionPane.INFORMATION_MESSAGE);
+                } else if (result.isPartialSuccess()) {
+                    JOptionPane.showMessageDialog(
+                        parentFrame,
+                        result.getSummaryText(),
+                        LocalizationManager.tr("bulk_upload.summary"),
+                        JOptionPane.WARNING_MESSAGE);
+                } else if (!result.errorMessages.isEmpty()) {
+                    JOptionPane.showMessageDialog(
+                        parentFrame,
+                        String.join("\n", result.errorMessages),
+                        LocalizationManager.tr("error"),
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } catch (IOException e) {
+            Popup.ERROR.showAndWait(
+                LocalizationManager.tr("error"),
+                "Failed to load local event: " + e.getMessage());
+        }
     }
 }

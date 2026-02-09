@@ -7,8 +7,9 @@ import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.ConfigurationStore;
-import se.goencoder.loppiskassan.records.FileHelper;
-import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.storage.JsonlHelper;
+import se.goencoder.loppiskassan.storage.LocalEventPaths;
+import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -30,7 +31,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.logging.Logger;
 
-import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 import static se.goencoder.loppiskassan.rest.ApiHelper.isLikelyNetworkError;
 
 public class CashierTabController implements CashierControllerInterface {
@@ -94,9 +94,9 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     private String logCtx(int sellerId) {
-        boolean online = !ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        boolean online = !ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
-        return String.format("event=%s seller=%d mode=%s", eventId, sellerId, online ? "online" : "offline");
+        return String.format("event=%s seller=%d mode=%s", eventId, sellerId, online ? "online" : "local");
     }
 
     // --- Item operations ---
@@ -121,8 +121,8 @@ public class CashierTabController implements CashierControllerInterface {
 
     @Override
     public boolean isSellerApproved(int sellerId) {
-        // If truly offline mode, just allow
-        if (ConfigurationUtils.isOfflineMode()) {
+        // If truly local mode, just allow
+        if (ConfigurationUtils.isLocalMode()) {
             return true;
         }
         String approvedSellersJson = ConfigurationStore.APPROVED_SELLERS_JSON.get();
@@ -133,27 +133,41 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     public void addItem(Integer sellerId, Integer[] prices) {
-        if (FileHelper.assertRecordFileRights(LOPPISKASSAN_CSV)) {
-            log.info(() -> String.format("cashier:add items=%d %s", prices.length, logCtx(sellerId)));
-            for (Integer price : prices) {
-                V1SoldItem soldItem = new V1SoldItem(sellerId, price, null);
-                items.add(soldItem);
-                view.addSoldItem(soldItem);
-            }
-            reCalculate();
+        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        if (eventId == null || eventId.isBlank()) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("error.no_event_selected.title"),
+                    LocalizationManager.tr("error.no_event_selected.message"));
+            return;
         }
+        try {
+            LocalEventRepository.ensureEventStorage(eventId);
+        } catch (IOException ex) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("error.save_file", LocalEventPaths.getPendingItemsPath(eventId)),
+                    ex.getMessage()
+            );
+            return;
+        }
+        log.info(() -> String.format("cashier:add items=%d %s", prices.length, logCtx(sellerId)));
+        for (Integer price : prices) {
+            V1SoldItem soldItem = new V1SoldItem(sellerId, price, null);
+            items.add(soldItem);
+            view.addSoldItem(soldItem);
+        }
+        reCalculate();
     }
 
     // --- Checkout process ---
     public void checkout(V1PaymentMethod paymentMethod) {
-        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
 
         LocalDateTime now = LocalDateTime.now();
         // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
         String purchaseId = UlidGenerator.generate();
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
 
-        if (!isOffline && !degradedMode) {
+        if (!isLocal && !degradedMode) {
             ProgressDialog.runTask(
                     view.getComponent(),
                     LocalizationManager.tr("cashier.progress.processing"),
@@ -174,7 +188,7 @@ public class CashierTabController implements CashierControllerInterface {
                     }
             );
         } else {
-            // If offline or degraded, skip the web call
+            // If local or degraded, skip the web call
             finishCheckoutFlow();
         }
     }
@@ -188,11 +202,15 @@ public class CashierTabController implements CashierControllerInterface {
             }
         }
         synchronized (lock) {
+            String eventId = ConfigurationStore.EVENT_ID_STR.get();
             try {
-                FileUtils.appendSoldItems(items);
+                if (eventId == null || eventId.isBlank()) {
+                    throw new IOException("Missing event id");
+                }
+                FileUtils.appendSoldItems(eventId, items);
             } catch (IOException e) {
                 Popup.ERROR.showAndWait(
-                        LocalizationManager.tr("error.save_file", FileHelper.getRecordFilePath(LOPPISKASSAN_CSV)),
+                        LocalizationManager.tr("error.save_file", LocalEventPaths.getPendingItemsPath(eventId)),
                         e.getMessage()
                 );
             }
@@ -203,8 +221,8 @@ public class CashierTabController implements CashierControllerInterface {
         view.clearView();
 
         // 3) If we are in degraded mode, spawn a background thread to attempt a catch-up
-        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
-        if (!isOffline && degradedMode) {
+        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        if (!isLocal && degradedMode) {
             new Thread(() -> {
                 boolean success = pushLocalUnsyncedRecords();
                 if (success) {
@@ -291,8 +309,12 @@ public class CashierTabController implements CashierControllerInterface {
         synchronized (lock) {
             List<V1SoldItem> allItems;
             try {
-                Path localCsv = FileHelper.getRecordFilePath(LOPPISKASSAN_CSV);
-                allItems = FormatHelper.toItems(FileHelper.readFromFile(localCsv), true);
+                String eventId = ConfigurationStore.EVENT_ID_STR.get();
+                if (eventId == null || eventId.isBlank()) {
+                    return false;
+                }
+                Path localJsonl = LocalEventPaths.getPendingItemsPath(eventId);
+                allItems = JsonlHelper.readItems(localJsonl);
             } catch (IOException e) {
                 return false;
             }
@@ -325,7 +347,11 @@ public class CashierTabController implements CashierControllerInterface {
             // On partial success, some items may now be uploaded
             // -> re-save entire file with updated statuses
             try {
-                FileUtils.saveSoldItems(allItems);
+                String eventId = ConfigurationStore.EVENT_ID_STR.get();
+                if (eventId == null || eventId.isBlank()) {
+                    return false;
+                }
+                FileUtils.saveSoldItems(eventId, allItems);
             } catch (IOException e) {
                 // local file write error is not a reason to remain degraded
                 // but we do show a warning

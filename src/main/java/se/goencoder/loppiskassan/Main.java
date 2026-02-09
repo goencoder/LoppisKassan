@@ -1,11 +1,14 @@
 package se.goencoder.loppiskassan;
 
 
+import se.goencoder.loppiskassan.config.AppMode;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.UserInterface;
 import se.goencoder.loppiskassan.ui.Theme;
+import se.goencoder.loppiskassan.ui.dialogs.ModeSelectionDialog;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -21,6 +24,16 @@ public class Main {
      */
     private static void createAndShowGUI() {
         Theme.install(); // Install look & feel before creating components
+
+        // Show splash screen to select operating mode
+        ModeSelectionDialog splash = new ModeSelectionDialog();
+        AppMode mode = splash.showDialog();
+        if (mode == null) {
+            System.exit(0); // User closed splash without choosing
+            return;
+        }
+        AppModeManager.setMode(mode);
+
         UserInterface frame = new UserInterface();
         frame.setTitle(LocalizationManager.tr("frame.title"));
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

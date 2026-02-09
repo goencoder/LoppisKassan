@@ -5,8 +5,9 @@ import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
-import se.goencoder.loppiskassan.records.FileHelper;
-import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.storage.JsonlHelper;
+import se.goencoder.loppiskassan.storage.LocalEventPaths;
+import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
@@ -54,12 +55,13 @@ public class OfflineFlowTest {
     }
 
     @Test
-    void offlineCheckoutAndPayoutFlow() throws Exception {
+    void localCheckoutAndPayoutFlow() throws Exception {
         Path tempDir = Files.createTempDirectory("loppiskassan-test");
-        System.setProperty("user.dir", tempDir.toString());
+        System.setProperty("user.home", tempDir.toString());
 
-        FileHelper.createDirectories();
-        ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(true);
+        LocalEventRepository.ensureEventStorage("local-test");
+        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(true);
+        ConfigurationStore.EVENT_ID_STR.set("local-test");
         LocalizationManager.initialize();
 
         DummyCashierPanel cashierView = new DummyCashierPanel();
@@ -74,8 +76,7 @@ public class OfflineFlowTest {
             cashier.checkout(pm);
         }
 
-        String csv = FileHelper.readFromFile(FileHelper.LOPPISKASSAN_CSV);
-        List<V1SoldItem> items = FormatHelper.toItems(csv, true);
+        List<V1SoldItem> items = JsonlHelper.readItems(LocalEventPaths.getPendingItemsPath("local-test"));
         assertEquals(100, items.size());
 
         HistoryTabController history = HistoryTabController.getInstance();
@@ -93,8 +94,7 @@ public class OfflineFlowTest {
         historyView.paidFilter = "false";
         history.buttonAction(BUTTON_PAY_OUT);
 
-        String csvAfter = FileHelper.readFromFile(FileHelper.LOPPISKASSAN_CSV);
-        List<V1SoldItem> updated = FormatHelper.toItems(csvAfter, true);
+        List<V1SoldItem> updated = JsonlHelper.readItems(LocalEventPaths.getPendingItemsPath("local-test"));
 
         long seller1SwishPaid = updated.stream()
                 .filter(i -> i.getSeller() == 1 && i.getPaymentMethod() == V1PaymentMethod.Swish && i.isCollectedBySeller())

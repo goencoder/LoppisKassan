@@ -355,8 +355,8 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         eraseAllDataButton.setText(LocalizationManager.tr(BUTTON_ERASE));
         archiveFilteredButton.setText(LocalizationManager.tr("button.archive_filtered"));
         // Ensure the right-hand top button reflects current mode after language switch
-        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
-        if (isOffline) {
+        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        if (isLocal) {
             importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT)); // e.g., "Import register"
         } else {
             // Online: show "Update from Web". If the key is ever missing, fall back gracefully.

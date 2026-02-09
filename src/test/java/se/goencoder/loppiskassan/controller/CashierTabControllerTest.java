@@ -2,9 +2,13 @@ package se.goencoder.loppiskassan.controller;
 
 import org.junit.jupiter.api.Test;
 import se.goencoder.loppiskassan.V1SoldItem;
+import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 
 import java.awt.Component;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +29,13 @@ class CashierTabControllerTest {
 
     @Test
     void calculateChange() {
+        try {
+            Path tempDir = Files.createTempDirectory("loppiskassan-test");
+            System.setProperty("user.home", tempDir.toString());
+            ConfigurationStore.EVENT_ID_STR.set("local-test");
+            LocalEventRepository.ensureEventStorage("local-test");
+        } catch (Exception ignored) {
+        }
         CashierTabController controller = (CashierTabController) CashierTabController.getInstance();
         StubView view = new StubView();
         controller.registerView(view);

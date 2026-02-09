@@ -8,7 +8,7 @@ import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
  * Mode behavior:
  * <ul>
  *   <li><b>Online:</b> fetch events from the backend; opening the register requires a valid cashier code.</li>
- *   <li><b>Offline:</b> list locally configured events; opening the register ignores cashier code and uses offline defaults.</li>
+ *   <li><b>Local:</b> list locally configured events; opening the register ignores cashier code and uses local defaults.</li>
  * </ul>
  */
 public interface DiscoveryControllerInterface {
@@ -21,7 +21,7 @@ public interface DiscoveryControllerInterface {
 
     /**
      * Discover events visible to the user starting from an optional date.
-     * Online mode should query the backend; offline mode should read local storage.
+     * Online mode should query the backend; local mode should read local storage.
      *
      * @param dateFrom ISO-8601 date string (inclusive) or empty for all
      */
@@ -31,7 +31,7 @@ public interface DiscoveryControllerInterface {
      * Open the register for a selected event.
      * <p>
      * <b>Online:</b> {@code cashierCode} must be present and validated.
-     * <b>Offline:</b> {@code cashierCode} may be ignored and the register opens immediately.
+     * <b>Local:</b> {@code cashierCode} may be ignored and the register opens immediately.
      *
      * @param eventId unique event identifier
      * @param cashierCode cashier/ API code (required online)
@@ -57,4 +57,26 @@ public interface DiscoveryControllerInterface {
      * Typically returns the UI to the discovery list and resets register state.
      */
     void changeEventRequested();
+
+    /**
+     * Handle user request to upload a local event to iLoppis backend.
+     * Shows BulkUploadDialog for event selection, code entry, and upload.
+     *
+     * @param eventId local event ID to upload
+     */
+    void uploadLocalEventRequested(String eventId);
+
+    /**
+     * Persist edits to a local event (name/description/address/split).
+     *
+     * @param eventId local event id
+     * @param name event name
+     * @param description event description
+     * @param address combined address string (street, city)
+     * @param marketOwner market owner percentage
+     * @param vendor vendor percentage
+     * @param platform platform percentage
+     */
+    void saveLocalEventEdits(String eventId, String name, String description, String address,
+                             float marketOwner, float vendor, float platform);
 }

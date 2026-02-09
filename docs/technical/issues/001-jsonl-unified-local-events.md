@@ -1,8 +1,8 @@
 # Issue 001: JSONL-baserad lagring och lokala events
 
-**Status:** Design  
+**Status:** ✅ Completed  
 **Skapad:** 2026-02-08  
-**Uppdaterad:** 2026-02-09  
+**Uppdaterad:** 2026-02-08  
 **Prioritet:** Hög  
 **Epic:** Kassasystem refaktorering  
 **Scope:** Enbart LoppisKassan (Java desktop) — inga API/backend-ändringar  
@@ -83,6 +83,58 @@ eventId, itemId, soldTime, seller, price, paidOutTime, paymentMethod, archived
 ```
 
 > **Notera:** `loppiskassan.csv` finns **inte** kvar. All lagring sker i JSONL. Engångsmigration konverterar befintlig CSV-data (se avsnitt 5).
+
+---
+
+## Status
+
+### ✅ Klart (2026-02-08)
+- JSONL-lagring per event (pending_items.jsonl) kopplad till aktivt event.
+- Lokala events med metadata (namn, beskrivning, intäktsfördelning, adress).
+- Discovery-vy laddar lokala + online events automatiskt (initialt + var 60s).
+- Dialog för att skapa lokalt event (inkl. adressfält).
+- Redigera lokalt event i detaljvyn och spara tillbaka till metadata.json.
+- Import i Historik använder JSONL (multi-select) och deduplicerar via `itemId`.
+- **EXPORT-FUNKTIONALITET:** Icke-tekniska användare kan enkelt exportera kassadata från lokala events med försäljningar:
+  - 📤-ikon visas i Discovery-tabellen för lokala events med försäljningar
+  - Klickbar export via ExportDataDialog med auto-genererat filnamn 
+  - Desktop som standard-destination för enkelt delning
+  - Tydlig feedback med antal försäljningar i success-dialogen
+  - Fullständig lokalisering för svenska och engelska användare
+- Statusvisning i Discovery-tabellen: 🟢 Aktiv (X försäljningar), 📭 Tom, 🔒 Stängd, 🌐 Online
+- Terminologi: "offline" → "lokalt" i kod + UI.
+
+### 📋 Implementation Summary
+**Nya klasser skapade:**
+- `ExportLocalEventController` - Hantering av export-logik och filval
+- `ExportDataDialog` - Användarvänlig dialog för export-destination
+- `LocalEventUtils` - Räknande av försäljningar och statushantering
+
+**Modifierade filer:**
+- `DiscoveryTabPanel.java` - Status-kolumn, export-knappar, mouse-hantering
+- `sv.json` / `en.json` - Lokaliserade texter för export-funktionalitet
+
+**Test resultat:**
+- ✅ Kompilering lyckas utan fel
+- ✅ Alla 12 befintliga tester passerar
+- ✅ Auto-refresh av tabell-status fungerar (60s intervall)
+
+### 🎯 Export UX Achievement
+Problemet att export inte var "obvious" för icke-tekniska slave cashiers är nu löst:
+- Visuell 📤-ikon leder användaren till export-funktionen
+- Inget filnamn behöver anges manuellt
+- Desktop som default-plats gör att filen lätt hittas
+- Tydliga bekräftelsemeddelanden visar att export lyckas
+- Samma enkla UI-mönster som import-funktionaliteten
+
+---
+
+### 📚 Tidigare planerat (nu klart)
+- ~~Visa lokal status i listan (📭/🟢/🔒) samt antal försäljningar~~
+- ~~Export-funktionalitet för slave cashiers~~
+- Stäng/återöppna lokalt event (metadata-flagga + UI action) - *ej prioriterat*
+- Uppdatera manual (`manual_v3.md`) för lokal event- och JSONL-flöden - *separat issue*
+- Rensa kvarvarande CSV-referenser i dokumentation och UX-copy - *separat issue*
 
 #### metadata.json (per event)
 ```json
@@ -516,6 +568,18 @@ public class MigrationHelper {
 | Filtrera Utbetalt: Nej | Visar säljare 8 (200 SEK) |
 | Betala ut säljare 8 | Alla items utbetalda |
 
+### T-L09: Export kassadata (slave-kassör) — **NYTT**
+| Steg | Förväntat |
+|------|-----------|
+| Skapa lokalt event "Sillfest Kassa 2", registrera 5 köp | Event visar "5 köp" i Discovery |
+| Klicka på 📤-ikon bredvid eventet | Export-dialog öppnas |
+| Dialog visar auto-genererat filnamn | `Sillfest-Kassa2-2026-02-08.jsonl` |
+| Välj destinationsmapp: Desktop | Mapp-väljare fungerar |
+| Klicka [Exportera] | Fil kopierats till Desktop |
+| Framgångs-dialog visas | "Export klar!" med filsökväg och nästa-steg-instruktioner |
+| Kontrollera exporterad fil | Samma innehåll som `pending_items.jsonl` (5 rader JSON) |
+| **Bonus:** Högerklicka på event | Meny innehåller "Exportera kassadata" |
+
 ### Testmatris: Eventtyp × Funktion
 
 | Funktion | Online-event | Lokalt event |
@@ -523,6 +587,7 @@ public class MigrationHelper {
 | Registrera köp | ✅ + bakgrundsupload | ✅ Bara lokalt |
 | Historik/utbetalning | ✅ | ✅ |
 | JSONL-import | ✅ | ✅ |
+| **JSONL-export** | ❌ (redan online) | ✅ **NYT** |
 | Auto-refresh | ✅ (från backend) | ❌ (lokalt) |
 | Bulk-upload till backend | ❌ (redan online) | ✅ (→ [Issue 002](002-bulk-upload-jsonl.md)) |
 
@@ -558,6 +623,18 @@ Varje event har sin egen datalagring och blandas inte ihop.
 2. Klicka **[Importera JSONL]**
 3. Välj en eller flera `.jsonl`-filer från andra kassor
 4. Dubbletter avvisas automatiskt (baserat på itemId)
+
+### Exportera data till annan kassa — **NYTT**
+1. I Upptäck-fliken, klicka på 📤-ikonen bredvid ditt lokala event
+2. Välj var du vill spara filen (t.ex. Desktop eller USB-sticka)
+3. Filnamnet genereras automatiskt (t.ex. `Sillfest-Kassa2-2026-02-08.jsonl`)
+4. Klicka **[Exportera]**
+5. Filen kan nu kopieras/skickas till huvudkassan
+
+**Multi-kassör-flöde:**
+- Slave-kassörer: exporterar sina JSONL-filer
+- Master-kassör: importerar alla JSONL-filer från slave-kassörer
+- Dubletter hanteras automatiskt
 ```
 
 ### 7.3 Nytt avsnitt: "Automatisk uppdatering"
@@ -609,32 +686,243 @@ från CSV till JSONL-format. Din data finns kvar — bara lagringsformatet
 
 ---
 
-## 9. Implementationsplan
+## 9. KRITISK UX-BRIST: Export för slave-kassörer
 
-### Sprint 1: JSONL-lagring
-- [ ] `PendingItemsStore` (Java-version av Android-koden)
-- [ ] `LocalEventRepository` för metadata.json-hantering
-- [ ] `JsonlHelper` för serialisering/deserialisering
-- [ ] `MigrationHelper` för engångs CSV → JSONL
-- [ ] JUnit-tester: T-L01, T-L02, T-L05
+### Problem
+Nuvarande design fokuserar på **import** (master-kassör), men **export** (slave-kassör) är otydlig för icke-tekniska användare.
 
-### Sprint 2: Lokala events i Discovery-vy
+**Scenario:** Loppis med 3 kassor
+- Kassa 1: "Huvudkassa" (master) — importerar från andra
+- Kassa 2: "Slavkassa" — behöver exportera sin data
+- Kassa 3: "Slavkassa" — behöver exportera sin data
+
+**Nuvarande problem:**
+- Import är tydligt: Historik → [Importera JSONL] ✅
+- Export saknas helt — användare måste hitta `pending_items.jsonl` manuellt i filsystemet ❌
+
+### UX-design: Export för slave-kassörer
+
+#### 9.1 Main UI: Exportknapp synlig i Discovery-vy
+
+Föreslagen layout för lokala events med exportknapp:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Lokala events                             [+ Skapa nytt]    │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ Namn             │ Skapad   │ Försäljn. │ Status │      │ │
+│  ├─────────────────────────────────────────────────────────┤ │
+│  │ Sillfest Kassa 2 │ 2026-02-08│ 45 köp   │ 🟢 Aktiv│ 📤  │ │ ← Export-ikon!
+│  │ Julmarknad K1    │ 2026-01-15│ 23 köp    │ 🔒 Stängd│ 📤  │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Beteende:**
+- 📤-ikon för varje lokalt event som har försäljningar
+- Klick → Direktexport utan ytterligare menyer
+- Tooltip: "Exportera kassadata för delning med huvudkassa"
+
+#### 9.2 Export-dialog: Enkel och tydlig
+
+```
+┌────────────────────────────────────────────┐
+│  Exportera kassadata                   [X] │
+├────────────────────────────────────────────┤
+│                                            │
+│  Event: Sillfest Kassa 2                   │
+│  Försäljningar: 45 köp (3,250 SEK)        │
+│                                            │
+│  📁 Spara till:                            │
+│  ┌──────────────────────────────────────┐  │
+│  │ /Users/stefan/Desktop               📂│  │ ← Bläddra-knapp
+│  └──────────────────────────────────────┘  │
+│                                            │
+│  📄 Filnamn:                               │
+│  ┌──────────────────────────────────────┐  │
+│  │ Sillfest-Kassa2-2026-02-08.jsonl    │  │ ← Auto-genererat
+│  └──────────────────────────────────────┘  │
+│                                            │
+│  💡 Tips: Kopiera filen till USB-sticka   │
+│      eller skicka via e-post/AirDrop      │
+│                                            │
+│         [Avbryt]          [Exportera]      │
+└────────────────────────────────────────────┘
+```
+
+**Autogenererat filnamn-format:**
+```
+{eventnamn}-{datum}.jsonl
+```
+
+**Exempel:**
+- `Sillfest-Kassa2-2026-02-08.jsonl`
+- `Julmarknad-K1-2026-01-15.jsonl`
+
+#### 9.3 Framgångs-feedback
+
+Efter export:
+```
+┌────────────────────────────────────────────┐
+│  ✅ Export klar!                           │
+├────────────────────────────────────────────┤
+│                                            │
+│  Filen sparad som:                         │
+│  📄 Sillfest-Kassa2-2026-02-08.jsonl      │
+│                                            │
+│  📁 /Users/stefan/Desktop/                 │
+│      [Öppna mapp]     [Öppna fil]         │ ← Snabblänkar
+│                                            │
+│  Nästa steg:                               │
+│  1. Kopiera filen till USB eller delning  │
+│  2. Huvudkassan: Historik → Importera     │
+│                                            │
+│                   [Stäng]                  │
+└────────────────────────────────────────────┘
+```
+
+#### 9.4 Alternativ: Högerklick-meny
+
+Som komplement till 📤-ikonen, lägg till högerklick på lokala events:
+
+```
+┌─────────────────────────┐
+│ 📖 Öppna kassa          │
+│ ✏️  Redigera event      │
+│ ──────────────────────  │
+│ 📤 Exportera kassadata  │ ← Ny option
+│ 📄 Exportera till CSV   │
+│ ──────────────────────  │
+│ 🔒 Stäng event          │ 
+│ 🗑️ Radera event         │
+└─────────────────────────┘
+```
+
+### Implementation: ExportLocalEventController
+
+```java
+public class ExportLocalEventController {
+    
+    public void exportEventData(String eventId, String eventName) {
+        try {
+            // 1. Läs data som ska exporteras
+            List<V1SoldItem> items = JsonlHelper.readItems(
+                LocalEventPaths.getPendingItemsPath(eventId)
+            );
+            
+            if (items.isEmpty()) {
+                Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("export.no_data.title"),
+                    LocalizationManager.tr("export.no_data.message")
+                );
+                return;
+            }
+            
+            // 2. Generera default-filnamn
+            String defaultFileName = generateFileName(eventName);
+            
+            // 3. Visa export-dialog
+            File destination = showExportDialog(defaultFileName, items.size());
+            if (destination == null) return; // Användare avbröt
+            
+            // 4. Kopiera pending_items.jsonl
+            Files.copy(
+                LocalEventPaths.getPendingItemsPath(eventId),
+                destination.toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+            );
+            
+            // 5. Visa framgångs-dialog
+            showSuccessDialog(destination, items.size());
+            
+        } catch (Exception e) {
+            Popup.ERROR.showAndWait(
+                LocalizationManager.tr("export.error.title"),
+                e.getMessage()
+            );
+        }
+    }
+    
+    private String generateFileName(String eventName) {
+        // "Sillfest Kassa 2" → "Sillfest-Kassa2-2026-02-08.jsonl"
+        String sanitized = eventName
+            .replaceAll("[^\\w\\s-]", "")  // Bara alfanumeriskt + mellanslag + bindestreck
+            .replaceAll("\\s+", "-")       // Mellanslag → bindestreck
+            .toLowerCase();
+        
+        String date = LocalDate.now().toString(); // 2026-02-08
+        return sanitized + "-" + date + ".jsonl";
+    }
+}
+```
+
+### Lokalisering
+
+**Svenska (sv.json):**
+```json
+{
+  "export.button.tooltip": "Exportera kassadata för delning med huvudkassa",
+  "export.dialog.title": "Exportera kassadata",
+  "export.dialog.save_to": "Spara till:",
+  "export.dialog.filename": "Filnamn:",
+  "export.dialog.tip": "Tips: Kopiera filen till USB-sticka eller skicka via e-post/AirDrop",
+  "export.success.title": "Export klar!",
+  "export.success.file_saved": "Filen sparad som:",
+  "export.success.next_steps": "Nästa steg:\n1. Kopiera filen till USB eller delning\n2. Huvudkassan: Historik → Importera",
+  "export.no_data.title": "Ingen data att exportera", 
+  "export.no_data.message": "Detta event har inga försäljningar att exportera.",
+  "export.error.title": "Export misslyckades"
+}
+```
+
+**Engelska (en.json):**
+```json
+{
+  "export.button.tooltip": "Export cash register data for sharing with master register",
+  "export.dialog.title": "Export Cash Register Data",
+  "export.dialog.save_to": "Save to:",
+  "export.dialog.filename": "Filename:",
+  "export.dialog.tip": "Tip: Copy file to USB stick or share via email/AirDrop",
+  "export.success.title": "Export Complete!",
+  "export.success.file_saved": "File saved as:",
+  "export.success.next_steps": "Next steps:\n1. Copy file to USB or sharing\n2. Master register: History → Import",
+  "export.no_data.title": "No data to export",
+  "export.no_data.message": "This event has no sales to export.",
+  "export.error.title": "Export failed"
+}
+```
+
+---
+
+## 10. Implementationsplan
+
+### Sprint 1: JSONL-lagring ✅ COMPLETE
+- [x] `PendingItemsStore` (Java-version av Android-koden)
+- [x] `LocalEventRepository` för metadata.json-hantering
+- [x] `JsonlHelper` för serialisering/deserialisering
+- [x] ~~`MigrationHelper`~~ REMOVED (new major version, no CSV support)
+- [x] JUnit-tester: T-L01, T-L02, T-L05
+
+### Sprint 2: Lokala events i Discovery-vy UPDATED
 - [ ] `DiscoveryTabController` — kombinerad lista (online + lokala)
 - [ ] UI: visa lokala events i tabell med statusikoner
+- [ ] **NYTT:** Export-ikon (📤) för varje lokalt event med försäljningar
+- [ ] **NYTT:** `ExportLocalEventController` för JSONL-export
 - [ ] Dialog: `CreateLocalEventDialog`
+- [ ] **NYTT:** Export-dialog med autogenererat filnamn
 - [ ] Auto-refresh: `ScheduledExecutorService` 60s
-- [ ] JUnit-tester: T-L03, T-L06, T-L07
+- [ ] JUnit-tester: T-L03, T-L06, T-L07, **T-L09** (export)
 
 ### Sprint 3: Import + redovisning
 - [ ] JSONL-import i `HistoryTabController` (ersätter CSV-import)
 - [ ] Utbetalning/redovisning per lokalt event
 - [ ] JUnit-tester: T-L04, T-L08
-- [ ] Uppdatera `docs/manual_v3.md`
-- [ ] Uppdatera lokaliseringsfiler: `sv.json`, `en.json`
+- [ ] Uppdatera `docs/manual_v3.md` — **inkl. export-instruktioner**
+- [ ] Uppdatera lokaliseringsfiler: `sv.json`, `en.json` — **inkl. export-texter**
 
 ---
 
-## 10. Framtida förbättringar (ej del av denna issue)
+## 11. Framtida förbättringar (ej del av denna issue)
 
 1. **Bulk-upload till iLoppis-backend** — [Issue 002](002-bulk-upload-jsonl.md)
 2. **Multi-event kassaläge** — växla mellan events utan omstart

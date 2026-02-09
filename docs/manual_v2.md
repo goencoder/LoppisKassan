@@ -78,21 +78,158 @@ Provision: 7582 Utbetalas säljare: 68239
 ...
  ```
 
-Importera kassa
+Exportera och importera kassor (lokalt läge)
 ----------------
 Om man har en stor loppis kan det vara bra att ha flera kassor öppna för att minska köbildning vid kassan.
-Man kan efter loppisen välja ut en av kassorna som huvudkassa och importera alla köp från de andra kassorna till huvudkassan.
-Varje kassa har en egen CSV-fil som innehåller alla köp som gjorts.
-I titelbaren på programmet står sökvägen till den aktuella kassan (*loppiskassan.csv*).
+Man kan efter loppisen välja ut en av kassorna som **huvudkassa** och importera alla köp från de andra kassorna.
+
+### Exportera från slavkassa
+
+1. Öppna det lokala evenemanget på kassadatorn.
+2. Klicka på **📤 Exportera data** i eventpanelen.
+3. Exportdialogen öppnas och visar:
+   - Antal försäljningar som kommer exporteras
+   - **Spara till:** — välj destination (standard: Skrivbordet)
+   - **Filnamn:** — föreslaget namn baserat på eventnamn och datum, t.ex. `sillfest-kassa2-2026-02-09.jsonl`
+4. Klicka på **Exportera**.
+5. Överför den exporterade `.jsonl`-filen till huvudkassan via USB-minne, AirDrop eller liknande.
+
+### Importera i huvudkassa
+
+1. Öppna det lokala evenemanget i huvudkassan.
+2. Gå till **Historik**-fliken.
+3. Klicka på **Importera kassa**.
+4. En filväljare öppnas — välj en eller flera `.jsonl`-filer från de andra kassorna.
+5. Poster som redan finns i huvudkassan hoppas automatiskt över (dubbletthantering).
+6. Klart — alla kassors försäljning finns nu samlad i huvudkassan.
+
 > **Tips!**
-> Om inte hela sökvägen syns kan du bredda fönstret för att se hela sökvägen.
-
-![Titelbar](images/titelbar_v2.png)
-
-Samla ihop alla dessa filer och importera dem en efter en i huvudkassan genom att klicka på **Importera kassa**.
-Skulle du råka importera en kassa två gånger gör det inget, programmet upptäcker dubletter vid import och kastar bort dem.
+> Du kan välja flera filer samtidigt i filväljaren.
 
 > **Tips!**
-> *Döp om filerna till loppisskassan_kassa1.csv, loppisskassan_kassa2.csv, loppisskassan_kassa3.csv... för att enklare hålla reda på vilken kassa som är vilken.*
+> Skulle du råka importera samma kassa två gånger gör det inget — programmet upptäcker dubletter och kastar bort dem automatiskt.
+
+> **Tips!**
+> *Ge varje kassa ett tydligt namn vid export, t.ex. sillfest-kassa1.jsonl, sillfest-kassa2.jsonl — så vet du vilken fil som hör till vilken kassa.*
+
+
+---
+
+Online- och lokalt läge
+================
+
+Loppiskassan har stöd för två arbetslägen:
+
+| | Online-läge (iLoppis) | Lokalt läge |
+|---|---|---|
+| **Internet krävs** | Ja | Nej |
+| **Kassakod** | Krävs (XXX-XXX) | Krävs ej |
+| **Data sparas** | På iLoppis-servern | Lokalt på datorn |
+| **Flera kassor** | Synkas automatiskt i realtid | Manuell export/import |
+| **Rekommenderas** | ✅ Alltid i första hand | ⚠️ Undantagsfall |
+
+### Rekommendation: Använd alltid online-läge
+Online-läget med iLoppis är det rekommenderade sättet att köra en loppis. Det ger:
+- Automatisk synkronisering mellan alla kassor
+- Realtidsöversikt via iLoppis webbsida
+- Ingen risk att tappa data vid datorkrasch
+- Enkel hantering av säljare, utbetalningar och redovisning
+
+**Lokalt läge ska bara användas i undantagsfall**, exempelvis:
+- Loppisen hålls i en lokal helt utan internetåtkomst
+- Tillfälligt nätverksavbrott under pågående loppis
+- Testning och övning innan en riktig loppis
+
+---
+
+Arbeta lokalt utan internet
+================
+
+### 1. Skapa ett lokalt evenemang
+
+1. Gå till fliken **Välj Loppis**.
+2. Klicka på **Skapa lokalt evenemang**.
+3. Fyll i uppgifterna:
+   - **Namn** (obligatoriskt) — t.ex. "Sillfest kassa 1"
+   - **Beskrivning** — valfri beskrivning
+   - **Gatuadress** och **Stad** — var loppisen hålls
+   - **Fördelning** — ställ in hur intäkterna fördelas mellan arrangör, säljare och iLoppis (måste summera till 100%)
+4. Klicka på **Skapa evenemang**.
+5. Det nya evenemanget väljs automatiskt i listan.
+6. Klicka på **Öppna kassa** — ingen kassakod behövs för lokala evenemang.
+
+### 2. Registrera försäljning
+
+Kassavyn fungerar likadant oavsett om man kör online eller lokalt. Se avsnittet *Kassavyn* ovan.
+
+### 3. Hantera flera kassor
+
+Om du behöver flera kassor (t.ex. vid en stor loppis):
+
+1. **Förbered före loppisen:**
+   - Installera Loppiskassan på varje kassadator.
+   - Skapa ett lokalt evenemang på varje dator.
+   - Ge varje kassa ett tydligt namn, t.ex. "Sillfest kassa 1", "Sillfest kassa 2".
+
+2. **Under loppisen:**
+   - Varje kassa registrerar sina köp oberoende av de andra.
+   - Ingen internetanslutning behövs.
+
+3. **Efter loppisen — samla ihop kassorna:**
+
+   **På varje slavkassa:**
+   - Klicka på **📤 Exportera data** (syns i eventpanelen för lokala evenemang med försäljningar).
+   - Välj en mapp och filnamn (föreslaget: `{eventnamn}-{datum}.jsonl`).
+   - Överför filen till huvudkassan via USB-minne, AirDrop eller liknande.
+
+   **På huvudkassan:**
+   - Gå till **Historik**-fliken.
+   - Klicka på **Importera kassa**.
+   - Välj de exporterade `.jsonl`-filerna.
+   - Dubbletter hoppas automatiskt över — det gör inget om du importerar samma kassa flera gånger.
+
+4. **Gör utbetalningar:**
+   - All data finns nu samlad i huvudkassan.
+   - Filtrera på säljnummer i Historik-vyn och gör utbetalningar som vanligt.
+
+> **Tips!**
+> En 📤-ikon visas också i evenemangslistan bredvid lokala evenemang som har försäljningsdata. Du kan klicka direkt på den för snabb export.
+
+---
+
+Ladda upp lokal data till iLoppis
+================
+
+Om du råkat köra en loppis i lokalt läge men vill att datan ska synkroniseras till iLoppis i efterhand, kan du ladda upp den.
+
+### Förutsättningar
+- Du har ett lokalt evenemang med försäljningsdata.
+- Det finns ett motsvarande evenemang skapat i iLoppis (online).
+- Du har en giltig kassakod (XXX-XXX) för online-evenemanget.
+- Du har internetanslutning.
+
+### Steg-för-steg
+
+1. Öppna det lokala evenemanget i Loppiskassan.
+2. Klicka på **☁️ Ladda upp** i eventpanelen.
+3. Dialogen **"Ladda upp till iLoppis"** öppnas med:
+   - **Sökfält** — skriv för att filtrera bland backend-evenemang (söker på namn och stad).
+   - **Backend-event** — välj det iLoppis-evenemang som datan ska laddas upp till.
+   - **Kassakod (XXX-XXX)** — ange kassakoden för online-evenemanget.
+   - **Förhandsgranskning** — visar antal artiklar, köp och total summa som kommer laddas upp.
+4. Klicka på **Ladda upp**.
+5. Uppladdningen körs i bakgrunden med en progressindikator.
+6. En sammanfattning visas:
+   - ✅ **Accepterade** — artiklar som laddades upp framgångsrikt.
+   - ⚠️ **Dubbletter** — artiklar som redan fanns på servern (säkert att ignorera).
+   - ❌ **Misslyckade** — artiklar som inte kunde laddas upp.
+
+### Idempotent uppladdning
+Du kan tryggt köra uppladdningen flera gånger. Artiklar som redan laddats upp markeras lokalt och skickas inte igen. Dubbletter avvisas av servern med felkoden `DUPLICATE_RECEIPT`, vilket inte räknas som ett fel.
+
+### Vid problem
+- **"Kassakoden är felaktig"** — kontrollera att du angett rätt kassakod för rätt evenemang.
+- **"Du har inte behörighet"** — kassakoden har inte rättigheter till det valda evenemanget.
+- **"Nätverksfel"** — kontrollera internetanslutningen och försök igen.
 
 

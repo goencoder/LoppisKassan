@@ -10,7 +10,7 @@ import javax.swing.*;
  * Mode behavior:
  * <ul>
  *   <li><b>Online:</b> may validate sellers against the server and offer Swish checkout.</li>
- *   <li><b>Offline:</b> should skip remote validations and disable Swish, allowing cash-only flow.</li>
+ *   <li><b>Local:</b> should skip remote validations and disable Swish, allowing cash-only flow.</li>
  * </ul>
  */
 public interface CashierControllerInterface {
@@ -23,7 +23,7 @@ public interface CashierControllerInterface {
 
     /**
      * Wire the Swish checkout action to the provided button.
-     * Implementations should disable or no-op this action in offline mode.
+     * Implementations should disable or no-op this action in local mode.
      *
      * @param checkoutSwishButton Swing button to receive the action
      */
@@ -65,7 +65,7 @@ public interface CashierControllerInterface {
      * Determine whether a seller is approved to sell.
      * <p>
      * <b>Online:</b> typically verified via server lookup.
-     * <b>Offline:</b> rely on locally cached state or default to permissive rules.
+     * <b>Local:</b> rely on locally cached state or default to permissive rules.
      *
      * @param sellerId numeric seller identifier
      * @return {@code true} if approved, otherwise {@code false}
