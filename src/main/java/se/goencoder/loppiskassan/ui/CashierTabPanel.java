@@ -23,7 +23,7 @@ import static se.goencoder.loppiskassan.ui.UserInterface.createButton;
  * Represents the cashier tab in the application, allowing users to input transactions,
  * manage purchases, and perform checkout operations.
  */
-public class CashierTabPanel extends JPanel implements CashierPanelInterface, LocalizationAware {
+public class CashierTabPanel extends JPanel implements CashierPanelInterface, LocalizationAware, SelectabableTab {
 
     // Components for the cashier table and input fields
     private JTable cashierTable;
@@ -223,6 +223,12 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     }
 
     @Override
+    public void selected() {
+        // Called when tab becomes active - focus seller field
+        SwingUtilities.invokeLater(this::setFocusToSellerField);
+    }
+
+    @Override
     public void removeNotify() {
         LocalizationManager.removeListener(this::reloadTexts);
         super.removeNotify();
@@ -348,10 +354,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         setFocusToSellerField();
     }
 
-    @Override
-    public void selected() {
-        // No-op for this panel
-    }
+
 
     @Override
     public Component getComponent() {

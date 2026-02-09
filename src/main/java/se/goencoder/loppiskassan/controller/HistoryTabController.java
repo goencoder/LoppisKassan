@@ -19,7 +19,7 @@ import se.goencoder.loppiskassan.utils.FilterUtils;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
-import javax.swing.SwingUtilities;
+import se.goencoder.loppiskassan.service.UIThreadingService;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -99,7 +99,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             state.setAllItems(allHistoryItems);
             state.setDistinctSellers(distinctSellers);
             
-            SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
+            UIThreadingService.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
         } catch (IOException e) {
             String pathInfo = historyPath == null ? e.getMessage() : historyPath.toString();
             Popup.FATAL.showAndWait(
@@ -224,7 +224,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void updateDistinctSellers() {
         Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
-        SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
+            UIThreadingService.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
     }
 
     private void payout() {

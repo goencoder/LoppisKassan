@@ -17,7 +17,6 @@ import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.storage.LocalEvent;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
 
-import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;

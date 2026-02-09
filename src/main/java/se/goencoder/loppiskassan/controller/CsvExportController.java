@@ -2,12 +2,13 @@ package se.goencoder.loppiskassan.controller;
 
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.service.DialogService;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.dialogs.ExportDataDialog;
 
-import java.awt.Frame;
+import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -82,14 +83,8 @@ public class CsvExportController {
     }
 
     private static File showExportDialog(String defaultFileName, int itemCount) {
-        Frame parentFrame = null;
-        for (Frame frame : Frame.getFrames()) {
-            if (frame.isDisplayable() && frame.isVisible()) {
-                parentFrame = frame;
-                break;
-            }
-        }
-        ExportDataDialog dialog = new ExportDataDialog(parentFrame, defaultFileName, itemCount, ".csv");
+        Component parentComponent = DialogService.getDialogParent();
+        ExportDataDialog dialog = new ExportDataDialog(parentComponent, defaultFileName, itemCount, ".csv");
         return dialog.showDialog();
     }
 

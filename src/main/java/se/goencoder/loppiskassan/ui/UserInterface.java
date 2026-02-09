@@ -43,6 +43,7 @@ public class UserInterface extends JFrame implements LocalizationAware {
 
     public UserInterface() {
         setLayout(new BorderLayout());
+        setAppIcon();
         tabPane = new JTabbedPane();
         initializeTabs();
         LocalizationManager.addListener(this::reloadTexts);
@@ -112,6 +113,24 @@ public class UserInterface extends JFrame implements LocalizationAware {
     public void removeNotify() {
         LocalizationManager.removeListener(this::reloadTexts);
         super.removeNotify();
+    }
+
+    private void setAppIcon() {
+        // Reuse the icon already loaded in Main (for dock icon), or load fresh
+        var iconImage = se.goencoder.loppiskassan.Main.getAppIconImage();
+        if (iconImage == null) {
+            try {
+                var iconUrl = getClass().getClassLoader().getResource("images/iloppis-icon.png");
+                if (iconUrl != null) {
+                    iconImage = javax.imageio.ImageIO.read(iconUrl);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to load app icon: " + e.getMessage());
+            }
+        }
+        if (iconImage != null) {
+            setIconImage(iconImage);
+        }
     }
 
     private void initializeTabs() {

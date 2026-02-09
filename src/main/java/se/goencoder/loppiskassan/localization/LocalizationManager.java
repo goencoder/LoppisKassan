@@ -24,12 +24,11 @@ public final class LocalizationManager {
 
     /**
      * Initialize the localization system. Should be called once at application startup.
+     * Always defaults to Swedish (sv) as the primary language.
      */
     public static void initialize() {
-        // Ensure language is set to default if not already configured
-        if (ConfigurationStore.LANGUAGE_STR.get() == null) {
-            ConfigurationStore.LANGUAGE_STR.set("sv");
-        }
+        // Always start with Swedish as the default language
+        ConfigurationStore.LANGUAGE_STR.set("sv");
     }
 
     /**

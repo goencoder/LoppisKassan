@@ -53,10 +53,10 @@ public class ModeSelectionDialog extends JDialog {
         titleLabel.setText(LocalizationManager.tr("splash.title"));
         subtitleLabel.setText(LocalizationManager.tr("splash.subtitle"));
         localTitleLabel.setText(LocalizationManager.tr("splash.local"));
-        localDescLabel.setText("<html><div style='text-align:center; width:140px;'>"
+        localDescLabel.setText("<html><div style='text-align:center; max-width:215px; word-wrap:break-word; padding:0 4px;'>"
                 + LocalizationManager.tr("splash.local.desc") + "</div></html>");
         iloppisTitleLabel.setText(LocalizationManager.tr("splash.iloppis"));
-        iloppisDescLabel.setText("<html><div style='text-align:center; width:140px;'>"
+        iloppisDescLabel.setText("<html><div style='text-align:center; max-width:215px; word-wrap:break-word; padding:0 4px;'>"
                 + LocalizationManager.tr("splash.iloppis.desc") + "</div></html>");
         pack();
     }
@@ -141,14 +141,14 @@ public class ModeSelectionDialog extends JDialog {
     private static JButton createModeButton(Icon icon, String label, String description) {
         JButton button = new JButton();
         button.setLayout(new BoxLayout(button, BoxLayout.Y_AXIS));
-        button.setPreferredSize(new Dimension(200, 180));
+        button.setPreferredSize(new Dimension(240, 240));
         button.setFocusPainted(false);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         // Icon
         JLabel iconLabel = new JLabel(icon);
         iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        iconLabel.setBorder(new EmptyBorder(16, 0, 8, 0));
+        iconLabel.setBorder(new EmptyBorder(20, 0, 12, 0));
 
         // Title
         JLabel titleLabel = new JLabel(label);
@@ -156,12 +156,12 @@ public class ModeSelectionDialog extends JDialog {
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Description
-        JLabel descLabel = new JLabel("<html><div style='text-align:center; width:140px;'>"
+        JLabel descLabel = new JLabel("<html><div style='text-align:center; max-width:215px; word-wrap:break-word; padding:0 4px;'>"
                 + description + "</div></html>");
         descLabel.setFont(descLabel.getFont().deriveFont(Font.PLAIN, 11f));
         descLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
         descLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        descLabel.setBorder(new EmptyBorder(4, 8, 12, 8));
+        descLabel.setBorder(new EmptyBorder(4, 12, 16, 12));
 
         button.add(iconLabel);
         button.add(titleLabel);

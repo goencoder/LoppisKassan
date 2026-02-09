@@ -10,6 +10,7 @@ import se.goencoder.loppiskassan.ui.UserInterface;
 import se.goencoder.loppiskassan.ui.Theme;
 import se.goencoder.loppiskassan.ui.dialogs.ModeSelectionDialog;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.io.IOException;
 import java.util.logging.*;
@@ -24,6 +25,7 @@ public class Main {
      */
     private static void createAndShowGUI() {
         Theme.install(); // Install look & feel before creating components
+        setDockIcon(); // Set macOS dock icon before any windows appear
 
         // Show splash screen to select operating mode
         ModeSelectionDialog splash = new ModeSelectionDialog();
@@ -44,6 +46,40 @@ public class Main {
         frame.setVisible(true);
     }
 
+
+    /**
+     * Sets the macOS dock icon and stores the image for JFrame icon use.
+     * Must be called before any window is shown so the dock icon is correct from the start.
+     */
+    static java.awt.Image appIconImage;
+
+    private static void setDockIcon() {
+        try {
+            var iconUrl = Main.class.getClassLoader().getResource("images/iloppis-icon.png");
+            if (iconUrl == null) {
+                System.err.println("Icon resource not found: images/iloppis-icon.png");
+                return;
+            }
+            appIconImage = ImageIO.read(iconUrl);
+
+            // Set macOS dock icon
+            if (java.awt.Taskbar.isTaskbarSupported()) {
+                var taskbar = java.awt.Taskbar.getTaskbar();
+                if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+                    taskbar.setIconImage(appIconImage);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to set dock icon: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Returns the loaded app icon, or null if not yet loaded.
+     */
+    public static java.awt.Image getAppIconImage() {
+        return appIconImage;
+    }
 
     public static void createLogger() throws IOException {
         if (loggerCreated) {
