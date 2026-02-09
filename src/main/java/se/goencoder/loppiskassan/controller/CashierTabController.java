@@ -57,11 +57,22 @@ public class CashierTabController implements CashierControllerInterface {
     private final List<V1SoldItem> items = new ArrayList<>();
     private final CashierState state = new CashierState();
     private CashierPanelInterface view;
+    private se.goencoder.loppiskassan.service.EventService eventService;
 
     private CashierTabController() {}
 
     public static CashierControllerInterface getInstance() {
         return instance;
+    }
+
+    /**
+     * Get the event service, lazily initializing if needed.
+     */
+    private se.goencoder.loppiskassan.service.EventService getEventService() {
+        if (eventService == null) {
+            eventService = se.goencoder.loppiskassan.service.EventServiceFactory.getEventService();
+        }
+        return eventService;
     }
 
     /**
@@ -97,7 +108,7 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     private String logCtx(int sellerId) {
-        boolean online = !ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        boolean online = !getEventService().isLocal();
         String eventId = ConfigurationStore.EVENT_ID_STR.get();
         return String.format("event=%s seller=%d mode=%s", eventId, sellerId, online ? "online" : "local");
     }
@@ -163,7 +174,7 @@ public class CashierTabController implements CashierControllerInterface {
 
     // --- Checkout process ---
     public void checkout(V1PaymentMethod paymentMethod) {
-        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        boolean isLocal = getEventService().isLocal();
 
         LocalDateTime now = LocalDateTime.now();
         // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
@@ -225,7 +236,7 @@ public class CashierTabController implements CashierControllerInterface {
         state.reset();  // Reset state to initial values
 
         // 3) If we are in degraded mode, spawn a background thread to attempt a catch-up
-        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        boolean isLocal = getEventService().isLocal();
         if (!isLocal && degradedMode) {
             new Thread(() -> {
                 boolean success = pushLocalUnsyncedRecords();

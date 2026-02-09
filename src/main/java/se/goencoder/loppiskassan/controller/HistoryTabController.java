@@ -47,11 +47,22 @@ public class HistoryTabController implements HistoryControllerInterface {
     private HistoryPanelInterface view;
     private List<V1SoldItem> allHistoryItems;
     private final HistoryState state = new HistoryState();
+    private se.goencoder.loppiskassan.service.EventService eventService;
 
     private HistoryTabController() {}
 
     public static HistoryTabController getInstance() {
         return instance;
+    }
+
+    /**
+     * Get the event service, lazily initializing if needed.
+     */
+    private se.goencoder.loppiskassan.service.EventService getEventService() {
+        if (eventService == null) {
+            eventService = se.goencoder.loppiskassan.service.EventServiceFactory.getEventService();
+        }
+        return eventService;
     }
 
     /**
@@ -223,7 +234,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
         filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
         try {
-            if (!ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+            if (!getEventService().isLocal()) {
                 payoutWeb();
             }
             saveHistoryToFile();
@@ -279,7 +290,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void handleImportAction() {
-        if (ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+        if (getEventService().isLocal()) {
             importData();
         } else {
             ProgressDialog.runTask(
@@ -584,7 +595,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void updateImportButton() {
         // Update the import button text and enable it based on the current mode.
-        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        boolean isLocal = getEventService().isLocal();
         if (isLocal) {
             view.setImportButtonText(LocalizationManager.tr(BUTTON_IMPORT));
         } else {
