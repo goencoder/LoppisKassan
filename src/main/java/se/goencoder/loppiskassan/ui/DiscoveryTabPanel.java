@@ -2,7 +2,7 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.iloppis.model.V1Event;
 import se.goencoder.iloppis.model.V1RevenueSplit;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.controller.DiscoveryControllerInterface;
 import se.goencoder.loppiskassan.controller.DiscoveryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -100,7 +100,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
     private void initializeState() {
-        String savedEventId = ConfigurationStore.EVENT_ID_STR.get();
+        String savedEventId = AppModeManager.getEventId();
         if (savedEventId == null || savedEventId.isEmpty()) {
             rootCardLayout.show(rootCardPanel, "discoveryMode");
         }
@@ -584,9 +584,20 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         activeEventNameLabel.setText(event.getName());
         activeEventDescLabel.setText(event.getDescription());
         activeEventAddressLabel.setText(event.getAddressStreet() + ", " + event.getAddressCity());
-        marketOwnerSplitLabel.setText(String.format(Locale.US, "%.0f", split.getMarketOwnerPercentage()));
-        vendorSplitLabel.setText(String.format(Locale.US, "%.0f", split.getVendorPercentage()));
-        platformSplitLabel.setText(String.format(Locale.US, "%.0f", split.getPlatformProviderPercentage()));
+
+        float market = 0f;
+        float vendor = 0f;
+        float platform = 0f;
+        if (split != null) {
+            market = split.getMarketOwnerPercentage() == null ? 0f : split.getMarketOwnerPercentage();
+            vendor = split.getVendorPercentage() == null ? 0f : split.getVendorPercentage();
+            platform = split.getPlatformProviderPercentage() == null ? 0f : split.getPlatformProviderPercentage();
+        }
+
+        marketOwnerSplitLabel.setText(String.format(Locale.US, "%.0f", market));
+        vendorSplitLabel.setText(String.format(Locale.US, "%.0f", vendor));
+        platformSplitLabel.setText(String.format(Locale.US, "%.0f", platform));
+
         rootCardLayout.show(rootCardPanel, "activeEvent");
     }
 

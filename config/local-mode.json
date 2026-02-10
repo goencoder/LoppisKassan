@@ -1,0 +1,5 @@
+{
+  "eventId": "local-1985b6ce-b732-49f2-a5af-d2ad4848968c",
+  "eventData": "{\n  \"id\": \"local-d9651ec2-f693-442e-b493-ba85cbfc1d29\",\n  \"name\": \"Lottas Loppis\",\n  \"description\": \"Lotta säljer ut allt hon äger och har, innan dagen är slut är hon helt bar.\",\n  \"startTime\": \"2026-02-10T06:07:31.883469Z\",\n  \"addressStreet\": \"Stora lundgatan 12\",\n  \"addressCity\": \"Lugnet\",\n  \"lifecycleState\": \"EVENT_LIFECYCLE_STATE_UNSPECIFIED\"\n}",
+  "revenueSplit": "{\n  \"vendorPercentage\": 85.0,\n  \"marketOwnerPercentage\": 15.0,\n  \"platformProviderPercentage\": 0.0,\n  \"charityPercentage\": 0.0\n}"
+}

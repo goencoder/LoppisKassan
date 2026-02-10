@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.V1SoldItem;
 
+import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +14,8 @@ public final class SoldItemsTableModel extends AbstractTableModel {
     /** Column indices (model indices) for safer cross-file use. */
     public static final int COLUMN_SELLER  = 0;
     public static final int COLUMN_PRICE   = 1;
-    public static final int COLUMN_ITEM_ID = 2;
+    public static final int COLUMN_DELETE  = 2;
+    public static final int COLUMN_ITEM_ID = 3;
 
     private String[] columns;
     private final List<V1SoldItem> items = new ArrayList<>();
@@ -46,6 +48,7 @@ public final class SoldItemsTableModel extends AbstractTableModel {
     public Class<?> getColumnClass(int columnIndex) {
         return switch (columnIndex) {
             case COLUMN_SELLER, COLUMN_PRICE -> Integer.class;
+            case COLUMN_DELETE -> JButton.class;
             default -> String.class;
         };
     }
@@ -56,6 +59,7 @@ public final class SoldItemsTableModel extends AbstractTableModel {
         return switch (columnIndex) {
             case COLUMN_SELLER  -> item.getSeller();
             case COLUMN_PRICE   -> item.getPrice();
+            case COLUMN_DELETE  -> "✕"; // Red X icon
             case COLUMN_ITEM_ID -> item.getItemId();
             default             -> null;
         };

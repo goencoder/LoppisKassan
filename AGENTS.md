@@ -13,6 +13,9 @@
 - No JPMS modules; plain classpath build.
 - Build tool: Maven 3.9+.
 
+## Decision rule (NO ASSUMPTIONS)
+- Always ask the user when information is missing or uncertain; never introduce defaults, fallbacks, or inferred values that could be wrong. If data is absent or unclear, fail fast and surface the ambiguity instead of guessing.
+
 ## Dependencies
 - Install local API client from `lib/openapi-java-client-0.0.4.jar` using the sidecar POM:
   `make install-client`
@@ -35,6 +38,39 @@ This is a Java Swing desktop application for managing a flea market cash registe
   2. Tab or Enter moves to price field.
   3. Enter submits prices and resets fields.
   4. Cursor returns to seller number field.
+
+## UI Architecture (Model/View/Controller)
+- Views are Swing panels implementing `*PanelInterface` in `se.goencoder.loppiskassan.ui`.
+- Controllers live in `se.goencoder.loppiskassan.controller` and own logic, validation, and I/O.
+- Views call controller methods on user actions; controllers update views through their interfaces.
+- Keep business logic and storage out of UI classes; use services/interactors where available.
+
+## UI Design System (Issue 003 – Modern UI Redesign)
+- Use `AppButton` for all buttons. Do not create ad‑hoc `JButton` styles.
+- Use `AppColors` for all colors. No raw hex values or named constants like `YELLOW`.
+- Prefer cards (plain `JPanel` + rounded border + padding) over `TitledBorder`/GroupBox.
+- Spacing tokens: `xs=4`, `sm=8`, `md=16`, `lg=24`, `xl=32` px.
+- Typography: 20px titles, 16px section headers, 13–14px body, 11px help text, 28–36px totals.
+- Modern light UI across the app. Avoid gray form fields or heavy borders.
+- Date/time must use `SwedishDateFormatter` (never ISO strings in UI).
+- Icons and custom painting should use `AppColors` and `RenderingHints` for crisp HiDPI output.
+- MigLayout is optional and requires explicit approval (new dependency).
+
+## Local vs iLoppis Modes (Behavioral Differences)
+- Mode is driven by `AppModeManager` and the selected event.
+- Local mode:
+  - Events come from `LocalEventRepository` (disk, JSONL per event).
+  - Register opens without cashier code.
+  - Seller validation is skipped (all sellers accepted).
+  - Sales persist to local JSONL immediately.
+  - Export/Import and Archive views are visible.
+  - Web sync actions are hidden/disabled.
+- iLoppis mode:
+  - Events come from backend API.
+  - Register requires a valid cashier code.
+  - Seller validation is enforced via API.
+  - Sales upload to API (with local fallback on network errors).
+  - Export/Import and Archive are hidden.
 
 ## Configuration
 - Persist UI language and other settings using `ConfigurationStore`.

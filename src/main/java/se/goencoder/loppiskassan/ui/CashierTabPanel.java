@@ -34,6 +34,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private JPanel emptyStatePanel;
     private JScrollPane tableScrollPane;
     private JPanel cartPanel; // Varukorg-container
+    private SnackbarPanel snackbar; // Success notification overlay
 
     // Buttons for checkout actions
     private JButton cancelCheckoutButton, checkoutCashButton, checkoutSwishButton;
@@ -50,6 +51,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         this.controller = controller;
         setLayout(new BorderLayout());
         setBackground(AppColors.WHITE);
+
+        // Initialize snackbar
+        snackbar = new SnackbarPanel();
 
         // Initialize and add components
         initializeTable(); // Table for displaying transaction details
@@ -77,9 +81,30 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         centerSplit.setDividerSize(1);
         centerSplit.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
 
-        // Add components to the panel
+        // Create main content panel with overlay for snackbar
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.add(centerSplit, BorderLayout.CENTER);
+        
+        // Overlay panel for snackbar (positioned at bottom of content)
+        JLayeredPane layeredPane = new JLayeredPane();
+        layeredPane.setLayout(new OverlayLayout(layeredPane));
+        
+        // Content layer
+        JPanel baseLayer = new JPanel(new BorderLayout());
+        baseLayer.add(contentPanel, BorderLayout.CENTER);
+        baseLayer.setOpaque(false);
+        
+        // Snackbar layer (aligned to bottom)
+        JPanel snackbarLayer = new JPanel(new BorderLayout());
+        snackbarLayer.setOpaque(false);
+        snackbarLayer.add(snackbar, BorderLayout.SOUTH);
+        
+        layeredPane.add(snackbarLayer, JLayeredPane.POPUP_LAYER);
+        layeredPane.add(baseLayer, JLayeredPane.DEFAULT_LAYER);
+
+        // Add components to the main panel
         add(inputPanel, BorderLayout.NORTH); // Input panel at the top
-        add(centerSplit, BorderLayout.CENTER); // Split pane in center
+        add(layeredPane, BorderLayout.CENTER); // Layered pane with content and snackbar
         add(buttonPanel, BorderLayout.SOUTH); // Button panel at the bottom
 
         // Register view and set up local action listeners
@@ -102,6 +127,25 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         checkoutCashButton.addActionListener(e -> controller.onCheckout(V1PaymentMethod.Kontant));
         cancelCheckoutButton.addActionListener(e -> controller.onCancelCheckout());
         pricesField.addActionListener(e -> controller.onPricesSubmitted());
+        
+        // Register global keyboard shortcuts (after root pane is available)
+        SwingUtilities.invokeLater(this::registerKeyboardShortcuts);
+    }
+    
+    /**
+     * Registers global keyboard shortcuts for cashier actions.
+     * Esc = Cancel
+     */
+    private void registerKeyboardShortcuts() {
+        JRootPane rootPane = getRootPane();
+        if (rootPane == null) return;
+        
+        // Esc = Cancel checkout (global)
+        rootPane.registerKeyboardAction(
+            e -> controller.onCancelCheckout(),
+            KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+            JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
     }
 
     /**
@@ -112,23 +156,55 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         String[] columnNames = {
                 LocalizationManager.tr("cashier.table.seller"),
                 LocalizationManager.tr("cashier.table.price"),
+            LocalizationManager.tr("cashier.table.delete"),
                 LocalizationManager.tr("cashier.table.item_id")
         };
         SoldItemsTableModel tableModel = new SoldItemsTableModel(columnNames);
         cashierTable = new JTable(tableModel);
         cashierTable.getColumnModel().getColumn(1).setCellRenderer(Renderers.rightAligned());
-        cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2));
+        cashierTable.getColumnModel().getColumn(2).setCellRenderer(Renderers.deleteButton());
+        cashierTable.getColumnModel().getColumn(2).setPreferredWidth(64);
+        cashierTable.getColumnModel().getColumn(2).setMaxWidth(72);
+        cashierTable.getColumnModel().getColumn(2).setMinWidth(56);
+        cashierTable.getColumnModel().getColumn(2).setResizable(false);
+        cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(3)); // Hide ITEM_ID column
 
         tableModel.addTableModelListener(e -> updateSummary());
+
+        // Mouse listener for delete button clicks
+        cashierTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = cashierTable.rowAtPoint(e.getPoint());
+                int col = cashierTable.columnAtPoint(e.getPoint());
+                
+                // Check if delete column was clicked (model column 2)
+                if (row >= 0 && col == 2) {
+                    String itemId = tableModel.getValueAt(row, SoldItemsTableModel.COLUMN_ITEM_ID).toString();
+                    controller.deleteItem(itemId);
+                }
+            }
+        });
 
         cashierTable.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                int row = cashierTable.getSelectedRow();
+                
                 if (e.getKeyCode() == KeyEvent.VK_DELETE) {
-                    int row = cashierTable.getSelectedRow();
+                    // Delete selected row
                     if (row >= 0) {
                         String itemId = tableModel.getValueAt(row, SoldItemsTableModel.COLUMN_ITEM_ID).toString();
                         controller.deleteItem(itemId);
+                    }
+                } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+                    // Backspace removes last item if no selection
+                    if (row < 0) {
+                        int rowCount = cashierTable.getRowCount();
+                        if (rowCount > 0) {
+                            String itemId = tableModel.getValueAt(rowCount - 1, SoldItemsTableModel.COLUMN_ITEM_ID).toString();
+                            controller.deleteItem(itemId);
+                        }
                     }
                 }
             }
@@ -184,7 +260,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         // ===== INSTRUCTIONS ROW =====
         JPanel instructionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
         instructionsPanel.setOpaque(false);
-        JLabel instructionsLabel = new JLabel("Enter = Lägg till   Delete = Ta bort   Esc = Avbryt   F2 = Swish   F3 = Kontant");
+        JLabel instructionsLabel = new JLabel("Enter = Lägg till   Delete = Ta bort   Esc = Avbryt");
         instructionsLabel.setFont(instructionsLabel.getFont().deriveFont(Font.PLAIN, 11f));
         instructionsLabel.setForeground(AppColors.TEXT_MUTED);
         instructionsPanel.add(instructionsLabel);
@@ -218,17 +294,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         text2Label.setForeground(AppColors.TEXT_MUTED);
         text2Label.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        JLabel shortcutsLabel = new JLabel("F2 = Swish  •  F3 = Kontant");
-        shortcutsLabel.setFont(shortcutsLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        shortcutsLabel.setForeground(AppColors.TEXT_MUTED);
-        shortcutsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        shortcutsLabel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
-        
         content.add(iconLabel);
         content.add(Box.createVerticalStrut(16));
         content.add(textLabel);
         content.add(text2Label);
-        content.add(shortcutsLabel);
         
         panel.add(content);
         return panel;
@@ -346,10 +415,10 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private JPanel initializeButtonPanel() {
         JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 1, 0));
         buttonPanel.setBackground(AppColors.WHITE);
-        buttonPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.BORDER));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0)); // Padding without border
 
         // Initialize buttons
-        cancelCheckoutButton = AppButton.create("", AppButton.Variant.GHOST, AppButton.Size.XLARGE);
+        cancelCheckoutButton = AppButton.create("", AppButton.Variant.DANGER, AppButton.Size.XLARGE);
 
         checkoutCashButton = AppButton.create("", AppButton.Variant.SECONDARY, AppButton.Size.XLARGE);
 
@@ -389,17 +458,28 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         changeLabel.setText(LocalizationManager.tr("cashier.change"));
 
         cancelCheckoutButton.setText(LocalizationManager.tr("cashier.cancel_purchase"));
-        checkoutCashButton.setText(LocalizationManager.tr("cashier.cash") + " (F3)");
-        checkoutSwishButton.setText(LocalizationManager.tr("cashier.swish") + " (F2)");
+        checkoutCashButton.setText(LocalizationManager.tr("cashier.cash"));
+        checkoutSwishButton.setText(LocalizationManager.tr("cashier.swish"));
 
         SoldItemsTableModel model = getTableModel();
         model.setColumnNames(new String[]{
                 LocalizationManager.tr("cashier.table.seller"),
                 LocalizationManager.tr("cashier.table.price"),
+                LocalizationManager.tr("cashier.table.delete"),
                 LocalizationManager.tr("cashier.table.item_id")
         });
-        if (cashierTable.getColumnModel().getColumnCount() > 2) {
-            cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(2));
+
+        // Re-apply column renderers and hide the internal item id column after locale changes
+        if (cashierTable.getColumnModel().getColumnCount() >= 3) {
+            cashierTable.getColumnModel().getColumn(1).setCellRenderer(Renderers.rightAligned());
+            cashierTable.getColumnModel().getColumn(2).setCellRenderer(Renderers.deleteButton());
+            cashierTable.getColumnModel().getColumn(2).setPreferredWidth(64);
+            cashierTable.getColumnModel().getColumn(2).setMaxWidth(72);
+            cashierTable.getColumnModel().getColumn(2).setMinWidth(56);
+            cashierTable.getColumnModel().getColumn(2).setResizable(false);
+        }
+        if (cashierTable.getColumnModel().getColumnCount() > 3) {
+            cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(3));
         }
         updateSummary();
     }
@@ -480,8 +560,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
             return new HashMap<>();
         }
 
-        if (!controller.isSellerApproved(sellerId)) {
-            Popup.warn("cashier.seller_not_approved");
+        if (!controller.validateSeller(sellerId)) {
+            Popup.warn(controller.getSellerValidationErrorKey());
             return new HashMap<>();
         }
 
@@ -516,7 +596,18 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         setFocusToSellerField();
     }
 
-
+    @Override
+    public void showCheckoutSuccess(V1PaymentMethod paymentMethod, int totalAmount) {
+        Locale locale = new Locale(LocalizationManager.getLanguage());
+        String paymentText = paymentMethod == V1PaymentMethod.Swish ? 
+            LocalizationManager.tr("payment.swish") : 
+            LocalizationManager.tr("payment.cash");
+        String amountText = Money.formatAmount(totalAmount, locale, "");
+        String message = String.format("✔ Köp registrerat (%s, %s)", paymentText, amountText);
+        
+        // Show snackbar without undo for now (can be enhanced later)
+        snackbar.show(message);
+    }
 
     @Override
     public Component getComponent() {

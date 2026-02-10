@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.service;
 
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 
 /**
  * Factory for creating the appropriate EventService implementation
@@ -16,7 +16,7 @@ public class EventServiceFactory {
      * @return LocalEventService if in local mode, OnlineEventService otherwise
      */
     public static EventService getEventService() {
-        boolean isLocal = ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        boolean isLocal = AppModeManager.isLocalMode();
         
         if (isLocal) {
             if (localService == null) {
@@ -36,7 +36,7 @@ public class EventServiceFactory {
      * @return true if local mode
      */
     public static boolean isLocalMode() {
-        return ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
+        return AppModeManager.isLocalMode();
     }
 
     /**

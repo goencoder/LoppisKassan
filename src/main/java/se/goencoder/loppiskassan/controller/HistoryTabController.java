@@ -3,9 +3,11 @@ package se.goencoder.loppiskassan.controller;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.V1SoldItem;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.V1PaymentMethod;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
+import se.goencoder.loppiskassan.config.LocalConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.model.history.HistoryState;
-import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.records.FormatHelper;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
@@ -14,14 +16,22 @@ import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.ProgressDialog;
+import se.goencoder.loppiskassan.ui.dialogs.DestructiveConfirmationDialog;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.FilterUtils;
+import se.goencoder.loppiskassan.utils.FilterUtils.FilterResult;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import se.goencoder.loppiskassan.service.UIThreadingService;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
@@ -90,7 +100,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         java.nio.file.Path historyPath = null;
         try {
             // Load the history from the local JSONL file and populate the seller dropdown with distinct sellers.
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            String eventId = AppModeManager.getEventId();
             if (eventId == null || eventId.isBlank()) {
                 allHistoryItems = new ArrayList<>();
             } else {
@@ -118,18 +128,20 @@ public class HistoryTabController implements HistoryControllerInterface {
         updateImportButton();
 
         // Apply the current filters and update the view accordingly.
-        List<V1SoldItem> filteredItems = applyFilters();
+        FilterResult filterResult = applyFiltersWithResult();
+        List<V1SoldItem> filteredItems = filterResult.items();
 
         // Update state with filtered results
         state.setFilteredItems(filteredItems);
         state.setItemCount(filteredItems.size());
-        int sum = (int) filteredItems.stream().mapToDouble(V1SoldItem::getPrice).sum();
+        int sum = filterResult.totalSum();
         state.setTotalSum(sum);
 
-        boolean enablePayout = isPayoutEnabled(filteredItems);
+        boolean isLocal = AppModeManager.isLocalMode();
+        boolean enablePayout = isLocal && isPayoutEnabled(filteredItems);
         state.setPayoutEnabled(enablePayout);
 
-        boolean enableArchive = isArchiveEnabled();
+        boolean enableArchive = isLocal && isArchiveEnabled();
         state.setArchiveEnabled(enableArchive);
 
         // Update view (keeping existing behavior)
@@ -145,16 +157,16 @@ public class HistoryTabController implements HistoryControllerInterface {
         switch (actionCommand) {
             case BUTTON_ERASE -> clearData();
             case BUTTON_IMPORT -> handleImportAction();
-            case BUTTON_PAY_OUT -> payout();
+            case BUTTON_PAY_OUT -> { if (getEventService().isLocal()) payout(); }
             case BUTTON_COPY_TO_CLIPBOARD -> copyToClipboard();
-            case BUTTON_ARCHIVE -> archiveFilteredItems();
+            case BUTTON_ARCHIVE -> { if (getEventService().isLocal()) archiveFilteredItems(); }
             default -> throw new IllegalStateException("Unexpected action: " + actionCommand);
         }
     }
 
     private void downloadSoldItems() {
         // Retrieve all sold items from the web, merge with local items, and save them to the local file.
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         Map<String, V1SoldItem> fetchedItems = fetchItemsFromWeb(eventId);
         mergeFetchedItems(fetchedItems);
         saveHistoryToFile();
@@ -163,10 +175,15 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void clearData() {
-        // Clear all local data after user confirmation.
-        if (Popup.CONFIRM.showConfirmDialog(
+        // Clear all local data after user confirmation using destructive dialog.
+        java.awt.Frame owner = (java.awt.Frame) javax.swing.SwingUtilities.getWindowAncestor(view.getComponent());
+        boolean confirmed = DestructiveConfirmationDialog.show(
+                owner,
                 LocalizationManager.tr(BUTTON_ERASE),
-                LocalizationManager.tr("confirm.erase_register"))) {
+                LocalizationManager.tr("confirm.erase_register"),
+                "RADERA");
+        
+        if (confirmed) {
             allHistoryItems.clear();
             saveHistoryToFile();
             filterUpdated();
@@ -203,24 +220,35 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void archiveFilteredItems() {
-        // Archive filtered items to a CSV file and remove them from the history list.
-        List<V1SoldItem> filteredItems = applyFilters();
+        // Archive ALL paid out items (regardless of filter) to a CSV file and remove them from the history list.
+        List<V1SoldItem> paidItems = allHistoryItems.stream()
+                .filter(V1SoldItem::isCollectedBySeller)
+                .collect(Collectors.toList());
 
-        if (filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller())) {
-            Popup.ERROR.showAndWait(
-                    LocalizationManager.tr("error.archive_failed.title"),
-                    LocalizationManager.tr("error.archive_unpaid"));
+        if (paidItems.isEmpty()) {
             return;
         }
+
+        // Count unique sellers
+        long uniqueSellers = paidItems.stream()
+                .map(V1SoldItem::getSeller)
+                .distinct()
+                .count();
+
+        // Show confirmation dialog with statistics
+        String confirmMessage = LocalizationManager.tr(
+                "confirm.archive_paid_items",
+                paidItems.size(),
+                uniqueSellers);
 
         if (!Popup.CONFIRM.showConfirmDialog(
                 LocalizationManager.tr(BUTTON_ARCHIVE),
-                LocalizationManager.tr("confirm.archive_displayed"))) {
+                confirmMessage)) {
             return;
         }
 
-        archiveItemsToFile(filteredItems);
-        removeFilteredItems(filteredItems);
+        archiveItemsToFile(paidItems);
+        removeFilteredItems(paidItems);
         saveHistoryToFile();
         // Refresh UI components
         updateDistinctSellers();
@@ -240,7 +268,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
         try {
             // Delegate to service (online mode calls API, local mode no-op)
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            String eventId = AppModeManager.getEventId();
             getEventService().performPayout(
                 eventId,
                 view.getSellerFilter(),
@@ -263,7 +291,11 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private List<V1SoldItem> applyFilters() {
         // Apply the current filters to the history items.
-        return FilterUtils.applyFilters(
+        return applyFiltersWithResult().items();
+    }
+
+    private FilterResult applyFiltersWithResult() {
+        return FilterUtils.applyFiltersWithSum(
                 allHistoryItems,
                 view.getPaidFilter(),
                 view.getSellerFilter(),
@@ -387,7 +419,7 @@ public class HistoryTabController implements HistoryControllerInterface {
     private void saveHistoryToFile() {
         java.nio.file.Path historyPath = null;
         try {
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            String eventId = AppModeManager.getEventId();
             if (eventId == null || eventId.isBlank()) {
                 return;
             }
@@ -401,22 +433,44 @@ public class HistoryTabController implements HistoryControllerInterface {
         }
     }
 
-    private void archiveItemsToFile(List<V1SoldItem> filteredItems) {
-        // Save filtered items to an archive file with a timestamped filename.
+    private void archiveItemsToFile(List<V1SoldItem> paidItems) {
+        // Save paid items to an archive file with a timestamped filename in event-specific directory.
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isEmpty()) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("error.no_event_selected"),
+                    LocalizationManager.tr("error.select_event_first"));
+            return;
+        }
+
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss"));
         String fileName = LocalizationManager.tr("history.archive_prefix") + timestamp + ".csv";
 
-        String comment = "# " + LocalizationManager.tr("history.comment.seller") + ": " +
-                (view.getSellerFilter() == null ? LocalizationManager.tr("filter.all") : view.getSellerFilter()) +
-                ", " + LocalizationManager.tr("history.comment.payment_method") + ": " +
-                (view.getPaymentMethodFilter() == null ? LocalizationManager.tr("filter.all") : view.getPaymentMethodFilter());
-
         try {
-            FileHelper.saveToFile(fileName, comment, FormatHelper.toCVS(filteredItems));
+            // Create event-specific archive directory if it doesn't exist
+            Path archiveDir = LocalEventPaths.getArchiveDir(eventId);
+            Files.createDirectories(archiveDir);
+
+            // Save archive file to event-specific directory
+            Path archivePath = archiveDir.resolve(fileName);
+            saveArchiveFile(archivePath, FormatHelper.toCVS(paidItems));
         } catch (IOException e) {
             Popup.FATAL.showAndWait(
                     LocalizationManager.tr("error.archive_file", fileName),
                     e.getMessage());
+        }
+    }
+
+    private void saveArchiveFile(Path path, String csv) throws IOException {
+        // Save archive CSV file
+        try (OutputStream outputStream = new BufferedOutputStream(
+                Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))) {
+            // Write CSV headers
+            outputStream.write(FormatHelper.CVS_HEADERS.getBytes(StandardCharsets.UTF_8));
+            outputStream.write(FormatHelper.LINE_ENDING.getBytes(StandardCharsets.UTF_8));
+
+            // Write CSV data
+            outputStream.write(csv.getBytes(StandardCharsets.UTF_8));
         }
     }
 
@@ -430,18 +484,40 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private String generateSummary(List<V1SoldItem> filteredItems) {
-        // Generate a summary string for filtered items.
+        // Generate a CSV-like summary with headers + localized totals.
         int totalItems = filteredItems.size();
         int totalSum = filteredItems.stream().mapToInt(V1SoldItem::getPrice).sum();
-        int provision = (int) (0.1 * totalSum);
 
-        StringBuilder summary = new StringBuilder(LocalizationManager.tr("history.summary.header"));
+        StringBuilder summary = new StringBuilder();
+        summary.append(LocalizationManager.tr("history.summary.header"));
         summary.append(LocalizationManager.tr("history.summary.items", totalItems, totalSum));
-        summary.append(LocalizationManager.tr("history.summary.provision", provision));
+        summary.append('\n');
+        summary.append(LocalizationManager.tr("history.summary.csv_header"));
+        summary.append('\n');
 
-        filteredItems.forEach(item -> summary.append(item.toString()).append("\n"));
+        filteredItems.forEach(item -> summary.append(formatItemForClipboard(item)).append('\n'));
 
         return summary.toString();
+    }
+
+    private String formatItemForClipboard(V1SoldItem item) {
+        // Format a single item as CSV row for clipboard export
+        String soldAt = item.getSoldTime() == null
+                ? ""
+                : item.getSoldTime().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String paidOut = item.isCollectedBySeller()
+                ? LocalizationManager.tr("common.yes")
+                : LocalizationManager.tr("common.no");
+        String payment = LocalizationManager.tr(item.getPaymentMethod() == se.goencoder.loppiskassan.V1PaymentMethod.Kontant
+                ? "payment.cash"
+                : "payment.swish");
+
+        return String.join(",",
+                String.valueOf(item.getSeller()),
+                String.valueOf(item.getPrice()),
+                soldAt,
+                paidOut,
+                payment);
     }
 
     // TODO: This is not working, if local with items to upload, message says we failed download - but all items uploaded which is not correct
@@ -544,7 +620,7 @@ public class HistoryTabController implements HistoryControllerInterface {
             }
 
             V1CreateSoldItemsResponse response = ApiHelper.INSTANCE.getSoldItemsServiceApi()
-                    .soldItemsServiceCreateSoldItems(ConfigurationStore.EVENT_ID_STR.get(), requestBody);
+                    .soldItemsServiceCreateSoldItems(AppModeManager.getEventId(), requestBody);
 
             // Mark accepted items as uploaded
             if (response.getAcceptedItems() != null) {
@@ -574,8 +650,8 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private boolean isArchiveEnabled() {
-        // Enable archive if the "Paid" filter is set to "Yes."
-        return "true".equals(view.getPaidFilter());
+        // Enable archive if there is at least one paid item in all history
+        return allHistoryItems != null && allHistoryItems.stream().anyMatch(V1SoldItem::isCollectedBySeller);
     }
 
     private void updateImportButton() {
@@ -595,7 +671,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private File[] selectFilesForImport() {
         // Open a file chooser dialog to select external JSONL files for import.
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         File initialDir = eventId == null
                 ? LocalEventPaths.getEventsDir().toFile()
                 : LocalEventPaths.getEventDir(eventId).toFile();

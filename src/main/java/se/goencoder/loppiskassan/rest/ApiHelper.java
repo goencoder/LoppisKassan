@@ -1,7 +1,7 @@
 package se.goencoder.loppiskassan.rest;
 import se.goencoder.iloppis.api.*;
 import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 
 
 /**
@@ -26,8 +26,8 @@ public enum ApiHelper {
         // Configure the JSON serialization to use pretty printing
         this.apiClient.getJSON().setGson(this.apiClient.getJSON().getGson().newBuilder().setPrettyPrinting().create());
 
-        if (ConfigurationStore.API_KEY_STR.get() != null) {
-            setCurrentApiKey(ConfigurationStore.API_KEY_STR.get());
+        if (ILoppisConfigurationStore.getApiKey() != null) {
+            setCurrentApiKey(ILoppisConfigurationStore.getApiKey());
         }
 
         // Create API instances with our fixed client

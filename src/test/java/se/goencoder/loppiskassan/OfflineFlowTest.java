@@ -1,7 +1,9 @@
 package se.goencoder.loppiskassan;
 
 import org.junit.jupiter.api.Test;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppMode;
+import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.LocalConfigurationStore;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -33,6 +35,7 @@ public class OfflineFlowTest {
         @Override public void setChange(int amount) {}
         @Override public Map<Integer, Integer[]> getAndClearSellerPrices() { return Map.of(); }
         @Override public void clearView() {}
+        @Override public void showCheckoutSuccess(V1PaymentMethod paymentMethod, int totalAmount) {}
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
     }
@@ -65,8 +68,8 @@ public class OfflineFlowTest {
         System.setProperty("user.home", tempDir.toString());
 
         LocalEventRepository.ensureEventStorage("local-test");
-        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(true);
-        ConfigurationStore.EVENT_ID_STR.set("local-test");
+        AppModeManager.setMode(AppMode.LOCAL);
+        LocalConfigurationStore.setEventId("local-test");
         LocalizationManager.initialize();
 
         DummyCashierPanel cashierView = new DummyCashierPanel();
@@ -125,8 +128,8 @@ public class OfflineFlowTest {
         System.setProperty("user.home", tempDir.toString());
 
         LocalEventRepository.ensureEventStorage("local-test");
-        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(true);
-        ConfigurationStore.EVENT_ID_STR.set("local-test");
+        AppModeManager.setMode(AppMode.LOCAL);
+        LocalConfigurationStore.setEventId("local-test");
         LocalizationManager.initialize();
 
         DummyHistoryPanel historyView = new DummyHistoryPanel();

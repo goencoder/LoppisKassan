@@ -6,7 +6,8 @@ import se.goencoder.iloppis.model.V1CreateSoldItemsResponse;
 import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 import se.goencoder.loppiskassan.model.cashier.CashierState;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
@@ -74,7 +75,7 @@ public class CashierInteractor {
      * @throws IOException if storage initialization fails
      */
     public boolean addItems(int sellerId, Integer[] prices) throws IOException {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
             return false;
         }
@@ -163,7 +164,7 @@ public class CashierInteractor {
             return true;
         }
         
-        String approvedSellersJson = ConfigurationStore.APPROVED_SELLERS_JSON.get();
+        String approvedSellersJson = ILoppisConfigurationStore.getApprovedSellers();
         return new JSONObject(approvedSellersJson)
                 .getJSONArray("approvedSellers")
                 .toList()
@@ -215,7 +216,7 @@ public class CashierInteractor {
             createSoldItems.addItemsItem(apiItem);
         }
 
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         V1CreateSoldItemsResponse response = ApiHelper.INSTANCE
                 .getSoldItemsServiceApi()
                 .soldItemsServiceCreateSoldItems(eventId, createSoldItems);
@@ -230,7 +231,7 @@ public class CashierInteractor {
      */
     public void saveItemsLocally() throws IOException {
         synchronized (lock) {
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            String eventId = AppModeManager.getEventId();
             if (eventId == null || eventId.isBlank()) {
                 throw new IOException("Missing event id");
             }
@@ -264,7 +265,7 @@ public class CashierInteractor {
         synchronized (lock) {
             List<V1SoldItem> allItems;
             try {
-                String eventId = ConfigurationStore.EVENT_ID_STR.get();
+                String eventId = AppModeManager.getEventId();
                 if (eventId == null || eventId.isBlank()) {
                     return false;
                 }
@@ -298,7 +299,7 @@ public class CashierInteractor {
             // On partial success, some items may now be uploaded
             // -> re-save entire file with updated statuses
             try {
-                String eventId = ConfigurationStore.EVENT_ID_STR.get();
+                String eventId = AppModeManager.getEventId();
                 if (eventId == null || eventId.isBlank()) {
                     return false;
                 }
@@ -327,8 +328,8 @@ public class CashierInteractor {
     }
 
     private String logCtx(int sellerId) {
-        boolean online = !ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false);
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        boolean online = !AppModeManager.isLocalMode();
+        String eventId = AppModeManager.getEventId();
         return String.format("event=%s seller=%d mode=%s", eventId, sellerId, online ? "online" : "local");
     }
 
@@ -369,7 +370,7 @@ public class CashierInteractor {
             createSoldItems.addItemsItem(apiItem);
         }
 
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         V1CreateSoldItemsResponse response = ApiHelper.INSTANCE
                 .getSoldItemsServiceApi()
                 .soldItemsServiceCreateSoldItems(eventId, createSoldItems);

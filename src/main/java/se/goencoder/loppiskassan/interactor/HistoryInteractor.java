@@ -3,7 +3,7 @@ package se.goencoder.loppiskassan.interactor;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.V1SoldItem;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.model.history.HistoryState;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
@@ -11,6 +11,7 @@ import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.FilterUtils;
+import se.goencoder.loppiskassan.utils.FilterUtils.FilterResult;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 
 import java.io.File;
@@ -47,7 +48,7 @@ public class HistoryInteractor {
      * @throws IOException if file read fails
      */
     public void loadHistory() throws IOException {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
             allHistoryItems = new ArrayList<>();
         } else {
@@ -70,17 +71,18 @@ public class HistoryInteractor {
      * @return the filtered list of items
      */
     public List<V1SoldItem> applyFilters(String paidFilter, String sellerFilter, String paymentMethodFilter) {
-        List<V1SoldItem> filteredItems = FilterUtils.applyFilters(
-                allHistoryItems,
-                paidFilter,
-                sellerFilter,
-                paymentMethodFilter
+        FilterResult filterResult = FilterUtils.applyFiltersWithSum(
+            allHistoryItems,
+            paidFilter,
+            sellerFilter,
+            paymentMethodFilter
         );
+
+        List<V1SoldItem> filteredItems = filterResult.items();
 
         state.setFilteredItems(filteredItems);
         state.setItemCount(filteredItems.size());
-        int sum = (int) filteredItems.stream().mapToDouble(V1SoldItem::getPrice).sum();
-        state.setTotalSum(sum);
+        state.setTotalSum(filterResult.totalSum());
 
         boolean enablePayout = isPayoutEnabled(filteredItems);
         state.setPayoutEnabled(enablePayout);
@@ -107,7 +109,7 @@ public class HistoryInteractor {
      * @throws IOException if file write fails
      */
     public void saveHistoryToFile() throws IOException {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
             throw new IOException("Missing event id");
         }
@@ -150,7 +152,7 @@ public class HistoryInteractor {
 
         payoutBody.setUntilTimestamp(OffsetDateTime.now());
 
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         ApiHelper.INSTANCE.getSoldItemsServiceApi()
                 .soldItemsServicePayout(eventId, payoutBody);
     }
@@ -244,7 +246,7 @@ public class HistoryInteractor {
             createSoldItems.addItemsItem(apiItem);
         }
 
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         V1CreateSoldItemsResponse response = ApiHelper.INSTANCE
                 .getSoldItemsServiceApi()
                 .soldItemsServiceCreateSoldItems(eventId, createSoldItems);

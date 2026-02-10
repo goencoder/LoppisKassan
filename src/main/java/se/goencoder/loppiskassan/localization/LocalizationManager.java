@@ -1,10 +1,11 @@
 package se.goencoder.loppiskassan.localization;
 
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Singleton manager for localization. Uses a {@link LocalizationStrategy}
@@ -15,6 +16,8 @@ public final class LocalizationManager {
     public interface LanguageChangeListener { void onLanguageChanged(); }
 
     private static final List<LanguageChangeListener> listeners = new ArrayList<>();
+    private static final ConcurrentHashMap<String, LocalizationStrategy> cache = new ConcurrentHashMap<>();
+    private static volatile LocalizationStrategy currentStrategy;
 
     private LocalizationManager() {}
 
@@ -28,7 +31,8 @@ public final class LocalizationManager {
      */
     public static void initialize() {
         // Always start with Swedish as the default language
-        ConfigurationStore.LANGUAGE_STR.set("sv");
+        GlobalConfigurationStore.setLanguage("sv");
+        currentStrategy = getOrCreateStrategy("sv");
     }
 
     /**
@@ -37,14 +41,15 @@ public final class LocalizationManager {
      * @param languageCode ISO language code (e.g. "sv", "en")
      */
     public static void setLanguage(String languageCode) {
-        ConfigurationStore.LANGUAGE_STR.set(languageCode);
+        GlobalConfigurationStore.setLanguage(languageCode);
+        currentStrategy = getOrCreateStrategy(languageCode);
         for (LanguageChangeListener l : new ArrayList<>(listeners)) {
             l.onLanguageChanged();
         }
     }
 
     public static String getLanguage() {
-        return ConfigurationStore.LANGUAGE_STR.get();
+        return GlobalConfigurationStore.getLanguage();
     }
 
     /**
@@ -52,9 +57,16 @@ public final class LocalizationManager {
      * {@link MessageFormat} when arguments are provided.
      */
     public static String tr(String key, Object... args) {
-        // Always get the latest language from the configuration
-        LocalizationStrategy strategy = new JsonLocalizationStrategy(getLanguage());
+        LocalizationStrategy strategy = currentStrategy;
+        if (strategy == null) {
+            strategy = getOrCreateStrategy(getLanguage());
+            currentStrategy = strategy;
+        }
         String value = strategy.get(key);
         return args.length > 0 ? MessageFormat.format(value, args) : value;
+    }
+
+    private static LocalizationStrategy getOrCreateStrategy(String languageCode) {
+        return cache.computeIfAbsent(languageCode, JsonLocalizationStrategy::new);
     }
 }

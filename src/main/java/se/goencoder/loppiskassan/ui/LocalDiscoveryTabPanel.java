@@ -2,7 +2,7 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.iloppis.model.V1Event;
 import se.goencoder.iloppis.model.V1RevenueSplit;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.controller.CsvExportController;
 import se.goencoder.loppiskassan.controller.DiscoveryControllerInterface;
 import se.goencoder.loppiskassan.controller.DiscoveryTabController;
@@ -107,7 +107,7 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
     }
 
     private void initializeState() {
-        String savedEventId = ConfigurationStore.EVENT_ID_STR.get();
+        String savedEventId = AppModeManager.getEventId();
         if (savedEventId == null || savedEventId.isEmpty()) {
             rootCardLayout.show(rootCardPanel, "discoveryMode");
         }
@@ -686,7 +686,7 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
         exportDataButton.setToolTipText(LocalizationManager.tr("export.button.tooltip.jsonl"));
         AppButton.applyStyle(exportDataButton, AppButton.Variant.OUTLINE, AppButton.Size.MEDIUM);
         exportDataButton.addActionListener(e -> {
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            String eventId = AppModeManager.getEventId();
             if (eventId != null && eventId.startsWith("local-")) {
                 ExportLocalEventController.exportEventData(eventId, activeEventNameLabel.getText());
             }
@@ -698,7 +698,7 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
         csvExportButton.setToolTipText(LocalizationManager.tr("export.button.tooltip.csv"));
         AppButton.applyStyle(csvExportButton, AppButton.Variant.OUTLINE, AppButton.Size.MEDIUM);
         csvExportButton.addActionListener(e -> {
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            String eventId = AppModeManager.getEventId();
             if (eventId != null && eventId.startsWith("local-")) {
                 CsvExportController.exportEventDataAsCsv(eventId, activeEventNameLabel.getText());
             }
@@ -909,12 +909,12 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
         exportDataButton.setText(LocalizationManager.tr("export.button.export_data"));
         csvExportButton.setText(LocalizationManager.tr("export.button.export_csv"));
 
-        if (ConfigurationStore.LOCAL_EVENT_BOOL.getBooleanValueOrDefault(false)) {
+        if (AppModeManager.isLocalMode()) {
             activeEventNameLabel.setText(LocalizationManager.tr("event.local.name"));
             activeEventDescLabel.setText(LocalizationManager.tr("event.local.description"));
             activeEventAddressLabel.setText(
                     LocalizationManager.tr("event.no_street") + ", " + LocalizationManager.tr("event.no_city"));
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
+            String eventId = AppModeManager.getEventId();
             if (eventId != null && eventId.startsWith("local-")) {
                 boolean hasSales = LocalEventUtils.getSalesCount(eventId) > 0;
                 exportDataButton.setVisible(hasSales);

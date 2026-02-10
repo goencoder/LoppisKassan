@@ -1,7 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
@@ -55,7 +54,7 @@ public class UserInterface extends JFrame implements LocalizationAware {
             if (selectedTab != SELECTABLE_TABS.DISCOVERY) {
                 // If we are attempting to select a tab other than
                 // The one selecting which loppis to manage, we need to check if a loppis has been selected or not.
-                if (ConfigurationStore.EVENT_ID_STR.get() == null) {
+                if (AppModeManager.getEventId() == null) {
                     tabPane.setSelectedIndex(SELECTABLE_TABS.DISCOVERY.getIndex());
                     Popup.ERROR.showAndWait(
                             LocalizationManager.tr("error.no_event_selected.title"),

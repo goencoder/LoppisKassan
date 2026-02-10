@@ -6,7 +6,10 @@ import se.goencoder.iloppis.api.ApiKeyServiceApi;
 import se.goencoder.iloppis.api.EventServiceApi;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppMode;
+import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.LocalConfigurationStore;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 import se.goencoder.loppiskassan.model.BulkUploadResult;
 import se.goencoder.loppiskassan.model.discovery.DiscoveryState;
 import se.goencoder.loppiskassan.rest.ApiHelper;
@@ -24,7 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static se.goencoder.loppiskassan.config.ConfigurationStore.CONFIG_FILE_PATH;
+import static se.goencoder.loppiskassan.config.GlobalConfigurationStore.*;
 
 public class DiscoveryTabController implements DiscoveryControllerInterface {
 
@@ -188,10 +191,17 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                     LocalizationManager.tr("error.no_event_selected.message"));
             return;
         }
-        ConfigurationStore.EVENT_JSON.set(event.toJson());
-
+        
         // Determine if the event is local.
         boolean isLocal = localEventMap.containsKey(eventId);
+        
+        // Store event data in appropriate config store
+        if (isLocal) {
+            LocalConfigurationStore.setEventData(event.toJson());
+        } else {
+            ILoppisConfigurationStore.setEventData(event.toJson());
+        }
+
         V1RevenueSplit split;
         if (isLocal) {
             LocalEvent localEvent = localEventMap.get(eventId);
@@ -203,14 +213,15 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 split.setVendorPercentage(85f);
                 split.setPlatformProviderPercentage(5f);
             }
-            ConfigurationStore.REVENUE_SPLIT_JSON.set(split.toJson());
+            LocalConfigurationStore.setRevenueSplit(split.toJson());
             configureLocalMode(eventId, split);
         } else {
             try {
-                split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+                split = V1RevenueSplit.fromJson(ILoppisConfigurationStore.getRevenueSplit());
             } catch (IOException e) {
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.load_saved_split"), e.getMessage());
-                ConfigurationStore.reset();
+                LocalConfigurationStore.reset();
+                ILoppisConfigurationStore.reset();
                 return;
             }
             configureOnlineMode(eventId, cashierCode, event, split);
@@ -226,7 +237,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         // is correct even if the event lookup fails (e.g. during auto-refresh).
         boolean isLocal = eventId != null && eventId.startsWith("local-");
         view.setLocalMode(isLocal);
-        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(isLocal);
+        AppModeManager.setMode(isLocal ? AppMode.LOCAL : AppMode.ILOPPIS);
         
         // Update state
         state.setLocalMode(isLocal);
@@ -256,20 +267,21 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     @Override
     public void initUIState() {
         loadAllEvents();
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId != null && !eventId.isEmpty()
                 && !"offline".equalsIgnoreCase(eventId)
                 && !"local".equalsIgnoreCase(eventId)) {
             try {
                 V1Event event = fromId(eventId);
                 if (event == null) {
-                    ConfigurationStore.reset();
+                    LocalConfigurationStore.reset();
+                    ILoppisConfigurationStore.reset();
                     view.setRegisterOpened(false);
                     view.setCashierButtonEnabled(true);
                 } else {
-                    V1RevenueSplit split = V1RevenueSplit.fromJson(ConfigurationStore.REVENUE_SPLIT_JSON.get());
+                    V1RevenueSplit split = V1RevenueSplit.fromJson(LocalConfigurationStore.getRevenueSplit());
                     view.setLocalMode(localEventMap.containsKey(eventId));
-                    ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(localEventMap.containsKey(eventId));
+                    AppModeManager.setMode(localEventMap.containsKey(eventId) ? AppMode.LOCAL : AppMode.ILOPPIS);
                     view.showActiveEventInfo(event, split);
                 }
             } catch (IOException e) {
@@ -291,7 +303,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             return;
         }
 
-        ConfigurationStore.reset(); // Reset configuration to clear stored data.
+        LocalConfigurationStore.reset();
+        ILoppisConfigurationStore.reset();
 
         // Reset the UI to the discovery mode.
         view.clearEventsTable();
@@ -414,14 +427,19 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         // if event list is null or empty, look in Configuration store
         if (eventList == null || eventList.isEmpty()) {
             try {
-                V1Event event = V1Event.fromJson(ConfigurationStore.EVENT_JSON.get());
+                // Try to load from appropriate config store based on current mode
+                String eventJson = AppModeManager.isLocalMode() 
+                    ? LocalConfigurationStore.getEventData()
+                    : ILoppisConfigurationStore.getEventData();
+                    
+                V1Event event = V1Event.fromJson(eventJson);
                 if (event != null && event.getId().equals(eventId)) {
                     return event;
                 }
             } catch (IOException e) {
                 Popup.FATAL.showAndWait(
                         LocalizationManager.tr("error.load_saved_event.title"),
-                        LocalizationManager.tr("error.load_saved_event.message", CONFIG_FILE_PATH, e.getMessage()));
+                        LocalizationManager.tr("error.load_saved_event.message", "config/", e.getMessage()));
             }
             return null;
         }
@@ -430,8 +448,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     }
 
     private void configureLocalMode(String eventId, V1RevenueSplit split) {
-        ConfigurationStore.LOCAL_EVENT_BOOL.setBooleanValue(true);
-        ConfigurationStore.EVENT_ID_STR.set(eventId);
+        AppModeManager.setMode(AppMode.LOCAL);
+        AppModeManager.setEventId(eventId);
 
         V1Event localEvent = fromId(eventId);
         if (localEvent == null) {
@@ -451,8 +469,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             V1GetApiKeyResponse response = apiKeyServiceApi.apiKeyServiceGetApiKey(eventId, cashierCode, null);
 
             ApiHelper.INSTANCE.setCurrentApiKey(response.getApiKey());
-            ConfigurationStore.EVENT_ID_STR.set(eventId);
-            ConfigurationStore.API_KEY_STR.set(response.getApiKey());
+            AppModeManager.setEventId(eventId);
+            ILoppisConfigurationStore.setApiKey(response.getApiKey());
 
             fetchApprovedSellers(eventId);
 
@@ -471,7 +489,8 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                         LocalizationManager.tr("error.fetch_token.title"),
                         ex);
             } else {
-                ConfigurationStore.reset();
+                LocalConfigurationStore.reset();
+                ILoppisConfigurationStore.reset();
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
             }
         }
@@ -488,7 +507,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         }
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("approvedSellers", new JSONArray(approvedSellers));
-        ConfigurationStore.APPROVED_SELLERS_JSON.set(jsonObject.toString());
+        ILoppisConfigurationStore.setApprovedSellers(jsonObject.toString());
     }
 
     private void handleLocalEvent(LocalEvent localEvent) {
@@ -506,7 +525,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             split.setPlatformProviderPercentage(5f);
         }
 
-        ConfigurationStore.REVENUE_SPLIT_JSON.set(split.toJson());
+        LocalConfigurationStore.setRevenueSplit(split.toJson());
 
         String description = localEvent.getDescription();
         if (description == null || description.isBlank()) {
@@ -550,7 +569,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 revenueSplit.getMarketOwnerPercentage(),
                 revenueSplit.getVendorPercentage(),
                 revenueSplit.getPlatformProviderPercentage());
-        ConfigurationStore.REVENUE_SPLIT_JSON.set(revenueSplit.toJson());
+        ILoppisConfigurationStore.setRevenueSplit(revenueSplit.toJson());
     }
 
     @Override

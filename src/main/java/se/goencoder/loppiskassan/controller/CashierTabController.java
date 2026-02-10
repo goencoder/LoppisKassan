@@ -1,17 +1,19 @@
 package se.goencoder.loppiskassan.controller;
 
-import org.json.JSONObject;
+import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.V1CreateSoldItemsResponse;
-import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.model.cashier.CashierState;
+import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
-import se.goencoder.loppiskassan.rest.ApiHelper;
+import se.goencoder.loppiskassan.service.CashierStrategy;
+import se.goencoder.loppiskassan.service.LocalCashierStrategy;
+import se.goencoder.loppiskassan.service.IloppisCashierStrategy;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
@@ -58,6 +60,7 @@ public class CashierTabController implements CashierControllerInterface {
     private final CashierState state = new CashierState();
     private CashierPanelInterface view;
     private se.goencoder.loppiskassan.service.EventService eventService;
+    private CashierStrategy cashierStrategy;
 
     private CashierTabController() {}
 
@@ -73,6 +76,27 @@ public class CashierTabController implements CashierControllerInterface {
             eventService = se.goencoder.loppiskassan.service.EventServiceFactory.getEventService();
         }
         return eventService;
+    }
+    
+    /**
+     * Get the cashier strategy based on current mode.
+     * Lazily initialized and updates when mode changes.
+     */
+    private CashierStrategy getCashierStrategy() {
+        // Reinitialize if mode changed or not yet initialized
+        if (cashierStrategy == null || !strategyMatchesCurrentMode()) {
+            cashierStrategy = AppModeManager.isLocalMode() 
+                ? new LocalCashierStrategy() 
+                : new IloppisCashierStrategy();
+            log.info("Cashier strategy initialized: " + cashierStrategy.getModeDescription());
+        }
+        return cashierStrategy;
+    }
+    
+    private boolean strategyMatchesCurrentMode() {
+        boolean isLocal = AppModeManager.isLocalMode();
+        return (isLocal && cashierStrategy instanceof LocalCashierStrategy)
+            || (!isLocal && cashierStrategy instanceof IloppisCashierStrategy);
     }
 
     /**
@@ -109,7 +133,7 @@ public class CashierTabController implements CashierControllerInterface {
 
     private String logCtx(int sellerId) {
         boolean online = !getEventService().isLocal();
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         return String.format("event=%s seller=%d mode=%s", eventId, sellerId, online ? "online" : "local");
     }
 
@@ -134,20 +158,17 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     @Override
-    public boolean isSellerApproved(int sellerId) {
-        // If truly local mode, just allow
-        if (ConfigurationUtils.isLocalMode()) {
-            return true;
-        }
-        String approvedSellersJson = ConfigurationStore.APPROVED_SELLERS_JSON.get();
-        return new JSONObject(approvedSellersJson)
-                .getJSONArray("approvedSellers")
-                .toList()
-                .contains(sellerId);
+    public boolean validateSeller(int sellerId) {
+        return getCashierStrategy().validateSeller(sellerId);
+    }
+    
+    @Override
+    public String getSellerValidationErrorKey() {
+        return getCashierStrategy().getSellerValidationErrorKey();
     }
 
     public void addItem(Integer sellerId, Integer[] prices) {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
             Popup.ERROR.showAndWait(
                     LocalizationManager.tr("error.no_event_selected.title"),
@@ -174,23 +195,39 @@ public class CashierTabController implements CashierControllerInterface {
 
     // --- Checkout process ---
     public void checkout(V1PaymentMethod paymentMethod) {
-        boolean isLocal = getEventService().isLocal();
-
         LocalDateTime now = LocalDateTime.now();
         // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
         String purchaseId = UlidGenerator.generate();
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
-
-        if (!isLocal && !degradedMode) {
+        
+        // Calculate total before clearing
+        int totalAmount = getSum();
+        
+        // Use strategy pattern to persist items
+        CashierStrategy strategy = getCashierStrategy();
+        
+        if (AppModeManager.isLocalMode()) {
+            // Local mode: synchronous save
+            try {
+                strategy.persistItems(items, purchaseId, paymentMethod, now);
+                finishCheckoutFlow(paymentMethod, totalAmount);
+            } catch (Exception e) {
+                Popup.ERROR.showAndWait(
+                        LocalizationManager.tr("error.save_file"),
+                        e.getMessage()
+                );
+            }
+        } else {
+            // iLoppis mode: async with progress dialog
             ProgressDialog.runTask(
                     view.getComponent(),
                     LocalizationManager.tr("cashier.progress.processing"),
                     LocalizationManager.tr("cashier.progress.saving_web"),
                     () -> {
-                        saveItemsToWeb(items);
+                        strategy.persistItems(items, purchaseId, paymentMethod, now);
                         return null;
                     },
-                    unused -> finishCheckoutFlow(),
+                    unused -> finishCheckoutFlow(paymentMethod, totalAmount),
                     ex -> {
                         if (isLikelyNetworkError(ex)) {
                             degradedMode = true;
@@ -198,44 +235,22 @@ public class CashierTabController implements CashierControllerInterface {
                         } else {
                             Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_web"), ex.getMessage());
                         }
-                        finishCheckoutFlow();
+                        finishCheckoutFlow(paymentMethod, totalAmount);
                     }
             );
-        } else {
-            // If local or degraded, skip the web call
-            finishCheckoutFlow();
         }
     }
 
-    private void finishCheckoutFlow() {
-        // 1) Save items locally in all cases
-        // If we are in degraded mode, we must update the items to reflect correct uploaded status (false)
-        for (V1SoldItem item : items) {
-            if (degradedMode) {
-                item.setUploaded(false);
-            }
-        }
-        synchronized (lock) {
-            String eventId = ConfigurationStore.EVENT_ID_STR.get();
-            try {
-                if (eventId == null || eventId.isBlank()) {
-                    throw new IOException("Missing event id");
-                }
-                FileUtils.appendSoldItems(eventId, items);
-            } catch (IOException e) {
-                Popup.ERROR.showAndWait(
-                        LocalizationManager.tr("error.save_file", LocalEventPaths.getPendingItemsPath(eventId)),
-                        e.getMessage()
-                );
-            }
-        }
+    private void finishCheckoutFlow(V1PaymentMethod paymentMethod, int totalAmount) {
+        // 1) Show success notification
+        view.showCheckoutSuccess(paymentMethod, totalAmount);
 
         // 2) Clear the cashier UI
         items.clear();
         view.clearView();
         state.reset();  // Reset state to initial values
 
-        // 3) If we are in degraded mode, spawn a background thread to attempt a catch-up
+        // 4) If we are in degraded mode, spawn a background thread to attempt a catch-up
         boolean isLocal = getEventService().isLocal();
         if (!isLocal && degradedMode) {
             new Thread(() -> {
@@ -335,7 +350,7 @@ public class CashierTabController implements CashierControllerInterface {
 
         V1CreateSoldItemsResponse response = ApiHelper.INSTANCE
                 .getSoldItemsServiceApi()
-                .soldItemsServiceCreateSoldItems(ConfigurationStore.EVENT_ID_STR.get(), createSoldItems);
+                .soldItemsServiceCreateSoldItems(AppModeManager.getEventId(), createSoldItems);
 
         updateLocalItemsStatus(response, itemMap);
     }
@@ -349,7 +364,7 @@ public class CashierTabController implements CashierControllerInterface {
         synchronized (lock) {
             List<V1SoldItem> allItems;
             try {
-                String eventId = ConfigurationStore.EVENT_ID_STR.get();
+                String eventId = AppModeManager.getEventId();
                 if (eventId == null || eventId.isBlank()) {
                     return false;
                 }
@@ -387,7 +402,7 @@ public class CashierTabController implements CashierControllerInterface {
             // On partial success, some items may now be uploaded
             // -> re-save entire file with updated statuses
             try {
-                String eventId = ConfigurationStore.EVENT_ID_STR.get();
+                String eventId = AppModeManager.getEventId();
                 if (eventId == null || eventId.isBlank()) {
                     return false;
                 }

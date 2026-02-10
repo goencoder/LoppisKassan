@@ -1,9 +1,110 @@
 # Issue 003 – Modern UI Redesign: Loppiskassan 3.0
 
-**Status:** Proposed  
+**Status:** In Progress (Foundation Complete)  
 **Priority:** High  
 **Created:** 2026-02-09  
+**Updated:** 2026-02-09  
 **Scope:** Full UX redesign – Lokal kassa + iLoppis  
+
+---
+
+## Implementation Status
+
+### ✅ Completed
+
+**Phase 0: Design Foundation**
+- ✅ `AppColors.java` — Centralized color palette (18 semantic constants)
+- ✅ `AppButton.java` — Reusable button component (5 variants × 4 sizes)
+- ✅ All 13 UI files migrated to AppColors/AppButton (zero hardcoded colors outside palette)
+- ✅ Card-based layouts replacing TitledBorder (EventCard with custom paintComponent)
+- ✅ Button visibility fixes (Export/Import, Delete buttons now visible with proper styling)
+- ✅ Build passing (29/29 tests)
+- ✅ History tab performance + layout: localization caching (no per-filter JSON parse) and table auto-resize with tuned column widths/row height
+
+**Del 1: Splash Screen** ✅ **Complete**
+- ✅ `ModeSelectionDialog.java` — Mode selection: Lokal kassa vs iLoppis
+- ✅ Language selector with flag icons (FlagIcon.java)
+- ✅ Custom icons: MonitorIcon, ShopIcon
+- ✅ Main.java wired to show splash before AppShellFrame
+
+**Del 4: App Shell Redesign** ✅ **Complete**
+- ✅ `AppShellFrame.java` — Complete app shell with BorderLayout
+- ✅ `AppShellTopbar.java` — Topbar with app name, event badge (center), language selector (right)
+- ✅ `AppShellSidebar.java` — Sidebar navigation with NavigationTarget enum
+- ✅ `AppShellStatusbar.java` — Statusbar with connection status placeholders
+- ✅ NavigationTarget system (DISCOVERY, CASHIER, HISTORY, EXPORT, ARCHIVE)
+- ✅ View switching with validation (event must be selected)
+- ✅ Mode-aware navigation (Export/Archive only in local mode)
+
+**Del 2.3: Cashier UX** ✅ **Mostly Complete**
+- ✅ Large typography: 36pt bold total, 24pt bold växel
+- ✅ Växel calculation with color coding (green ≥0, red <0)
+- ✅ Empty state panel with helpful text
+- ✅ CardLayout switching between table and empty state
+- ✅ Split pane layout: cart (70%) + total panel (30%)
+- ✅ Keyboard shortcut labels visible (F2 Swish, F3 Kontant)
+- ⚠️ **Partial**: F2/F3 KeyStroke registration not verified
+
+**Del 6: Swedish Date Formatting** ✅ **Infrastructure Complete**
+- ✅ `SwedishDateFormatter.java` — Utility with formatters for all patterns
+- ✅ Patterns: "8 feb – 9 feb 2026", "10:12", "8 feb 10:12", "8 feb"
+- ⚠️ **Partial**: Not yet applied throughout all UI files
+
+**Custom Icons**
+- ✅ MonitorIcon, ShopIcon, FlagIcon, ChevronDownIcon (all using AppColors)
+
+### 🚧 Remaining Work
+
+**Del 2.2: Event Selection Polish** (Partially Started)
+- ⚠️ LocalDiscoveryTabPanel & DiscoveryTabPanel exist but need Swedish date formatting
+- ❌ Event detail panel polish (split layout as per spec)
+- ❌ Code entry dialog for iLoppis mode (XXX-XXX format with paste support)
+
+**Del 2.3: Cashier Keyboard-First UX** (Needs Verification/Completion)
+- ❌ F2/F3 KeyStroke.getKeyStroke registration + global key bindings
+- ❌ Esc key for cancel checkout
+- ❌ Delete/Backspace for removing cart items
+- ❌ Enter/Tab focus flow enforcement (seller → prices → back to seller)
+- ❌ Ctrl+Z undo support
+
+**Del 2.4: History/Payout Redesign** (Not Started)
+⚠️ Partial: filter toolbar spacing/layout improved (auto-resize columns, compact row height)
+🔜 Seller-centric summary panel (local mode only): totals + provision + utbetalning using event revenue split
+🔜 Compact inline filter toolbar per spec (single row: Säljare / Utbetalt / Betalning / Sök)
+🔜 "Kopiera redovisning" button with formatted summary output (use available data: event name, seller, item count, total sum; if provision is present for local events include it; list items with price/payment/time when feasible)
+🔜 "Betala ut" button + confirmation dialog (local mode only)
+🔜 Provision calculation display (local mode summary)
+
+**Del 2.5: Archive Functionality** (Base Exists)
+- ⚠️ ArchiveTabPanel exists but needs polish per spec
+- ❌ "Arkivera utbetalda" flow with confirmation
+
+**Del 2.6: Export/Import Polish** (Base Exists)
+- ⚠️ ExportImportTabPanel exists but needs spec-compliant layout
+- ❌ Merge import with duplicate detection feedback dialog
+
+**Del 3: iLoppis Online Flows** (Infrastructure Started)
+- ✅ AppModeManager.isLocalMode() checks throughout
+- ❌ Event list with two-panel layout (list + detail card)
+- ❌ Code entry dialog (XXX-XXX with paste support for both formats)
+- ❌ Auto-sync indicators in statusbar
+- ❌ Offline queue display ("🟡 Offline – N poster väntar")
+
+**Del 5: Visual Polish**
+- ✅ Color palette, button components
+- ❌ 8px spacing system enforcement (xs=4, sm=8, md=16, lg=24, xl=32)
+- ❌ Typography hierarchy enforcement (11px help text, 13-14px body, 16px section headers, 20px titles)
+- ❌ MigLayout migration (optional, currently using GridBagLayout/BoxLayout)
+
+**Del 6: Interactions**
+- ❌ Snackbar component with undo (JPanel overlay + Timer)
+- ❌ Destructive confirmation dialogs ("skriv RADERA" for Rensa kassan)
+- ❌ Apply SwedishDateFormatter throughout all date displays
+
+**Del 7: Regressions & Cleanup**
+- ❌ Search and replace FormatHelper.formatter (ISO format) with SwedishDateFormatter
+- ❌ UserInterface.java – can it be removed? (still used or fully replaced by AppShellFrame?)
+- ❌ UserInterface.createButton() – dead code removal if all buttons use AppButton
 
 ---
 

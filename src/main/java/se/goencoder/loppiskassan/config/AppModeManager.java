@@ -29,4 +29,28 @@ public final class AppModeManager {
     public static boolean isILoppisMode() {
         return currentMode == AppMode.ILOPPIS;
     }
+    
+    /**
+     * Get the event ID from the appropriate configuration store based on current mode.
+     * @return Event ID or null if not configured
+     */
+    public static String getEventId() {
+        if (isLocalMode()) {
+            return LocalConfigurationStore.getEventId();
+        } else {
+            return ILoppisConfigurationStore.getEventId();
+        }
+    }
+    
+    /**
+     * Set the event ID in the appropriate configuration store based on current mode.
+     * @param eventId The event ID to store
+     */
+    public static void setEventId(String eventId) {
+        if (isLocalMode()) {
+            LocalConfigurationStore.setEventId(eventId);
+        } else {
+            ILoppisConfigurationStore.setEventId(eventId);
+        }
+    }
 }

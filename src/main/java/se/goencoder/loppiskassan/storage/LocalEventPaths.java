@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 public final class LocalEventPaths {
     private static final String BASE_DIR_NAME = ".loppiskassan";
     private static final String EVENTS_DIR_NAME = "events";
+    private static final String ARCHIVE_DIR_NAME = "archive";
     private static final String METADATA_FILE_NAME = "metadata.json";
     private static final String PENDING_ITEMS_FILE_NAME = "pending_items.jsonl";
     private static final String SOLD_ITEMS_FILE_NAME = "sold_items.jsonl";
@@ -40,5 +41,9 @@ public final class LocalEventPaths {
 
     public static Path getRejectedPurchasesPath(String eventId) {
         return getEventDir(eventId).resolve(REJECTED_PURCHASES_FILE_NAME);
+    }
+
+    public static Path getArchiveDir(String eventId) {
+        return getEventDir(eventId).resolve(ARCHIVE_DIR_NAME);
     }
 }

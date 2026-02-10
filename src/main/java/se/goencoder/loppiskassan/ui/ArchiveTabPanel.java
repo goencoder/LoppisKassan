@@ -1,8 +1,9 @@
 package se.goencoder.loppiskassan.ui;
 
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
-import se.goencoder.loppiskassan.records.FileHelper;
+import se.goencoder.loppiskassan.storage.LocalEventPaths;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -57,6 +58,9 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
         
         // Registrera för språkändringar
         LocalizationManager.addListener(this::reloadTexts);
+        
+        // Initialize texts on creation
+        reloadTexts();
     }
     
     private JPanel createHeaderPanel() {
@@ -128,14 +132,25 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
         tableModel.setRowCount(0);
         
         try {
-            Path dataDir = FileHelper.getRecordFilePath("");
-            if (!Files.exists(dataDir)) {
+            // Get current event ID
+            String eventId = AppModeManager.getEventId();
+            if (eventId == null || eventId.isEmpty()) {
+                // No event selected - show empty list
+                openFileButton.setEnabled(false);
+                return;
+            }
+
+            // Get event-specific archive directory
+            Path archiveDir = LocalEventPaths.getArchiveDir(eventId);
+            if (!Files.exists(archiveDir)) {
+                // No archives yet - show empty list
+                openFileButton.setEnabled(false);
                 return;
             }
             
             List<ArchiveFileInfo> archives = new ArrayList<>();
             
-            try (Stream<Path> paths = Files.list(dataDir)) {
+            try (Stream<Path> paths = Files.list(archiveDir)) {
                 paths.filter(path -> {
                     String name = path.getFileName().toString();
                     return name.startsWith(LocalizationManager.tr("history.archive_prefix")) 

@@ -2,7 +2,9 @@ package se.goencoder.loppiskassan.controller;
 
 import org.junit.jupiter.api.Test;
 import se.goencoder.loppiskassan.V1SoldItem;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppMode;
+import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.LocalConfigurationStore;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 
@@ -23,6 +25,7 @@ class CashierTabControllerTest {
         @Override public void setChange(int amount) { this.change = amount; }
         @Override public Map<Integer, Integer[]> getAndClearSellerPrices() { return Map.of(); }
         @Override public void clearView() {}
+        @Override public void showCheckoutSuccess(se.goencoder.loppiskassan.V1PaymentMethod paymentMethod, int totalAmount) {}
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
     }
@@ -32,7 +35,8 @@ class CashierTabControllerTest {
         try {
             Path tempDir = Files.createTempDirectory("loppiskassan-test");
             System.setProperty("user.home", tempDir.toString());
-            ConfigurationStore.EVENT_ID_STR.set("local-test");
+            AppModeManager.setMode(AppMode.LOCAL);
+            LocalConfigurationStore.setEventId("local-test");
             LocalEventRepository.ensureEventStorage("local-test");
         } catch (Exception ignored) {
         }

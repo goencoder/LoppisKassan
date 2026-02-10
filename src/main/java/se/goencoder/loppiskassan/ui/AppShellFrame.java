@@ -1,7 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -48,7 +47,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         initializeViews();
         
         // Visa första vyn beroende på om evenemang är valt
-        if (ConfigurationStore.EVENT_ID_STR.get() == null) {
+        if (AppModeManager.getEventId() == null) {
             navigateTo(NavigationTarget.DISCOVERY);
         } else {
             navigateTo(NavigationTarget.CASHIER);
@@ -93,7 +92,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
      */
     void navigateTo(NavigationTarget target) {
         // Validera att evenemang är valt (utom för discovery)
-        if (target != NavigationTarget.DISCOVERY && ConfigurationStore.EVENT_ID_STR.get() == null) {
+        if (target != NavigationTarget.DISCOVERY && AppModeManager.getEventId() == null) {
             Popup.ERROR.showAndWait(
                 LocalizationManager.tr("error.no_event_selected.title"),
                 LocalizationManager.tr("error.no_event_selected.message"));

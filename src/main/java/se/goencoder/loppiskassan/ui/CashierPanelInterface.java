@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.V1SoldItem;
+import se.goencoder.loppiskassan.V1PaymentMethod;
 
 import java.util.Map;
 
@@ -65,4 +66,12 @@ public interface CashierPanelInterface extends SelectabableTab, UiComponent {
      * Typically used after a successful checkout or when switching events/mode.
      */
     void clearView();
+    
+    /**
+     * Show success notification after checkout.
+     * 
+     * @param paymentMethod Payment method used (Swish or Kontant)
+     * @param totalAmount Total amount of the purchase
+     */
+    void showCheckoutSuccess(V1PaymentMethod paymentMethod, int totalAmount);
 }

@@ -1,13 +1,17 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import org.json.JSONObject;
+import se.goencoder.loppiskassan.storage.LocalEvent;
+import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.util.SwedishDateFormatter;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
 
 /**
  * Topbar för App Shell.
@@ -51,10 +55,13 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
     }
     
     private void updateEventBadge() {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         
         if (eventId == null || eventId.isEmpty()) {
-            eventBadgeLabel.setText("");
+            String placeholder = AppModeManager.isLocalMode()
+                    ? "Lokalt evenemang"
+                    : "iLoppis-evenemang";
+            eventBadgeLabel.setText(placeholder);
             return;
         }
         
@@ -70,9 +77,37 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
     }
     
     private String getEventName(String eventId) {
-        // Tillfällig lösning: använd event ID som namn
-        // TODO: Läs riktigt namn från event-objekt/state
-        return eventId.equals("local-test") ? "Lokalt evenemang" : eventId;
+        // Försök läsa riktigt namn från lagrad event-metadata (lokal)
+        try {
+            LocalEvent event = LocalEventRepository.load(eventId);
+            if (event != null && event.getName() != null && !event.getName().isBlank()) {
+                return event.getName();
+            }
+        } catch (IOException ignored) {
+            // Fallback below
+        }
+
+        // Försök läsa namn från iLoppis-konfigurationen (cached eventData)
+        if (AppModeManager.isILoppisMode()) {
+            String eventData = ILoppisConfigurationStore.getEventData();
+            if (eventData != null && !eventData.isBlank()) {
+                try {
+                    JSONObject obj = new JSONObject(eventData);
+                    String name = obj.optString("name", "");
+                    if (!name.isBlank()) {
+                        return name;
+                    }
+                } catch (Exception ignored) {
+                    // Fallback below
+                }
+            }
+        }
+
+        // Fallback till ID eller standardnamn
+        if (eventId.equals("local-test")) {
+            return "Lokalt evenemang";
+        }
+        return eventId;
     }
     
     private String getEventDates(String eventId) {

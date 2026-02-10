@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.controller.CsvExportController;
 import se.goencoder.loppiskassan.controller.ExportLocalEventController;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
@@ -212,7 +212,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
     }
     
     private void handleExportJsonl() {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null) {
             Popup.ERROR.showAndWait(
                 LocalizationManager.tr("error.no_event_selected.title"),
@@ -225,7 +225,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
     }
     
     private void handleExportCsv() {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null) {
             Popup.ERROR.showAndWait(
                 LocalizationManager.tr("error.no_event_selected.title"),
@@ -238,7 +238,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
     }
     
     private void handleImport() {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null) {
             Popup.ERROR.showAndWait(
                 LocalizationManager.tr("error.no_event_selected.title"),
@@ -255,7 +255,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
     }
     
     private void updateStats() {
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         if (eventId == null) {
             eventNameValue.setText("-");
             salesCountValue.setText("0");

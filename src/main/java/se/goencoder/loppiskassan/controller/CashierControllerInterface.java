@@ -55,11 +55,22 @@ public interface CashierControllerInterface {
     /**
      * Determine whether a seller is approved to sell.
      * <p>
-     * <b>Online:</b> typically verified via server lookup.
-     * <b>Local:</b> rely on locally cached state or default to permissive rules.
+    /**
+     * Validates if a seller can be used in the current mode (local/iLoppis).
+     * 
+     * <b>Local mode:</b> always returns true (no approval needed)
+     * <b>iLoppis mode:</b> checks against approved vendor list
      *
      * @param sellerId numeric seller identifier
      * @return {@code true} if approved, otherwise {@code false}
      */
-    boolean isSellerApproved(int sellerId);
+    boolean validateSeller(int sellerId);
+    
+    /**
+     * Gets the localization key for the error message when seller validation fails.
+     * Only relevant for iLoppis mode where seller approval is required.
+     * 
+     * @return localization key for the error message
+     */
+    String getSellerValidationErrorKey();
 }

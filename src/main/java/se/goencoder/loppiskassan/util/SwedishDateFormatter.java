@@ -72,4 +72,31 @@ public class SwedishDateFormatter {
         if (dateTime == null) return "";
         return dateTime.format(SHORT_DATE);
     }
+    
+    /**
+     * Formaterar evenemangsperiod som "8 feb – 9 feb 2026" (från start till slut).
+     * Om bara start finns: "8 feb 2026"
+     * Om båda är null: ""
+     */
+    public static String formatEventPeriod(ZonedDateTime start, ZonedDateTime end) {
+        if (start == null && end == null) return "";
+        if (start == null) return formatShortDate(end);
+        if (end == null) {
+            // Show year if only start is available
+            return start.format(DateTimeFormatter.ofPattern("d MMM yyyy", SWEDISH));
+        }
+        
+        // Both dates available - format as period
+        // If same year, only show year once at the end
+        if (start.getYear() == end.getYear()) {
+            String startPart = start.format(DateTimeFormatter.ofPattern("d MMM", SWEDISH));
+            String endPart = end.format(DateTimeFormatter.ofPattern("d MMM yyyy", SWEDISH));
+            return startPart + " – " + endPart;
+        } else {
+            // Different years - show both years
+            String startPart = start.format(DateTimeFormatter.ofPattern("d MMM yyyy", SWEDISH));
+            String endPart = end.format(DateTimeFormatter.ofPattern("d MMM yyyy", SWEDISH));
+            return startPart + " – " + endPart;
+        }
+    }
 }

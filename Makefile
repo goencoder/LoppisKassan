@@ -45,3 +45,13 @@ install-client: proxy
 
 build-codex: install-client ## Build for Codex (no jpackage)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package
+
+load-test: install-client ## Run manual load test (ENV=path/to/env)
+ifeq ($(strip $(ENV)),)
+	$(error ENV file path required, e.g. make load-test ENV=./load-test-local.env)
+endif
+	set -a; source $(ENV); set +a; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
+	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.LoadTestRunner \
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
