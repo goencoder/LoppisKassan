@@ -24,6 +24,9 @@ import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import se.goencoder.loppiskassan.service.UIThreadingService;
+import se.goencoder.loppiskassan.service.HistoryOperations;
+import se.goencoder.loppiskassan.service.LocalHistoryOperations;
+import se.goencoder.loppiskassan.service.OnlineHistoryOperations;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -57,23 +60,47 @@ public class HistoryTabController implements HistoryControllerInterface {
     private HistoryPanelInterface view;
     private List<V1SoldItem> allHistoryItems;
     private final HistoryState state = new HistoryState();
-    private se.goencoder.loppiskassan.service.EventService eventService;
+    private final HistoryOperations operations;
 
-    private HistoryTabController() {}
+    private HistoryTabController() {
+        // Initialize history operations based on mode using strategy pattern
+        if (AppModeManager.isLocalMode()) {
+            operations = new LocalHistoryOperations(new LocalHistoryOperations.LocalHistoryCallback() {
+                @Override
+                public void saveHistoryToFile() {
+                    HistoryTabController.this.saveHistoryToFile();
+                }
+                
+                @Override
+                public void archiveItemsToFile(List<V1SoldItem> items) {
+                    HistoryTabController.this.archiveItemsToFile(items);
+                }
+                
+                @Override
+                public void removeItems(List<V1SoldItem> items) {
+                    HistoryTabController.this.removeFilteredItems(items);
+                }
+                
+                @Override
+                public void updateDistinctSellers() {
+                    HistoryTabController.this.updateDistinctSellers();
+                }
+                
+                @Override
+                public void refreshView() {
+                    HistoryTabController.this.filterUpdated();
+                }
+            });
+        } else {
+            operations = new OnlineHistoryOperations();
+        }
+    }
 
     public static HistoryTabController getInstance() {
         return instance;
     }
 
-    /**
-     * Get the event service, lazily initializing if needed.
-     */
-    private se.goencoder.loppiskassan.service.EventService getEventService() {
-        if (eventService == null) {
-            eventService = se.goencoder.loppiskassan.service.EventServiceFactory.getEventService();
-        }
-        return eventService;
-    }
+
 
     /**
      * Get the current history state for observers.
@@ -88,8 +115,6 @@ public class HistoryTabController implements HistoryControllerInterface {
     @Override
     public void registerView(HistoryPanelInterface view) {
         this.view = view;
-        // Reset cached event service so it re-evaluates local/online mode
-        this.eventService = null;
     }
 
     @Override
@@ -157,9 +182,9 @@ public class HistoryTabController implements HistoryControllerInterface {
         switch (actionCommand) {
             case BUTTON_ERASE -> clearData();
             case BUTTON_IMPORT -> handleImportAction();
-            case BUTTON_PAY_OUT -> { if (getEventService().isLocal()) payout(); }
+            case BUTTON_PAY_OUT -> operations.performPayout(applyFilters());
             case BUTTON_COPY_TO_CLIPBOARD -> copyToClipboard();
-            case BUTTON_ARCHIVE -> { if (getEventService().isLocal()) archiveFilteredItems(); }
+            case BUTTON_ARCHIVE -> performArchiveAction();
             default -> throw new IllegalStateException("Unexpected action: " + actionCommand);
         }
     }
@@ -219,6 +244,12 @@ public class HistoryTabController implements HistoryControllerInterface {
                 LocalizationManager.tr("info.import_done.message", addedCount, totalCount));
     }
 
+    private void performArchiveAction() {
+        // Delegate to strategy
+        List<V1SoldItem> filteredItems = applyFilters();
+        operations.performArchive(filteredItems);
+    }
+
     private void archiveFilteredItems() {
         // Archive ALL paid out items (regardless of filter) to a CSV file and remove them from the history list.
         List<V1SoldItem> paidItems = allHistoryItems.stream()
@@ -260,27 +291,6 @@ public class HistoryTabController implements HistoryControllerInterface {
             UIThreadingService.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
     }
 
-    private void payout() {
-        // Mark filtered items as paid out and update the history.
-        List<V1SoldItem> filteredItems = applyFilters();
-        LocalDateTime now = LocalDateTime.now();
-
-        filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
-        try {
-            // Delegate to service (online mode calls API, local mode no-op)
-            String eventId = AppModeManager.getEventId();
-            getEventService().performPayout(
-                eventId,
-                view.getSellerFilter(),
-                view.getPaymentMethodFilter()
-            );
-            saveHistoryToFile();
-            filterUpdated();
-        } catch (ApiException e) {
-            Popup.ERROR.showAndWait(LocalizationManager.tr("error.payout"), e.getMessage());
-        }
-    }
-
     private void copyToClipboard() {
         // Copy a summary of filtered items to the system clipboard.
         List<V1SoldItem> filteredItems = applyFilters();
@@ -304,12 +314,13 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void handleImportAction() {
-        // Create context with both local and online operations - service chooses which to use
-        se.goencoder.loppiskassan.service.SyncContext context =
-            new se.goencoder.loppiskassan.service.SyncContext(
-                view.getComponent(),
-                this::importData,  // Local mode operation
-                () -> {  // Online mode operation
+        try {
+            operations.performSync(() -> {
+                if (AppModeManager.isLocalMode()) {
+                    // Local mode: Import from CSV
+                    importData();
+                } else {
+                    // Online mode: Upload pending items and download from API
                     boolean uploadSucceeded = false;
                     boolean downloadSucceeded = false;
                     
@@ -351,15 +362,8 @@ public class HistoryTabController implements HistoryControllerInterface {
                             );
                         }
                     }
-                    
-                    return null;
-                },
-                LocalizationManager.tr("history.progress.updating_items"),
-                LocalizationManager.tr("history.progress.syncing")
-            );
-        
-        try {
-            getEventService().synchronizeItems(context);
+                }
+            });
         } catch (Exception e) {
             // This catch is for service-level errors, specific operation errors are handled above
             Popup.ERROR.showAndWait(
@@ -695,7 +699,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void updateImportButton() {
         // Update the import button visibility and text based on the current mode.
-        boolean isLocal = getEventService().isLocal();
+        boolean isLocal = AppModeManager.isLocalMode();
         if (isLocal) {
             // Local mode: hide the button entirely (no web sync available)
             view.setImportButtonVisible(false);

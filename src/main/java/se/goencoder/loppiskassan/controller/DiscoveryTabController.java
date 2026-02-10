@@ -40,7 +40,6 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     private volatile List<V1Event> eventList;
     private volatile Map<String, LocalEvent> localEventMap = new HashMap<>();
     private final DiscoveryState state = new DiscoveryState();
-    private se.goencoder.loppiskassan.service.EventService eventService;
     private ScheduledExecutorService refreshScheduler;
     private String lastDateFrom;
 
@@ -51,17 +50,7 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         return instance;
     }
 
-    /**
-     * Get the event service, lazily initializing if needed.
-     */
-    private se.goencoder.loppiskassan.service.EventService getEventService() {
-        if (eventService == null) {
-            eventService = se.goencoder.loppiskassan.service.EventServiceFactory.getEventService();
-        }
-        return eventService;
-    }
-
-    /**
+/**
      * Get the current discovery state for observers.
      * Views can register PropertyChangeListeners on this state to react to changes.
      *

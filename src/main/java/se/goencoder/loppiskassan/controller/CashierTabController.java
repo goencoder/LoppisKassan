@@ -57,7 +57,6 @@ public class CashierTabController implements CashierControllerInterface {
     private final List<V1SoldItem> items = new ArrayList<>();
     private final CashierState state = new CashierState();
     private CashierPanelInterface view;
-    private se.goencoder.loppiskassan.service.EventService eventService;
     private CashierStrategy cashierStrategy;
 
     private CashierTabController() {}
@@ -66,16 +65,7 @@ public class CashierTabController implements CashierControllerInterface {
         return instance;
     }
 
-    /**
-     * Get the event service, lazily initializing if needed.
-     */
-    private se.goencoder.loppiskassan.service.EventService getEventService() {
-        if (eventService == null) {
-            eventService = se.goencoder.loppiskassan.service.EventServiceFactory.getEventService();
-        }
-        return eventService;
-    }
-    
+
     /**
      * Get the cashier strategy based on current mode.
      * Lazily initialized and updates when mode changes.
@@ -130,7 +120,7 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     private String logCtx(int sellerId) {
-        boolean online = !getEventService().isLocal();
+        boolean online = !AppModeManager.isLocalMode();
         String eventId = AppModeManager.getEventId();
         return String.format("event=%s seller=%d mode=%s", eventId, sellerId, online ? "online" : "local");
     }
@@ -249,7 +239,7 @@ public class CashierTabController implements CashierControllerInterface {
         state.reset();  // Reset state to initial values
 
         // 4) If we are in degraded mode, spawn a background thread to attempt a catch-up
-        boolean isLocal = getEventService().isLocal();
+        boolean isLocal = AppModeManager.isLocalMode();
         if (!isLocal && degradedMode) {
             new Thread(() -> {
                 boolean success = pushLocalUnsyncedRecords();

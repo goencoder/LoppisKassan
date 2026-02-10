@@ -5,8 +5,7 @@ import java.util.concurrent.Callable;
 
 /**
  * Context object providing callbacks and UI components for synchronization operations.
- * This allows EventService implementations to coordinate their sync flows without
- * controllers needing to branch on mode.
+ * Controllers use this to encapsulate mode-specific sync logic (local import vs online upload/download).
  */
 public class SyncContext {
     private final Component parentComponent;

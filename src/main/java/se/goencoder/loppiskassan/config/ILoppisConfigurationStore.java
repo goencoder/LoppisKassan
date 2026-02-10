@@ -1,11 +1,5 @@
 package se.goencoder.loppiskassan.config;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import se.goencoder.loppiskassan.ui.Popup;
-
-import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -16,22 +10,43 @@ import java.nio.file.Paths;
  * 
  * Stored in: config/iloppis-mode.json
  */
-public class ILoppisConfigurationStore {
-    private static final String CONFIG_DIR = "config";
+public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigurationStore.ILoppisConfig> {
+    
     private static final String CONFIG_FILE = "iloppis-mode.json";
     private static final Path CONFIG_PATH = Paths.get(CONFIG_DIR, CONFIG_FILE);
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
-    private static ILoppisConfig config;
+    private static final ILoppisConfigurationStore INSTANCE = new ILoppisConfigurationStore();
     
     static {
-        load();
+        INSTANCE.load();
+    }
+    
+    private ILoppisConfigurationStore() {}
+    
+    @Override
+    protected Path getConfigPath() {
+        return CONFIG_PATH;
+    }
+    
+    @Override
+    protected ILoppisConfig createDefaultConfig() {
+        return new ILoppisConfig();
+    }
+    
+    @Override
+    protected Class<ILoppisConfig> getConfigClass() {
+        return ILoppisConfig.class;
+    }
+    
+    @Override
+    protected String getModeName() {
+        return "iLoppis";
     }
     
     /**
      * iLoppis mode configuration data class
      */
-    private static class ILoppisConfig {
+    static class ILoppisConfig {
         private String eventId;           // UUID from API
         private String apiKey;            // Authentication key
         private String approvedSellers;   // JSON array of approved vendor IDs (cached for offline validation)
@@ -41,104 +56,69 @@ public class ILoppisConfigurationStore {
         public ILoppisConfig() {}
     }
     
-    private static void load() {
-        try {
-            Files.createDirectories(Paths.get(CONFIG_DIR));
-            
-            if (Files.exists(CONFIG_PATH)) {
-                try (Reader reader = new FileReader(CONFIG_PATH.toFile())) {
-                    config = GSON.fromJson(reader, ILoppisConfig.class);
-                    if (config == null) {
-                        config = new ILoppisConfig();
-                    }
-                }
-            } else {
-                config = new ILoppisConfig();
-            }
-        } catch (IOException ex) {
-            Popup.FATAL.showAndWait(
-                    "Configuration Error",
-                    "Failed to load iLoppis configuration: " + ex.getMessage());
-            config = new ILoppisConfig();
-        }
-    }
-    
-    private static void save() {
-        try {
-            Files.createDirectories(Paths.get(CONFIG_DIR));
-            try (Writer writer = new FileWriter(CONFIG_PATH.toFile())) {
-                GSON.toJson(config, writer);
-            }
-        } catch (IOException ex) {
-            Popup.FATAL.showAndWait(
-                    "Configuration Error",
-                    "Failed to save iLoppis configuration: " + ex.getMessage());
-        }
-    }
-    
     // Event ID
     public static String getEventId() {
-        return config.eventId;
+        return INSTANCE.config.eventId;
     }
     
     public static void setEventId(String eventId) {
-        config.eventId = eventId;
-        save();
+        INSTANCE.config.eventId = eventId;
+        INSTANCE.save();
     }
     
     // API Key
     public static String getApiKey() {
-        return config.apiKey;
+        return INSTANCE.config.apiKey;
     }
     
     public static void setApiKey(String apiKey) {
-        config.apiKey = apiKey;
-        save();
+        INSTANCE.config.apiKey = apiKey;
+        INSTANCE.save();
     }
     
     // Approved Sellers (cached JSON array)
     public static String getApprovedSellers() {
-        return config.approvedSellers;
+        return INSTANCE.config.approvedSellers;
     }
     
     public static void setApprovedSellers(String approvedSellers) {
-        config.approvedSellers = approvedSellers;
-        save();
+        INSTANCE.config.approvedSellers = approvedSellers;
+        INSTANCE.save();
     }
     
     // Revenue Split
     public static String getRevenueSplit() {
-        return config.revenueSplit;
+        return INSTANCE.config.revenueSplit;
     }
     
     public static void setRevenueSplit(String revenueSplit) {
-        config.revenueSplit = revenueSplit;
-        save();
+        INSTANCE.config.revenueSplit = revenueSplit;
+        INSTANCE.save();
     }
     
     // Event Data
     public static String getEventData() {
-        return config.eventData;
+        return INSTANCE.config.eventData;
     }
     
     public static void setEventData(String eventData) {
-        config.eventData = eventData;
-        save();
+        INSTANCE.config.eventData = eventData;
+        INSTANCE.save();
     }
     
     /**
      * Check if iLoppis mode is configured
      */
     public static boolean isConfigured() {
-        return config.eventId != null && !config.eventId.isEmpty() 
-            && config.apiKey != null && !config.apiKey.isEmpty();
+        return INSTANCE.config.eventId != null && !INSTANCE.config.eventId.isEmpty() 
+            && INSTANCE.config.apiKey != null && !INSTANCE.config.apiKey.isEmpty();
     }
     
     /**
      * Reset all iLoppis mode settings
      */
     public static void reset() {
-        config = new ILoppisConfig();
-        save();
+        INSTANCE.config = new ILoppisConfig();
+        INSTANCE.save();
     }
 }

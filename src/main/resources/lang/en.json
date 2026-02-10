@@ -309,5 +309,13 @@
   "sidebar.archive": "Archive",
   "status.local_mode": "Local register",
   "status.online_mode": "Connected to iLoppis",
-  "status.offline_pending": "Offline – {0} entries pending sync"
+  "status.offline_pending": "Offline – {0} entries pending sync",
+  "error.config_load.title": "Configuration Error",
+  "error.config_load.message": "Failed to load {0} configuration: {1}",
+  "error.config_save.title": "Configuration Error",
+  "error.config_save.message": "Failed to save {0} configuration: {1}",
+  "error.archive.title": "Archive Error",
+  "error.archive.message": "Archive operation failed: {0}",
+  "error.operation_not_available.payout_online": "Payout is not available in online mode",
+  "error.operation_not_available.archive_online": "Archive is not available in online mode"
 }

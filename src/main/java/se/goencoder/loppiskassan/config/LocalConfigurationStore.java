@@ -1,11 +1,5 @@
 package se.goencoder.loppiskassan.config;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import se.goencoder.loppiskassan.ui.Popup;
-
-import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -15,22 +9,43 @@ import java.nio.file.Paths;
  * 
  * Stored in: config/local-mode.json
  */
-public class LocalConfigurationStore {
-    private static final String CONFIG_DIR = "config";
+public class LocalConfigurationStore extends ConfigurationStore<LocalConfigurationStore.LocalConfig> {
+    
     private static final String CONFIG_FILE = "local-mode.json";
     private static final Path CONFIG_PATH = Paths.get(CONFIG_DIR, CONFIG_FILE);
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
-    private static LocalConfig config;
+    private static final LocalConfigurationStore INSTANCE = new LocalConfigurationStore();
     
     static {
-        load();
+        INSTANCE.load();
+    }
+    
+    private LocalConfigurationStore() {}
+    
+    @Override
+    protected Path getConfigPath() {
+        return CONFIG_PATH;
+    }
+    
+    @Override
+    protected LocalConfig createDefaultConfig() {
+        return new LocalConfig();
+    }
+    
+    @Override
+    protected Class<LocalConfig> getConfigClass() {
+        return LocalConfig.class;
+    }
+    
+    @Override
+    protected String getModeName() {
+        return "local";
     }
     
     /**
      * Local mode configuration data class
      */
-    private static class LocalConfig {
+    static class LocalConfig {
         private String eventId;
         private String eventData;  // JSON string of event metadata
         private String revenueSplit;  // JSON string of revenue split configuration
@@ -38,83 +53,48 @@ public class LocalConfigurationStore {
         public LocalConfig() {}
     }
     
-    private static void load() {
-        try {
-            Files.createDirectories(Paths.get(CONFIG_DIR));
-            
-            if (Files.exists(CONFIG_PATH)) {
-                try (Reader reader = new FileReader(CONFIG_PATH.toFile())) {
-                    config = GSON.fromJson(reader, LocalConfig.class);
-                    if (config == null) {
-                        config = new LocalConfig();
-                    }
-                }
-            } else {
-                config = new LocalConfig();
-            }
-        } catch (IOException ex) {
-            Popup.FATAL.showAndWait(
-                    "Configuration Error",
-                    "Failed to load local configuration: " + ex.getMessage());
-            config = new LocalConfig();
-        }
-    }
-    
-    private static void save() {
-        try {
-            Files.createDirectories(Paths.get(CONFIG_DIR));
-            try (Writer writer = new FileWriter(CONFIG_PATH.toFile())) {
-                GSON.toJson(config, writer);
-            }
-        } catch (IOException ex) {
-            Popup.FATAL.showAndWait(
-                    "Configuration Error",
-                    "Failed to save local configuration: " + ex.getMessage());
-        }
-    }
-    
     // Event ID
     public static String getEventId() {
-        return config.eventId;
+        return INSTANCE.config.eventId;
     }
     
     public static void setEventId(String eventId) {
-        config.eventId = eventId;
-        save();
+        INSTANCE.config.eventId = eventId;
+        INSTANCE.save();
     }
     
     // Event Data
     public static String getEventData() {
-        return config.eventData;
+        return INSTANCE.config.eventData;
     }
     
     public static void setEventData(String eventData) {
-        config.eventData = eventData;
-        save();
+        INSTANCE.config.eventData = eventData;
+        INSTANCE.save();
     }
     
     // Revenue Split
     public static String getRevenueSplit() {
-        return config.revenueSplit;
+        return INSTANCE.config.revenueSplit;
     }
     
     public static void setRevenueSplit(String revenueSplit) {
-        config.revenueSplit = revenueSplit;
-        save();
+        INSTANCE.config.revenueSplit = revenueSplit;
+        INSTANCE.save();
     }
     
     /**
      * Check if local mode is configured
      */
     public static boolean isConfigured() {
-        return config.eventId != null && !config.eventId.isEmpty();
+        return INSTANCE.config.eventId != null && !INSTANCE.config.eventId.isEmpty();
     }
     
     /**
      * Reset all local mode settings
      */
     public static void reset() {
-        config = new LocalConfig();
-        save();
+        INSTANCE.config = new LocalConfig();
+        INSTANCE.save();
     }
 }

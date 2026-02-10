@@ -310,5 +310,13 @@
   "sidebar.archive": "Arkiv",
   "status.local_mode": "Lokal kassa",
   "status.online_mode": "Ansluten till iLoppis",
-  "status.offline_pending": "Offline – {0} poster väntar på synkronisering"
+  "status.offline_pending": "Offline – {0} poster väntar på synkronisering",
+  "error.config_load.title": "Konfigurationsfel",
+  "error.config_load.message": "Kunde inte ladda {0}-konfiguration: {1}",
+  "error.config_save.title": "Konfigurationsfel",
+  "error.config_save.message": "Kunde inte spara {0}-konfiguration: {1}",
+  "error.archive.title": "Arkiveringsfel",
+  "error.archive.message": "Arkivering misslyckades: {0}",
+  "error.operation_not_available.payout_online": "Utbetalning är inte tillgänglig i online-läge",
+  "error.operation_not_available.archive_online": "Arkivering är inte tillgänglig i online-läge"
 }
