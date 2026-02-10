@@ -7,9 +7,12 @@ import se.goencoder.iloppis.model.V1CreateSoldItemsResponse;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
+import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 
 import java.nio.file.Path;
@@ -76,10 +79,20 @@ public class IloppisCashierStrategy implements CashierStrategy {
                 response.getAcceptedItems().size(), 
                 response.getRejectedItems() != null ? response.getRejectedItems().size() : 0));
             
-            // Handle rejected items (duplicate receipts, etc.)
+            // Handle rejected items (duplicate receipts, validation errors, etc.)
             if (response.getRejectedItems() != null && !response.getRejectedItems().isEmpty()) {
-                // TODO: Handle rejected items - save to rejection log?
-                log.warning("Some items were rejected by server: " + response.getRejectedItems().size());
+                int rejectedCount = response.getRejectedItems().size();
+                log.warning("Items rejected by server: " + rejectedCount);
+                
+                // Save rejected items to log file
+                RejectedItemsHelper.saveRejectedItems(eventId, response.getRejectedItems());
+                
+                // Show warning popup to cashier
+                String message = String.format(
+                    LocalizationManager.tr("error.upload_rejected") + "\n\n" +
+                    RejectedItemsHelper.buildRejectionMessage(response.getRejectedItems())
+                );
+                Popup.warn(message);
             }
             
             return true;
@@ -92,7 +105,9 @@ public class IloppisCashierStrategy implements CashierStrategy {
                 Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
                 JsonlHelper.appendItems(pendingPath, items);
                 
-                // TODO: Trigger background sync attempt
+                // Start background sync to retry upload automatically
+                BackgroundSyncManager.getInstance().start(eventId);
+                log.info("Background sync started for automatic retry");
                 
                 return true; // Saved locally successfully
             } else {

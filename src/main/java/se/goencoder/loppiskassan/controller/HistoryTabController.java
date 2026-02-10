@@ -310,8 +310,48 @@ public class HistoryTabController implements HistoryControllerInterface {
                 view.getComponent(),
                 this::importData,  // Local mode operation
                 () -> {  // Online mode operation
-                    uploadSoldItems();
-                    downloadSoldItems();
+                    boolean uploadSucceeded = false;
+                    boolean downloadSucceeded = false;
+                    
+                    try {
+                        uploadSucceeded = uploadSoldItems();
+                    } catch (Exception uploadError) {
+                        // Upload failed - show specific error
+                        Popup.ERROR.showAndWait(
+                            LocalizationManager.tr("error.network_upload.title"),
+                            LocalizationManager.tr("error.network_upload.message") + "\\n" + uploadError.getMessage()
+                        );
+                    }
+                    
+                    try {
+                        downloadSoldItems();
+                        downloadSucceeded = true;
+                    } catch (Exception downloadError) {
+                        // Download failed - show specific error (only if upload succeeded or wasn't attempted)
+                        Popup.ERROR.showAndWait(
+                            LocalizationManager.tr("error.network_fetch_history.title"),
+                            LocalizationManager.tr("error.network_fetch_history.message") + "\\n" + downloadError.getMessage()
+                        );
+                    }
+                    
+                    // Show success if at least one operation succeeded
+                    if (uploadSucceeded || downloadSucceeded) {
+                        StringBuilder successMsg = new StringBuilder();
+                        if (uploadSucceeded) {
+                            successMsg.append(LocalizationManager.tr("info.upload_success"));
+                        }
+                        if (downloadSucceeded) {
+                            if (successMsg.length() > 0) successMsg.append(" ");
+                            successMsg.append(LocalizationManager.tr("info.download_success"));
+                        }
+                        if (successMsg.length() > 0) {
+                            Popup.INFORMATION.showAndWait(
+                                LocalizationManager.tr("info.sync_complete"),
+                                successMsg.toString()
+                            );
+                        }
+                    }
+                    
                     return null;
                 },
                 LocalizationManager.tr("history.progress.updating_items"),
@@ -321,8 +361,9 @@ public class HistoryTabController implements HistoryControllerInterface {
         try {
             getEventService().synchronizeItems(context);
         } catch (Exception e) {
+            // This catch is for service-level errors, specific operation errors are handled above
             Popup.ERROR.showAndWait(
-                LocalizationManager.tr("error.network_fetch_history.title"),
+                LocalizationManager.tr("error.sync_failed"),
                 e.getMessage()
             );
         }
@@ -520,8 +561,6 @@ public class HistoryTabController implements HistoryControllerInterface {
                 payment);
     }
 
-    // TODO: This is not working, if local with items to upload, message says we failed download - but all items uploaded which is not correct
-    // TODO: If we have incorret items in the list not uploaded (eg incorrect seller id) and we try to sync - we do not show popup telling that some items could not be uploaded
     private boolean uploadSoldItems() {
         // 1) Hitta alla poster som inte redan är uppladdade
         List<V1SoldItem> notUploaded = allHistoryItems.stream()

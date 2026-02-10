@@ -42,7 +42,7 @@ public class BulkUploadController {
         LocalEvent localEvent,
         V1Event backendEvent,
         String code
-    ) throws Exception {
+    ) {
         BulkUploadResult result = new BulkUploadResult();
 
         try {

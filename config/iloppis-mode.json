@@ -1,7 +1,1 @@
-{
-  "eventId": "86dd1773-c98d-4988-89ec-37f3771d1bfd",
-  "apiKey": "3ab96b1b-83a8-4f70-9264-08001d7fefae",
-  "approvedSellers": "{\"approvedSellers\":[1,2,3,4,5,6,7,8,9,10]}",
-  "revenueSplit": "{\n  \"vendorPercentage\": 29.0,\n  \"marketOwnerPercentage\": 66.0,\n  \"platformProviderPercentage\": 5.0,\n  \"charityPercentage\": 0.0\n}",
-  "eventData": "{\n  \"id\": \"86dd1773-c98d-4988-89ec-37f3771d1bfd\",\n  \"marketId\": \"1feea259-84d6-4474-a4dd-ca3bd09a41b8\",\n  \"name\": \"Sillfest\",\n  \"description\": \"Allt för att fånga sill! (peter.karlsson@sillstugan.se)\",\n  \"startTime\": \"2026-02-10T07:29:00Z\",\n  \"endTime\": \"2026-02-11T07:29:00Z\",\n  \"addressStreet\": \"Skärkarlsvägen 1\",\n  \"addressCity\": \"Sillinge\",\n  \"addressState\": \"\",\n  \"addressZip\": \"58134\",\n  \"latitude\": 0.0,\n  \"longitude\": 0.0,\n  \"maxVendors\": 100,\n  \"vendorApplicationStartTime\": \"2026-02-10T07:29:00Z\",\n  \"publishTime\": \"2026-02-10T08:00:00.709Z\",\n  \"maxTicketsPerVisitor\": 4,\n  \"availableTickets\": -1,\n  \"soldTickets\": 0,\n  \"acceptVendorApplications\": true,\n  \"ownerEmail\": \"peter.karlsson@sillstugan.se\",\n  \"lifecycleState\": \"OPEN\",\n  \"sellerInfoSummary\": \"\",\n  \"descriptionIsMarkdown\": false,\n  \"distanceKm\": 0.0\n}"
-}
+{}

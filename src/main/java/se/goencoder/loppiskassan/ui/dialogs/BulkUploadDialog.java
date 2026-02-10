@@ -328,13 +328,13 @@ public class BulkUploadDialog extends JDialog {
                 
                 // Parse error to provide better context
                 if (fullMessage.contains("401")) {
-                    userMessage = "Kassakoden är felaktig eller utgången. Vänligen kontrollera koden.\n\n(Code validation failed)";
+                    userMessage = LocalizationManager.tr("bulk_upload.error.401");
                 } else if (fullMessage.contains("403")) {
-                    userMessage = "Du har inte behörighet att ladda upp till detta evenemang.\n\n(Permission denied)";
+                    userMessage = LocalizationManager.tr("bulk_upload.error.403");
                 } else if (fullMessage.contains("404")) {
-                    userMessage = "Eventet hittades inte. Försök välja ett annat evenemang.\n\n(Event not found)";
+                    userMessage = LocalizationManager.tr("bulk_upload.error.404");
                 } else if (fullMessage.contains("Network") || fullMessage.contains("connection")) {
-                    userMessage = "Nätverksfel. Kontrollera din internetanslutning.\n\n(Network error)";
+                    userMessage = LocalizationManager.tr("bulk_upload.error.network");
                 }
                 
                 JOptionPane.showMessageDialog(
@@ -369,22 +369,22 @@ public class BulkUploadDialog extends JDialog {
         StringBuilder sb = new StringBuilder();
         
         if (result.isFullSuccess()) {
-            sb.append(String.format("✅ %d items uploaded successfully", result.acceptedItems.size()));
+            sb.append(LocalizationManager.tr("bulk_upload.result.success", result.acceptedItems.size()));
         } else if (result.isPartialSuccess()) {
-            sb.append(String.format("✅ %d items accepted\n", result.acceptedItems.size()));
+            sb.append(LocalizationManager.tr("bulk_upload.result.accepted", result.acceptedItems.size()));
             if (!result.duplicateItems.isEmpty()) {
-                sb.append(String.format("⚠️ %d items already uploaded (duplicates)\n", result.duplicateItems.size()));
+                sb.append(LocalizationManager.tr("bulk_upload.result.duplicates", result.duplicateItems.size()));
             }
             if (!result.failedItems.isEmpty()) {
-                sb.append(String.format("❌ %d items failed\n", result.failedItems.size()));
+                sb.append(LocalizationManager.tr("bulk_upload.result.failed", result.failedItems.size()));
             }
         } else if (!result.errorMessages.isEmpty()) {
-            sb.append("❌ Upload failed:\n");
+            sb.append(LocalizationManager.tr("bulk_upload.result.upload_failed"));
             for (String error : result.errorMessages) {
                 sb.append("  • ").append(error).append("\n");
             }
         } else {
-            sb.append("No items to upload");
+            sb.append(LocalizationManager.tr("bulk_upload.result.no_items"));
         }
         
         return sb.toString();

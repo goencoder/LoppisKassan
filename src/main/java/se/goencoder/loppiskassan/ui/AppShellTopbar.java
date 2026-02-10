@@ -65,7 +65,7 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
             return;
         }
         
-        // Hämta evenemangsnamn från config (TODO: läs från event-data när tillgängligt)
+        // Hämta evenemangsnamn från event-data (lokal eller cached iLoppis-data)
         String eventName = getEventName(eventId);
         String eventDates = getEventDates(eventId);
         
@@ -111,9 +111,59 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
     }
     
     private String getEventDates(String eventId) {
-        // TODO: Läs riktiga datum från event-objekt/state
-        // För tillfället returnerar vi inget datum
+        // Try to read dates from iLoppis event data (online mode)
+        if (AppModeManager.isILoppisMode()) {
+            String eventData = ILoppisConfigurationStore.getEventData();
+            if (eventData != null && !eventData.isBlank()) {
+                try {
+                    JSONObject obj = new JSONObject(eventData);
+                    String startTimeStr = obj.optString("startTime", "");
+                    String endTimeStr = obj.optString("endTime", "");
+                    
+                    if (!startTimeStr.isBlank() && !endTimeStr.isBlank()) {
+                        return formatEventDateRange(startTimeStr, endTimeStr);
+                    } else if (!startTimeStr.isBlank()) {
+                        return formatSingleDate(startTimeStr);
+                    }
+                } catch (Exception ignored) {
+                    // Fallback to no dates
+                }
+            }
+        }
+        
+        // Local events don't have start/end dates, only createdAt
         return "";
+    }
+    
+    private String formatEventDateRange(String startTimeStr, String endTimeStr) {
+        try {
+            java.time.OffsetDateTime startTime = java.time.OffsetDateTime.parse(startTimeStr);
+            java.time.OffsetDateTime endTime = java.time.OffsetDateTime.parse(endTimeStr);
+            
+            java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMM", 
+                new java.util.Locale(LocalizationManager.getLanguage()));
+            
+            // If same day, show only one date
+            if (startTime.toLocalDate().equals(endTime.toLocalDate())) {
+                return startTime.format(dateFormatter);
+            }
+            
+            // Different days - show range
+            return startTime.format(dateFormatter) + " - " + endTime.format(dateFormatter);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    private String formatSingleDate(String dateTimeStr) {
+        try {
+            java.time.OffsetDateTime dateTime = java.time.OffsetDateTime.parse(dateTimeStr);
+            java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMM", 
+                new java.util.Locale(LocalizationManager.getLanguage()));
+            return dateTime.format(dateFormatter);
+        } catch (Exception e) {
+            return "";
+        }
     }
     
     @Override

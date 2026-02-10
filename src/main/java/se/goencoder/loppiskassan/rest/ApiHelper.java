@@ -23,6 +23,11 @@ public enum ApiHelper {
         this.apiClient.setBasePath("http://" + host + ":" + port);
         this.apiClient.setUserAgent("LoppisKassan/2.0.0");
         
+        // Configure timeouts: 5 seconds for sold items upload (responsive UX)
+        this.apiClient.setConnectTimeout(5000);
+        this.apiClient.setReadTimeout(5000);
+        this.apiClient.setWriteTimeout(5000);
+        
         // Configure the JSON serialization to use pretty printing
         this.apiClient.getJSON().setGson(this.apiClient.getJSON().getGson().newBuilder().setPrettyPrinting().create());
 

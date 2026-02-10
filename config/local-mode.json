@@ -1,5 +1,1 @@
-{
-  "eventId": "local-11364f0b-1fa3-4e94-b6d8-4954335658aa",
-  "eventData": "{\n  \"id\": \"local-11364f0b-1fa3-4e94-b6d8-4954335658aa\",\n  \"name\": \"Min egen Loppis\",\n  \"description\": \"Jag säljer allt jag äger och har, inget skall bli kvar!\",\n  \"startTime\": \"2026-02-10T18:58:22.405108Z\",\n  \"addressStreet\": \"Solvändan 11\",\n  \"addressCity\": \"Forshaga\",\n  \"lifecycleState\": \"EVENT_LIFECYCLE_STATE_UNSPECIFIED\"\n}",
-  "revenueSplit": "{\n  \"vendorPercentage\": 90.0,\n  \"marketOwnerPercentage\": 10.0,\n  \"platformProviderPercentage\": 0.0,\n  \"charityPercentage\": 0.0\n}"
-}
+{}

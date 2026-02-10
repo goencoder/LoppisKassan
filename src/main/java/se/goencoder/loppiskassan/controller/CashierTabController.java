@@ -37,8 +37,6 @@ import static se.goencoder.loppiskassan.rest.ApiHelper.isLikelyNetworkError;
 
 public class CashierTabController implements CashierControllerInterface {
 
-    // TODO, check so that the buttons to abort/swish/kontant are enabled only if there is at least one item in the list of items (not before that)
-
     private static final CashierTabController instance = new CashierTabController();
     private static final Logger log = Logger.getLogger(CashierTabController.class.getName());
 
@@ -330,8 +328,6 @@ public class CashierTabController implements CashierControllerInterface {
      *                          (some might bubble as ApiException with code=0)
      */
     private void saveItemsToWeb(List<V1SoldItem> items) throws ApiException {
-        // TODO: set an API call timeout of 5 seconds for this request in your HTTP client config
-
         if (items == null || items.isEmpty()) {
             return;
         }
