@@ -78,13 +78,61 @@ This is a Java Swing desktop application for managing a flea market cash registe
 - Always update both memory and `config.properties` on change.
 
 ## Internationalization
-- All UI text must come from `LocalizationManager.tr("key")`.
+
+### Critical Rules
+- **All UI text must come from `LocalizationManager.tr("key")`** — never hardcode strings.
+- **Never use `String.format()` with localized text** — always pass parameters directly to `tr()`.
 - Keys live under `src/main/resources/lang/{sv,en}.json`.
 - Do not hardcode text in Swing components.
-- Language selector must:
-  - Show flags and labels.
-  - Persist selected language.
-  - Update UI immediately on change.
+
+### Parameter Formatting (MessageFormat)
+`LocalizationManager.tr()` uses Java's `MessageFormat.format()` internally:
+
+**✅ CORRECT - Pass parameters to tr():**
+```java
+LocalizationManager.tr("discovery.delete.confirm", eventName)
+LocalizationManager.tr("history.summary.items", itemCount, totalAmount)
+```
+
+**❌ WRONG - Using String.format():**
+```java
+// WRONG! This will show literal {0} in the UI
+String.format(LocalizationManager.tr("discovery.delete.confirm"), eventName)
+```
+
+**Language file format:**
+```json
+{
+  "discovery.delete.confirm": "Är du säker på att du vill radera ''{0}''?",
+  "history.summary.items": "{0} varor sålda för totalt {1} SEK"
+}
+```
+
+**Parameter placeholders:**
+- Use `{0}`, `{1}`, `{2}`, etc. (NOT `%s`, `%d`, etc.)
+- MessageFormat handles all formatting automatically
+- Supports multiple parameters in any order
+
+**⚠️ CRITICAL: Single Quote Escaping in MessageFormat**
+MessageFormat uses single quotes (`'`) to escape text. This is the most common localization bug:
+
+```json
+// ❌ WRONG - Single quotes prevent parameter substitution
+"message": "Delete '{0}'?"     // Shows literal: Delete {0}?
+
+// ✅ CORRECT - Escape single quotes with double single-quotes
+"message": "Delete ''{0}''?"   // Shows: Delete 'EventName'?
+
+// ✅ ALSO CORRECT - No quotes around parameter
+"message": "Delete {0}?"       // Shows: Delete EventName?
+```
+
+**Rule:** If you want to show a single quote (`'`) in the formatted message, write it as `''` (two single quotes).
+
+### Language Selector
+- Show flags and labels
+- Persist selected language via `ConfigurationStore`
+- Update UI immediately on change via `LocalizationManager.setLanguage()`
 
 ## Environment Detection
 The Makefile automatically detects Codex vs local environment:

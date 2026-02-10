@@ -119,8 +119,8 @@ public class CreateLocalEventDialog extends JDialog {
 
     private JPanel buildButtons() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton cancel = new JButton(LocalizationManager.tr("popup.cancel"));
-        JButton create = new JButton(LocalizationManager.tr("local_event.create.button"));
+        JButton cancel = AppButton.create(LocalizationManager.tr("popup.cancel"), AppButton.Variant.SECONDARY, AppButton.Size.MEDIUM);
+        JButton create = AppButton.create(LocalizationManager.tr("local_event.create.button"), AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         panel.add(cancel);
         panel.add(create);
 

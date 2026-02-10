@@ -119,6 +119,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         dateFromField = new JTextField(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 10);
         headerPanel.add(dateFromField);
         discoverButton = new JButton();
+        AppButton.applyStyle(discoverButton, AppButton.Variant.SECONDARY, AppButton.Size.MEDIUM);
         headerPanel.add(discoverButton);
         panel.add(headerPanel, BorderLayout.NORTH);
 
@@ -136,6 +137,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         // Bottom: Open Register button
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         getTokenButton = new JButton();
+        AppButton.applyStyle(getTokenButton, AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         bottomPanel.add(getTokenButton);
         panel.add(bottomPanel, BorderLayout.SOUTH);
 

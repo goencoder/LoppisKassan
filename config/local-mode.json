@@ -1,5 +1,5 @@
 {
-  "eventId": "local-1985b6ce-b732-49f2-a5af-d2ad4848968c",
-  "eventData": "{\n  \"id\": \"local-d9651ec2-f693-442e-b493-ba85cbfc1d29\",\n  \"name\": \"Lottas Loppis\",\n  \"description\": \"Lotta säljer ut allt hon äger och har, innan dagen är slut är hon helt bar.\",\n  \"startTime\": \"2026-02-10T06:07:31.883469Z\",\n  \"addressStreet\": \"Stora lundgatan 12\",\n  \"addressCity\": \"Lugnet\",\n  \"lifecycleState\": \"EVENT_LIFECYCLE_STATE_UNSPECIFIED\"\n}",
-  "revenueSplit": "{\n  \"vendorPercentage\": 85.0,\n  \"marketOwnerPercentage\": 15.0,\n  \"platformProviderPercentage\": 0.0,\n  \"charityPercentage\": 0.0\n}"
+  "eventId": "local-11364f0b-1fa3-4e94-b6d8-4954335658aa",
+  "eventData": "{\n  \"id\": \"local-11364f0b-1fa3-4e94-b6d8-4954335658aa\",\n  \"name\": \"Min egen Loppis\",\n  \"description\": \"Jag säljer allt jag äger och har, inget skall bli kvar!\",\n  \"startTime\": \"2026-02-10T18:58:22.405108Z\",\n  \"addressStreet\": \"Solvändan 11\",\n  \"addressCity\": \"Forshaga\",\n  \"lifecycleState\": \"EVENT_LIFECYCLE_STATE_UNSPECIFIED\"\n}",
+  "revenueSplit": "{\n  \"vendorPercentage\": 90.0,\n  \"marketOwnerPercentage\": 10.0,\n  \"platformProviderPercentage\": 0.0,\n  \"charityPercentage\": 0.0\n}"
 }

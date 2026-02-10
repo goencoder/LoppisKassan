@@ -91,45 +91,41 @@ public final class AppButton {
         button.setMinimumSize(new Dimension(0, size.height));
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, size.height));
 
-        // Common
+        // Common - rounded corners for all buttons
         button.setFocusPainted(false);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setOpaque(true);
+        
+        int radius = 6; // Consistent rounded corner radius
+        Insets borderInsets = new Insets(size.vPad, size.hPad, size.vPad, size.hPad);
 
         // Variant
         switch (variant) {
             case PRIMARY -> {
                 button.setBackground(AppColors.ACCENT);
                 button.setForeground(AppColors.WHITE);
-                button.setBorder(BorderFactory.createEmptyBorder(size.vPad, size.hPad, size.vPad, size.hPad));
+                button.setBorder(new RoundedBorder(AppColors.ACCENT, 0, radius, borderInsets));
             }
             case SECONDARY -> {
                 button.setBackground(AppColors.WHITE);
                 button.setForeground(AppColors.TEXT_PRIMARY);
-                button.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(AppColors.BORDER, 1),
-                    BorderFactory.createEmptyBorder(size.vPad, size.hPad, size.vPad, size.hPad)
-                ));
+                button.setBorder(new RoundedBorder(AppColors.BORDER, 1, radius, borderInsets));
             }
             case OUTLINE -> {
                 button.setBackground(AppColors.WHITE);
                 button.setForeground(AppColors.ACCENT);
-                button.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(AppColors.ACCENT, 1),
-                    BorderFactory.createEmptyBorder(size.vPad, size.hPad, size.vPad, size.hPad)
-                ));
+                button.setBorder(new RoundedBorder(AppColors.ACCENT, 1, radius, borderInsets));
             }
             case DANGER -> {
                 button.setBackground(AppColors.WHITE);
                 button.setForeground(AppColors.DANGER);
-                button.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(AppColors.BORDER, 1),
-                    BorderFactory.createEmptyBorder(size.vPad, size.hPad, size.vPad, size.hPad)
-                ));
+                button.setBorder(new RoundedBorder(AppColors.BORDER, 1, radius, borderInsets));
             }
             case GHOST -> {
                 button.setBackground(new Color(0, 0, 0, 0));
                 button.setForeground(AppColors.TEXT_MUTED);
-                button.setBorder(BorderFactory.createEmptyBorder(size.vPad, size.hPad, size.vPad, size.hPad));
+                button.setBorder(new RoundedBorder(new Color(0, 0, 0, 0), 0, radius, borderInsets));
+                button.setOpaque(false);
                 button.setContentAreaFilled(false);
             }
         }

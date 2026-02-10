@@ -3,10 +3,8 @@ package se.goencoder.loppiskassan.ui;
 import se.goencoder.iloppis.model.V1Event;
 import se.goencoder.iloppis.model.V1RevenueSplit;
 import se.goencoder.loppiskassan.config.AppModeManager;
-import se.goencoder.loppiskassan.controller.CsvExportController;
 import se.goencoder.loppiskassan.controller.DiscoveryControllerInterface;
 import se.goencoder.loppiskassan.controller.DiscoveryTabController;
-import se.goencoder.loppiskassan.controller.ExportLocalEventController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.utils.LocalEventUtils;
@@ -71,8 +69,6 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
     private JLabel activeEventDescLabel;
     private JLabel activeEventAddressLabel;
     private JButton changeEventButton;
-    private JButton exportDataButton;
-    private JButton csvExportButton;
     private JLabel marketOwnerSplitLabel;
     private JLabel vendorSplitLabel;
     private JLabel platformSplitLabel;
@@ -225,7 +221,7 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
     private void handleDeleteEvent(String eventId, String eventName) {
         int confirm = JOptionPane.showConfirmDialog(
             SwingUtilities.getWindowAncestor(this),
-            String.format(LocalizationManager.tr("discovery.delete.confirm"), eventName),
+            LocalizationManager.tr("discovery.delete.confirm", eventName),
             LocalizationManager.tr("discovery.delete.title"),
             JOptionPane.YES_NO_OPTION,
             JOptionPane.WARNING_MESSAGE
@@ -681,30 +677,6 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         panel.setBackground(AppColors.WHITE);
 
-        exportDataButton = new JButton();
-        exportDataButton.setVisible(false);
-        exportDataButton.setToolTipText(LocalizationManager.tr("export.button.tooltip.jsonl"));
-        AppButton.applyStyle(exportDataButton, AppButton.Variant.OUTLINE, AppButton.Size.MEDIUM);
-        exportDataButton.addActionListener(e -> {
-            String eventId = AppModeManager.getEventId();
-            if (eventId != null && eventId.startsWith("local-")) {
-                ExportLocalEventController.exportEventData(eventId, activeEventNameLabel.getText());
-            }
-        });
-        panel.add(exportDataButton);
-
-        csvExportButton = new JButton();
-        csvExportButton.setVisible(false);
-        csvExportButton.setToolTipText(LocalizationManager.tr("export.button.tooltip.csv"));
-        AppButton.applyStyle(csvExportButton, AppButton.Variant.OUTLINE, AppButton.Size.MEDIUM);
-        csvExportButton.addActionListener(e -> {
-            String eventId = AppModeManager.getEventId();
-            if (eventId != null && eventId.startsWith("local-")) {
-                CsvExportController.exportEventDataAsCsv(eventId, activeEventNameLabel.getText());
-            }
-        });
-        panel.add(csvExportButton);
-
         changeEventButton = new JButton();
         AppButton.applyStyle(changeEventButton, AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         changeEventButton.addActionListener(e -> controller.changeEventRequested());
@@ -862,12 +834,6 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
             );
         }
 
-        // Export buttons: visible for local events with sales (no upload in local mode)
-        boolean hasSales = event.getId() != null && event.getId().startsWith("local-")
-                && LocalEventUtils.getSalesCount(event.getId()) > 0;
-        exportDataButton.setVisible(hasSales);
-        csvExportButton.setVisible(hasSales);
-
         rootCardLayout.show(rootCardPanel, "activeEvent");
     }
 
@@ -906,20 +872,12 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
                 marketOwnerStaticLabel, vendorStaticLabel, platformStaticLabel);
 
         changeEventButton.setText(LocalizationManager.tr("button.change_event"));
-        exportDataButton.setText(LocalizationManager.tr("export.button.export_data"));
-        csvExportButton.setText(LocalizationManager.tr("export.button.export_csv"));
 
         if (AppModeManager.isLocalMode()) {
             activeEventNameLabel.setText(LocalizationManager.tr("event.local.name"));
             activeEventDescLabel.setText(LocalizationManager.tr("event.local.description"));
             activeEventAddressLabel.setText(
                     LocalizationManager.tr("event.no_street") + ", " + LocalizationManager.tr("event.no_city"));
-            String eventId = AppModeManager.getEventId();
-            if (eventId != null && eventId.startsWith("local-")) {
-                boolean hasSales = LocalEventUtils.getSalesCount(eventId) > 0;
-                exportDataButton.setVisible(hasSales);
-                csvExportButton.setVisible(hasSales);
-            }
         }
 
         revalidate();

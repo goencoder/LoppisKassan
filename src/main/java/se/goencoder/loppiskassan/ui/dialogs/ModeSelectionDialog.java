@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.config.AppMode;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.AppColors;
 import se.goencoder.loppiskassan.ui.LanguageSelector;
+import se.goencoder.loppiskassan.ui.RoundedBorder;
 import se.goencoder.loppiskassan.ui.icons.MonitorIcon;
 import se.goencoder.loppiskassan.ui.icons.ShopIcon;
 
@@ -145,6 +146,9 @@ public class ModeSelectionDialog extends JDialog {
         button.setPreferredSize(new Dimension(240, 240));
         button.setFocusPainted(false);
         button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBackground(AppColors.WHITE);
+        button.setBorder(new RoundedBorder(AppColors.BORDER, 1, 8, new Insets(0, 0, 0, 0)));
+        button.setOpaque(true);
 
         // Icon
         JLabel iconLabel = new JLabel(icon);

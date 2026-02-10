@@ -50,6 +50,9 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         
         // Registrera för språkändringar
         LocalizationManager.addListener(this::reloadTexts);
+        
+        // Initialt laddning av texter
+        reloadTexts();
     }
     
     private JPanel createCard() {

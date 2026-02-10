@@ -74,9 +74,17 @@ public class UserInterface extends JFrame implements LocalizationAware {
     }
     static JButton createButton(String text, int width, int height) {
         JButton button = new JButton(text);
-        button.setPreferredSize(new Dimension(width, height)); // Set the preferred size
-        // You could also set the font here if needed
-        // button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setPreferredSize(new Dimension(width, height));
+        // Apply AppButton styling for consistent appearance
+        AppButton.Size size = height >= 50 ? AppButton.Size.XLARGE :
+                             height >= 44 ? AppButton.Size.LARGE :
+                             height >= 36 ? AppButton.Size.MEDIUM :
+                                          AppButton.Size.SMALL;
+        AppButton.applyStyle(button, AppButton.Variant.SECONDARY, size);
+        // Override height from size preset to use explicit width/height
+        button.setPreferredSize(new Dimension(width, height));
+        button.setMinimumSize(new Dimension(width, height));
+        button.setMaximumSize(new Dimension(width, height));
         return button;
     }
 

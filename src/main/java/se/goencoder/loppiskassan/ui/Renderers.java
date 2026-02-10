@@ -34,11 +34,11 @@ public final class Renderers {
             {
                 button.setForeground(AppColors.DANGER);
                 button.setBackground(AppColors.WHITE);
-                button.setBorderPainted(false);
-                button.setContentAreaFilled(false);
+                button.setBorder(new RoundedBorder(new Color(0, 0, 0, 0), 0, 6, new Insets(4, 8, 4, 8)));
                 button.setFocusPainted(false);
                 button.setCursor(new Cursor(Cursor.HAND_CURSOR));
                 button.setFont(button.getFont().deriveFont(Font.BOLD, 14f));
+                button.setOpaque(true);
             }
             
             @Override

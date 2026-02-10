@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.ui.components;
 
 import se.goencoder.loppiskassan.ui.AppColors;
+import se.goencoder.loppiskassan.ui.RoundedBorder;
 import javax.swing.*;
 import java.awt.*;
 
@@ -27,7 +28,7 @@ public class SnackbarPanel extends JPanel {
         undoButton = new JButton("Ångra");
         undoButton.setForeground(AppColors.ACCENT);
         undoButton.setBackground(AppColors.TEXT_PRIMARY);
-        undoButton.setBorderPainted(false);
+        undoButton.setBorder(new RoundedBorder(AppColors.TEXT_PRIMARY, 0, 6, new Insets(6, 12, 6, 12)));
         undoButton.setFocusPainted(false);
         undoButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         undoButton.addActionListener(e -> {

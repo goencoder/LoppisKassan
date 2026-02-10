@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.ui.dialogs;
 
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.ui.AppButton;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -64,11 +65,11 @@ public class ExportDataDialog extends JDialog {
         
         filenameField = new JTextField(30);
         
-        browseButton = new JButton("📂");
+        browseButton = AppButton.create("📂", AppButton.Variant.SECONDARY, AppButton.Size.MEDIUM);
         browseButton.setToolTipText(LocalizationManager.tr("export.dialog.browse"));
         
-        exportButton = new JButton(LocalizationManager.tr("export.dialog.export"));
-        cancelButton = new JButton(LocalizationManager.tr("export.dialog.cancel"));
+        exportButton = AppButton.create(LocalizationManager.tr("export.dialog.export"), AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
+        cancelButton = AppButton.create(LocalizationManager.tr("export.dialog.cancel"), AppButton.Variant.SECONDARY, AppButton.Size.MEDIUM);
     }
     
     private void layoutComponents() {

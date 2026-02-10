@@ -12,6 +12,7 @@ import se.goencoder.loppiskassan.model.BulkUploadResult;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.storage.LocalEvent;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
+import se.goencoder.loppiskassan.ui.AppButton;
 import se.goencoder.loppiskassan.ui.AppColors;
 import se.goencoder.loppiskassan.ui.ProgressDialog;
 
@@ -96,10 +97,9 @@ public class BulkUploadDialog extends JDialog {
         previewLabel.setForeground(AppColors.PREVIEW_TEXT);
         previewLabel.setFont(new Font("Monospaced", Font.PLAIN, 12));
         
-        uploadButton = new JButton(LocalizationManager.tr("bulk_upload.upload"));
-        uploadButton.setFont(new Font("Arial", Font.PLAIN, 14));
+        uploadButton = AppButton.create(LocalizationManager.tr("bulk_upload.upload"), AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         
-        cancelButton = new JButton(LocalizationManager.tr("bulk_upload.cancel"));
+        cancelButton = AppButton.create(LocalizationManager.tr("bulk_upload.cancel"), AppButton.Variant.SECONDARY, AppButton.Size.MEDIUM);
     }
     
     private void layoutComponents() {
