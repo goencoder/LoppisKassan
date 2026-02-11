@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -45,6 +46,17 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         
         // Initiera vyer
         initializeViews();
+        
+        // Wire up pending count listener for statusbar in iLoppis mode
+        if (!AppModeManager.isLocalMode()) {
+            BackgroundSyncManager.getInstance().setPendingCountListener(count -> {
+                if (count > 0) {
+                    statusbar.setOfflineStatus(count);
+                } else {
+                    statusbar.setOnlineStatus();
+                }
+            });
+        }
         
         // Visa första vyn beroende på om evenemang är valt
         if (AppModeManager.getEventId() == null) {

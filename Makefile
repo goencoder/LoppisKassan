@@ -55,3 +55,29 @@ endif
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
 	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.LoadTestRunner \
 	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+
+setup-test: install-client ## Run market setup (creates market, event, vendors) (ENV=path/to/env)
+ifeq ($(strip $(ENV)),)
+	$(error ENV file path required, e.g. make setup-test ENV=./load-test-setup.env)
+endif
+	set -a; source $(ENV); set +a; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
+	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.SetupRunner \
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+
+## Network chaos testing
+toxiproxy-up: ## Start toxiproxy container
+	docker-compose -f docker-compose.toxiproxy.yml up -d
+	@sleep 2
+	@./scripts/toxiproxy-setup.sh
+
+toxiproxy-down: ## Stop toxiproxy container
+	docker-compose -f docker-compose.toxiproxy.yml down
+
+toxiproxy-scenario: ## Run network scenario (SCENARIO=slow-3g|unstable|high-latency|packet-loss|timeout|clear|list)
+ifeq ($(strip $(SCENARIO)),)
+	@./scripts/toxiproxy-scenarios.sh
+else
+	@./scripts/toxiproxy-scenarios.sh $(SCENARIO)
+endif

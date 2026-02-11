@@ -49,6 +49,7 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
     static class ILoppisConfig {
         private String eventId;           // UUID from API
         private String apiKey;            // Authentication key
+        private String apiBaseUrl;        // API base URL (e.g., http://127.0.0.1:8080)
         private String approvedSellers;   // JSON array of approved vendor IDs (cached for offline validation)
         private String revenueSplit;      // JSON string of revenue split configuration
         private String eventData;         // JSON string of event metadata
@@ -73,6 +74,24 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
     
     public static void setApiKey(String apiKey) {
         INSTANCE.config.apiKey = apiKey;
+        INSTANCE.save();
+    }
+    
+    // API Base URL
+    public static String getApiBaseUrl() {
+        // Check environment variable first (useful for testing with toxiproxy)
+        String envUrl = System.getenv("ILOPPIS_API_URL");
+        if (envUrl != null && !envUrl.isBlank()) {
+            return envUrl;
+        }
+        // Fall back to configured value or default
+        return INSTANCE.config.apiBaseUrl != null && !INSTANCE.config.apiBaseUrl.isBlank() 
+            ? INSTANCE.config.apiBaseUrl 
+            : "http://127.0.0.1:8080";
+    }
+    
+    public static void setApiBaseUrl(String apiBaseUrl) {
+        INSTANCE.config.apiBaseUrl = apiBaseUrl;
         INSTANCE.save();
     }
     

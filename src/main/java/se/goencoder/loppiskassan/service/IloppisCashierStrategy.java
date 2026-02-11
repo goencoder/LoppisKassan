@@ -79,6 +79,17 @@ public class IloppisCashierStrategy implements CashierStrategy {
                 response.getAcceptedItems().size(), 
                 response.getRejectedItems() != null ? response.getRejectedItems().size() : 0));
             
+            // Mark items as uploaded and save to local file for history view
+            for (V1SoldItem item : items) {
+                item.setUploaded(true);
+            }
+            Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
+            JsonlHelper.appendItems(pendingPath, items);
+            log.info("iLoppis: Items saved to local file for history tracking");
+            
+            // Notify UI of pending count change (items are uploaded, count should be 0)
+            BackgroundSyncManager.getInstance().notifyPendingCountChanged();
+            
             // Handle rejected items (duplicate receipts, validation errors, etc.)
             if (response.getRejectedItems() != null && !response.getRejectedItems().isEmpty()) {
                 int rejectedCount = response.getRejectedItems().size();
@@ -108,6 +119,9 @@ public class IloppisCashierStrategy implements CashierStrategy {
                 // Start background sync to retry upload automatically
                 BackgroundSyncManager.getInstance().start(eventId);
                 log.info("Background sync started for automatic retry");
+                
+                // Notify UI of pending count change
+                BackgroundSyncManager.getInstance().notifyPendingCountChanged();
                 
                 return true; // Saved locally successfully
             } else {

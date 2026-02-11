@@ -19,6 +19,7 @@ import se.goencoder.loppiskassan.utils.UlidGenerator;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -116,11 +117,11 @@ public final class LoadTestRunner {
                     int seller = 1 + ((purchases * itemCount + i) % cfg.sellerCount);
                     V1PaymentMethod payment = random.nextBoolean() ? V1PaymentMethod.Kontant : V1PaymentMethod.Swish;
                     String itemId = UlidGenerator.generate();
-                    LocalDateTime soldTime = LocalDateTime.now();
+                    OffsetDateTime soldTime = OffsetDateTime.now(ZoneOffset.UTC);
                     batch.add(new V1SoldItem(
                             purchaseId,
                             itemId,
-                            soldTime,
+                            soldTime.toLocalDateTime(),
                             seller,
                             price,
                             null,

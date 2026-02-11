@@ -9,7 +9,7 @@ import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
  * Den har statista metoder för att hämta klienter och injicera autentisering.
  */
 public enum ApiHelper {
-    INSTANCE("127.0.0.1", 8080);
+    INSTANCE;
     private final FixedApiClient apiClient;
     private final SoldItemsServiceApi soldItemsServiceApi;
     private final ApiKeyServiceApi apiKeyServiceApi;
@@ -17,10 +17,12 @@ public enum ApiHelper {
     private final VendorServiceApi vendorServiceApi;
     private final ApprovedMarketServiceApi approvedMarketServiceApi;
 
-    ApiHelper(String host, int port) {
+    ApiHelper() {
         // Use our fixed API client implementation
         this.apiClient = new FixedApiClient();
-        this.apiClient.setBasePath("http://" + host + ":" + port);
+        // Get base URL from configuration (supports env var ILOPPIS_API_URL)
+        String baseUrl = ILoppisConfigurationStore.getApiBaseUrl();
+        this.apiClient.setBasePath(baseUrl);
         this.apiClient.setUserAgent("LoppisKassan/2.0.0");
         
         // Configure timeouts: 5 seconds for sold items upload (responsive UX)

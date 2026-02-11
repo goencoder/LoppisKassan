@@ -1,0 +1,5 @@
+# Säljare: Alla, Betalningsmedel: Alla
+Köp-id,Varu-id,tidsstämpel,säljare,pris,utbetalt,Betalningsmetod,uppladdad
+01KH32KSMKP7YGMP41JQAQ6ABZ,7f236673-f361-47d1-bfc5-aaa0a3f62b4d,2026-02-10 07:07,12,12,2026-02-10 07:08,Swish,false
+01KH32KSMKP7YGMP41JQAQ6ABZ,196575fd-3432-440b-b689-233e17dc73f1,2026-02-10 07:07,12,12,2026-02-10 07:08,Swish,false
+01KH32KSMKP7YGMP41JQAQ6ABZ,b9eb3a44-020a-4b55-baa6-b60af7883f05,2026-02-10 07:07,12,12,2026-02-10 07:08,Swish,false

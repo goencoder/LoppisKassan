@@ -10,6 +10,7 @@ import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
 
 import javax.swing.*;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -30,6 +31,13 @@ public class BackgroundSyncManager {
     private Timer syncTimer;
     private String activeEventId;
     private boolean isRunning = false;
+    
+    /** Listener interface for pending count changes. */
+    public interface PendingCountListener {
+        void onPendingCountChanged(int pendingCount);
+    }
+    
+    private PendingCountListener pendingCountListener;
     
     private BackgroundSyncManager() {
         // Private constructor for singleton
@@ -90,6 +98,36 @@ public class BackgroundSyncManager {
     }
     
     /**
+     * Set listener for pending count changes.
+     * Called on EDT when pending count changes.
+     */
+    public void setPendingCountListener(PendingCountListener listener) {
+        this.pendingCountListener = listener;
+    }
+    
+    /**
+     * Get the current count of pending (non-uploaded) items for the active event.
+     * Returns 0 if no event is active or on any error.
+     */
+    public int getPendingCount() {
+        String eventId = activeEventId;
+        if (eventId == null) return 0;
+        try {
+            PendingItemsStore store = new PendingItemsStore(eventId);
+            return store.readPending().size();
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+    
+    public void notifyPendingCountChanged() {
+        if (pendingCountListener != null) {
+            int count = getPendingCount();
+            SwingUtilities.invokeLater(() -> pendingCountListener.onPendingCountChanged(count));
+        }
+    }
+    
+    /**
      * Attempt to upload pending items for the active event.
      * Called periodically by the timer.
      */
@@ -137,15 +175,31 @@ public class BackgroundSyncManager {
                 RejectedItemsHelper.saveRejectedItems(activeEventId, response.getRejectedItems());
             }
             
-            // Clear pending file on success
-            Files.deleteIfExists(pendingPath);
-            log.info("Background sync: Cleared pending items file");
+            // Mark all successfully uploaded items
+            for (V1SoldItem item : pendingItems) {
+                item.setUploaded(true);
+            }
             
-            // Notify user on EDT
-            SwingUtilities.invokeLater(() -> {
-                // Could show a non-intrusive notification here
-                log.info("Background sync completed successfully");
-            });
+            // Save updated items back (preserving history, not deleting file)
+            try {
+                List<V1SoldItem> allItems = store.readAll();
+                // Update uploaded status in the full list
+                for (V1SoldItem allItem : allItems) {
+                    for (V1SoldItem uploaded : pendingItems) {
+                        if (allItem.getItemId().equals(uploaded.getItemId())) {
+                            allItem.setUploaded(true);
+                        }
+                    }
+                }
+                store.saveAll(allItems);
+            } catch (IOException ioEx) {
+                log.warning("Background sync: Failed to update local file - " + ioEx.getMessage());
+            }
+            
+            log.info("Background sync: Marked " + pendingItems.size() + " items as uploaded");
+            
+            // Notify UI on EDT
+            notifyPendingCountChanged();
             
         } catch (ApiException e) {
             if (ApiHelper.isLikelyNetworkError(e)) {
