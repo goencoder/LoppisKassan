@@ -318,5 +318,17 @@
   "error.archive.title": "Arkiveringsfel",
   "error.archive.message": "Arkivering misslyckades: {0}",
   "error.operation_not_available.payout_online": "Utbetalning är inte tillgänglig i online-läge",
-  "error.operation_not_available.archive_online": "Arkivering är inte tillgänglig i online-läge"
+  "error.operation_not_available.archive_online": "Arkivering är inte tillgänglig i online-läge",
+  "status.offline_start": "Offline-läge – använder cachad data",
+  "status.offline_reconnected": "Ansluten igen – synkroniserar...",
+  "offline.cached_event.tooltip": "Cachad data (senast uppdaterad {0})",
+  "offline.code_not_needed.tooltip": "Kassakoden behövs ej i offline-läge – cachad session",
+  "offline.register_opened.title": "Kassa öppnad (offline)",
+  "offline.register_opened.message": "Kassan har öppnats med cachad data.\n\n⚠️ Observera:\n• Säljarlistan kan vara föråldrad\n• Evenemangsinformation kan ha ändrats\n• Försäljningar sparas lokalt och synkas automatiskt\n  när anslutningen återupprättas",
+  "offline.cache_expired.title": "Gammal cachad data",
+  "offline.cache_expired.message": "Den cachade datan är {0} gammal.\nSäljarlistan och evenemangsinformation kan vara föråldrade.\n\nVill du fortsätta ändå?",
+  "offline.no_cache.title": "Ingen cachad data",
+  "offline.no_cache.message": "Det finns ingen cachad data för detta evenemang.\nDu måste vara online för att öppna kassan första gången.",
+  "offline.cache_age.hours": "{0} timmar",
+  "offline.cache_age.days": "{0} dagar"
 }

@@ -317,5 +317,17 @@
   "error.archive.title": "Archive Error",
   "error.archive.message": "Archive operation failed: {0}",
   "error.operation_not_available.payout_online": "Payout is not available in online mode",
-  "error.operation_not_available.archive_online": "Archive is not available in online mode"
+  "error.operation_not_available.archive_online": "Archive is not available in online mode",
+  "status.offline_start": "Offline mode – using cached data",
+  "status.offline_reconnected": "Reconnected – syncing...",
+  "offline.cached_event.tooltip": "Cached data (last updated {0})",
+  "offline.code_not_needed.tooltip": "Cashier code not needed in offline mode – cached session",
+  "offline.register_opened.title": "Register opened (offline)",
+  "offline.register_opened.message": "The register has been opened with cached data.\n\n⚠️ Note:\n• The seller list may be outdated\n• Event information may have changed\n• Sales are saved locally and will sync automatically\n  when connectivity is restored",
+  "offline.cache_expired.title": "Outdated cached data",
+  "offline.cache_expired.message": "The cached data is {0} old.\nThe seller list and event information may be outdated.\n\nDo you want to continue anyway?",
+  "offline.no_cache.title": "No cached data",
+  "offline.no_cache.message": "There is no cached data for this event.\nYou must be online to open the register for the first time.",
+  "offline.cache_age.hours": "{0} hours",
+  "offline.cache_age.days": "{0} days"
 }
