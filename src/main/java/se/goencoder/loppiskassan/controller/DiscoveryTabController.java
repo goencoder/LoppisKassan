@@ -19,6 +19,7 @@ import se.goencoder.loppiskassan.utils.EventUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.storage.LocalEvent;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
+import se.goencoder.loppiskassan.storage.LocalEventType;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -78,13 +79,16 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         List<V1Event> newEventList = new ArrayList<>();
         Map<String, LocalEvent> newLocalEventMap = new HashMap<>();
 
-        // Load local events from disk
+        // Load local events from disk (always available)
         try {
             List<LocalEvent> localEvents = LocalEventRepository.loadAll();
             for (LocalEvent localEvent : localEvents) {
-                V1Event event = toLocalV1Event(localEvent);
-                newEventList.add(event);
-                newLocalEventMap.put(localEvent.getEventId(), localEvent);
+                // Only include LOCAL events here, not cached ONLINE events
+                if (localEvent.getEventType() == LocalEventType.LOCAL) {
+                    V1Event event = toLocalV1Event(localEvent);
+                    newEventList.add(event);
+                    newLocalEventMap.put(localEvent.getEventId(), localEvent);
+                }
             }
         } catch (IOException e) {
             Popup.ERROR.showAndWait(
@@ -92,28 +96,44 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                     LocalizationManager.tr("error.load_local_events.message", e.getMessage()));
         }
 
-        // Fetch and add real events from iLoppis.
-        try {
-            EventServiceApi eventApi = ApiHelper.INSTANCE.getEventServiceApi();
+        // Check connectivity before attempting API call
+        boolean online = se.goencoder.loppiskassan.rest.ConnectivityChecker.isOnline();
+        state.setOfflineMode(!online);
 
-            // Create the components separately to avoid serialization issues
-            V1EventFilter eventFilter = new V1EventFilter();
-            eventFilter.setDateFrom(java.time.OffsetDateTime.parse(dateFrom.contains("T") ? dateFrom : dateFrom + "T00:00:00+00:00"));
+        if (online) {
+            // Fetch fresh events from iLoppis API
+            try {
+                EventServiceApi eventApi = ApiHelper.INSTANCE.getEventServiceApi();
 
-            V1Pagination pagination = new V1Pagination();
-            pagination.setPageSize(100);
+                // Create the components separately to avoid serialization issues
+                V1EventFilter eventFilter = new V1EventFilter();
+                eventFilter.setDateFrom(java.time.OffsetDateTime.parse(dateFrom.contains("T") ? dateFrom : dateFrom + "T00:00:00+00:00"));
 
-            V1FilterEventsRequest request = new V1FilterEventsRequest();
-            request.setFilter(eventFilter);
-            request.setPagination(pagination);
+                V1Pagination pagination = new V1Pagination();
+                pagination.setPageSize(100);
 
-            V1FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
-            List<V1Event> discovered = response.getEvents();
-            newEventList.addAll(Objects.requireNonNull(discovered));
-        } catch (ApiException ex) {
-            Popup.ERROR.showAndWait(LocalizationManager.tr("error.fetch_events.title"), ex.getMessage());
-        } catch (Exception ex) {
-            Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
+                V1FilterEventsRequest request = new V1FilterEventsRequest();
+                request.setFilter(eventFilter);
+                request.setPagination(pagination);
+
+                V1FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
+                List<V1Event> discovered = response.getEvents();
+                newEventList.addAll(Objects.requireNonNull(discovered));
+                
+                // Refresh existing caches with fresh data
+                se.goencoder.loppiskassan.storage.OnlineEventCache.refreshCaches(discovered);
+                
+            } catch (ApiException ex) {
+                // API error despite connectivity check - fall back to cache
+                loadCachedOnlineEvents(newEventList);
+                state.setOfflineMode(true);
+                // Don't show error dialog - just silently use cache
+            } catch (Exception ex) {
+                Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
+            }
+        } else {
+            // Offline: load cached iLoppis events
+            loadCachedOnlineEvents(newEventList);
         }
 
         // Swap atomically — volatile write ensures visibility to EDT
@@ -125,6 +145,15 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         state.setDateFrom(dateFrom);
 
         se.goencoder.loppiskassan.ui.EDT.run(() -> view.populateEventsTable(eventList));
+    }
+
+    private void loadCachedOnlineEvents(List<V1Event> targetList) {
+        List<se.goencoder.loppiskassan.storage.CachedOnlineEvent> cached = 
+                se.goencoder.loppiskassan.storage.OnlineEventCache.loadCachedEvents();
+        for (se.goencoder.loppiskassan.storage.CachedOnlineEvent c : cached) {
+            V1Event event = c.toV1Event();
+            targetList.add(event);
+        }
     }
 
     private void startAutoRefresh() {
@@ -453,6 +482,68 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
     }
 
     private void configureOnlineMode(String eventId, String cashierCode, V1Event event, V1RevenueSplit split) {
+        // Check if we're offline
+        if (!se.goencoder.loppiskassan.rest.ConnectivityChecker.isOnline()) {
+            // Try with cached data
+            if (se.goencoder.loppiskassan.storage.OnlineEventCache.hasCachedEvent(eventId)) {
+                se.goencoder.loppiskassan.storage.CachedOnlineEvent cached = 
+                        se.goencoder.loppiskassan.storage.OnlineEventCache.loadCachedEvent(eventId);
+
+                if (cached == null) {
+                    Popup.ERROR.showAndWait(
+                            LocalizationManager.tr("offline.no_cache.title"),
+                            LocalizationManager.tr("offline.no_cache.message"));
+                    return;
+                }
+
+                // Check cache age
+                if (cached.isExpired(se.goencoder.loppiskassan.storage.OnlineEventCache.CACHE_TTL_MS)) {
+                    boolean proceed = Popup.CONFIRM.showConfirmDialog(
+                            LocalizationManager.tr("offline.cache_expired.title"),
+                            LocalizationManager.tr("offline.cache_expired.message",
+                                    cached.getCacheAgeDescription()));
+                    if (!proceed) return;
+                }
+
+                // Restore API key from cache
+                ApiHelper.INSTANCE.setCurrentApiKey(cached.getApiKey());
+                ILoppisConfigurationStore.setApiKey(cached.getApiKey());
+                ILoppisConfigurationStore.setApprovedSellers(cached.getApprovedSellersJson());
+                AppModeManager.setEventId(eventId);
+
+                // Parse revenue split from cache
+                try {
+                    if (cached.getRevenueSplitJson() != null && !cached.getRevenueSplitJson().isEmpty()) {
+                        split = V1RevenueSplit.fromJson(cached.getRevenueSplitJson());
+                        ILoppisConfigurationStore.setRevenueSplit(split.toJson());
+                    }
+                } catch (IOException e) {
+                    // Ignore - use default split
+                }
+
+                // Show offline warning
+                Popup.WARNING.showAndWait(
+                        LocalizationManager.tr("offline.register_opened.title"),
+                        LocalizationManager.tr("offline.register_opened.message"));
+
+                view.setCashierButtonEnabled(false);
+                view.clearCashierCodeField();
+                view.setRegisterOpened(true);
+                view.showActiveEventInfo(event, split);
+                view.setChangeEventButtonVisible(true);
+
+                // Start BackgroundSyncManager immediately
+                se.goencoder.loppiskassan.service.BackgroundSyncManager.getInstance().start(eventId);
+                return;
+            } else {
+                Popup.ERROR.showAndWait(
+                        LocalizationManager.tr("offline.no_cache.title"),
+                        LocalizationManager.tr("offline.no_cache.message"));
+                return;
+            }
+        }
+
+        // Online path - authenticate and cache
         try {
             ApiKeyServiceApi apiKeyServiceApi = ApiHelper.INSTANCE.getApiKeyServiceApi();
             V1GetApiKeyResponse response = apiKeyServiceApi.apiKeyServiceGetApiKey(eventId, cashierCode, null);
@@ -462,6 +553,14 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             ILoppisConfigurationStore.setApiKey(response.getApiKey());
 
             fetchApprovedSellers(eventId);
+
+            // Cache the event after successful opening
+            se.goencoder.loppiskassan.storage.OnlineEventCache.cacheEvent(
+                    event,
+                    response.getApiKey(),
+                    ILoppisConfigurationStore.getApprovedSellers(),
+                    split
+            );
 
             Popup.INFORMATION.showAndWait(
                     LocalizationManager.tr("info.register_ready.title"),

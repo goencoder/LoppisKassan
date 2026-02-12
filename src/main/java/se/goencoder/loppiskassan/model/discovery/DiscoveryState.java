@@ -32,6 +32,7 @@ public class DiscoveryState {
     private boolean registerOpened = false;
     private String cashierCode = "";
     private boolean localMode = false;
+    private boolean offlineMode = false;
     private String dateFrom = "";
 
     // Button/field states
@@ -45,6 +46,7 @@ public class DiscoveryState {
     public static final String PROP_REGISTER_OPENED = "registerOpened";
     public static final String PROP_CASHIER_CODE = "cashierCode";
     public static final String PROP_LOCAL_MODE = "localMode";
+    public static final String PROP_OFFLINE_MODE = "offlineMode";
     public static final String PROP_DATE_FROM = "dateFrom";
     public static final String PROP_CASHIER_BUTTON_ENABLED = "cashierButtonEnabled";
     public static final String PROP_DETAIL_FORM_VISIBLE = "detailFormVisible";
@@ -81,6 +83,10 @@ public class DiscoveryState {
 
     public boolean isLocalMode() {
         return localMode;
+    }
+
+    public boolean isOfflineMode() {
+        return offlineMode;
     }
 
     public String getDateFrom() {
@@ -132,6 +138,12 @@ public class DiscoveryState {
         pcs.firePropertyChange(PROP_LOCAL_MODE, oldValue, localMode);
     }
 
+    public void setOfflineMode(boolean offlineMode) {
+        boolean oldValue = this.offlineMode;
+        this.offlineMode = offlineMode;
+        pcs.firePropertyChange(PROP_OFFLINE_MODE, oldValue, offlineMode);
+    }
+
     public void setDateFrom(String dateFrom) {
         String oldValue = this.dateFrom;
         this.dateFrom = dateFrom;
@@ -160,6 +172,7 @@ public class DiscoveryState {
         setRegisterOpened(false);
         setCashierCode("");
         setLocalMode(false);
+        setOfflineMode(false);
         setDateFrom("");
         setCashierButtonEnabled(true);
         setDetailFormVisible(false);
