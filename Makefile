@@ -40,8 +40,8 @@ endif
 
 install-client: proxy
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
-	  -Dfile=lib/openapi-java-client-0.0.5.jar \
-	  -DpomFile=lib/openapi-java-client-0.0.5.pom
+	  -Dfile=lib/openapi-java-client-0.0.6.jar \
+	  -DpomFile=lib/openapi-java-client-0.0.6.pom
 
 build-codex: install-client ## Build for Codex (no jpackage)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package

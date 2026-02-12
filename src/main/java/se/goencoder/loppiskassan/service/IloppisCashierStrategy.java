@@ -66,6 +66,10 @@ public class IloppisCashierStrategy implements CashierStrategy {
             for (V1SoldItem item : items) {
                 se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
                 createSoldItems.addItemsItem(apiItem);
+                
+                // DEBUG: Log each item being sent
+                log.info(String.format("[API-REQ] Item: purchaseId=%s, itemId=%s, seller=%d, price=%d",
+                    apiItem.getPurchaseId(), apiItem.getItemId(), apiItem.getSeller(), apiItem.getPrice()));
             }
             
             log.info(() -> String.format("iLoppis: Uploading %d items to API (purchase=%s)", 

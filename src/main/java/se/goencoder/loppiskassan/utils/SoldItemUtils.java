@@ -20,6 +20,8 @@ public class SoldItemUtils {
             return null;
         }
         se.goencoder.iloppis.model.V1SoldItem apiItem = new se.goencoder.iloppis.model.V1SoldItem();
+        apiItem.setItemId(item.getItemId());  // CRITICAL: Set the ULID itemId
+        apiItem.setPurchaseId(item.getPurchaseId());  // CRITICAL: Set the ULID purchaseId
         apiItem.setSeller(item.getSeller());
         apiItem.setPrice(item.getPrice());
         apiItem.setPaymentMethod(
@@ -27,7 +29,6 @@ public class SoldItemUtils {
                         ? se.goencoder.iloppis.model.V1PaymentMethod.KONTANT
                         : se.goencoder.iloppis.model.V1PaymentMethod.SWISH
         );
-        apiItem.setPurchaseId(item.getPurchaseId());
 
         return apiItem;
     }

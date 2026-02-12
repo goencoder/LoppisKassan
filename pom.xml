@@ -17,30 +17,25 @@
     <dependencies>
         <!-- Dependency on iloppis-client -->
         <!-- To update the version of this dependency:
-             1. Build the new version of the library:
-                - Navigate to the project directory where the new library JAR is located.
-                - Example: /Users/goranengdahl/GolandProjects/loppis-content/gen/java-client/
-                - Ensure the target JAR is built at: (update version number as needed)
-                  /Users/goranengdahl/GolandProjects/loppis-content/gen/java-client/target/openapi-java-client-0.0.2.jar
-                - If not already built, run: `mvn clean package` in the library's project directory.
-             2. Install the new JAR into the local Maven repository:
-                - Run the following command in the terminal:
-                  ```
-                  mvn install:install-file \
-                      -Dfile=/Users/goranengdahl/GolandProjects/iloppis-service/gen/java-client/target/openapi-java-client-0.0.5.jar \
-                      -DgroupId=se.goencoder.iloppis \
-                      -DartifactId=iloppis-client \
-                      -Dversion=0.0.5 \
-                      -Dpackaging=jar
-                  ```
-             3. Update the version in the dependency below:
-                  <version>0.0.5</version>
-             4. Save and recompile your application to ensure it picks up the new dependency.
+             1. Generate and build new version in iloppis/backend:
+                  cd /Users/goranengdahl/GolandProjects/iloppis/backend
+                  - Update ARTIFACT_VERSION in Makefile to next patch (e.g. 0.0.7)
+                  - Run: make build-java-client
+             2. Copy JAR and POM to LoppisKassan:
+                  cp gen/java-client/target/iloppis-client-X.X.X.jar \
+                     ../../IntellijProjects/LoppisKassan/lib/openapi-java-client-X.X.X.jar
+                  cp gen/java-client/pom.xml \
+                     ../../IntellijProjects/LoppisKassan/lib/openapi-java-client-X.X.X.pom
+             3. In LoppisKassan:
+                  - Update Makefile: install-client target to use new version
+                  - Run: make install-client
+                  - Update version in dependency below to match
+             4. Recompile: mvn clean compile
         -->
         <dependency>
             <groupId>se.goencoder.iloppis</groupId>
             <artifactId>iloppis-client</artifactId>
-            <version>0.0.5</version>
+            <version>0.0.6</version>
         </dependency>
 
         <dependency>

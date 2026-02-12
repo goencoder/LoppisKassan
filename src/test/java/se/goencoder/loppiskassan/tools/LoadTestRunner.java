@@ -205,7 +205,8 @@ public final class LoadTestRunner {
         public void submit(List<V1SoldItem> items) throws Exception {
             SoldItemsServiceCreateSoldItemsBody body = new SoldItemsServiceCreateSoldItemsBody();
             for (V1SoldItem item : items) {
-                se.goencoder.iloppis.model.V1SoldItem apiItem = new se.goencoder.iloppis.model.V1SoldItem(item.getItemId(), eventId, null);
+                se.goencoder.iloppis.model.V1SoldItem apiItem = new se.goencoder.iloppis.model.V1SoldItem();
+                apiItem.setItemId(item.getItemId());
                 apiItem.setPurchaseId(item.getPurchaseId());
                 apiItem.setSeller(item.getSeller());
                 apiItem.setPrice(item.getPrice());

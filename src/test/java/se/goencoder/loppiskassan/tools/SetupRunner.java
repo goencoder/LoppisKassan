@@ -240,7 +240,7 @@ public final class SetupRunner {
         ApiKeyServiceApi apiKeyApi = new ApiKeyServiceApi(client);
         
         ApiKeyServiceCreateApiKeyBody createBody = new ApiKeyServiceCreateApiKeyBody();
-        createBody.setType(V1ApiKeyType.API_KEY_TYPE_WEB_CASHIER);
+        createBody.setType(V1ApiKeyType.WEB_CASHIER);
         createBody.setTags(List.of());
         
         return apiKeyApi.apiKeyServiceCreateApiKey(eventId, createBody);
