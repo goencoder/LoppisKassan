@@ -20,6 +20,10 @@ import java.util.stream.Stream;
  */
 public class OnlineEventCache {
 
+    // Cache TTL: 7 days chosen to balance offline usability with data freshness
+    // - Long enough to support multi-day events without network
+    // - Short enough to prevent severely outdated seller lists
+    // - Aligns with typical flea market event durations
     public static final long CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000L; // 7 days
     private static final String CACHE_METADATA_FILENAME = "online_cache_metadata.json";
 

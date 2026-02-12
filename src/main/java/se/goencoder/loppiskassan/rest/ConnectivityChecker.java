@@ -11,6 +11,10 @@ import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
  */
 public class ConnectivityChecker {
 
+    // Timeout: 2 seconds balances responsiveness with reliability
+    // - Short enough for good UX (user doesn't wait long)
+    // - Long enough to avoid false negatives on slow networks
+    // - Typical API response time is <500ms, so 2s provides adequate margin
     private static final int CHECK_TIMEOUT_MS = 2000; // 2 seconds
     private static volatile boolean lastKnownOnline = false;
 
