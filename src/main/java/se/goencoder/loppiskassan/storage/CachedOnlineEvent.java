@@ -88,6 +88,14 @@ public class CachedOnlineEvent {
         return approvedSellersJson;
     }
 
+    public boolean hasApiKey() {
+        return apiKey != null && !apiKey.isBlank();
+    }
+
+    public boolean hasApprovedSellers() {
+        return approvedSellersJson != null && !approvedSellersJson.isBlank();
+    }
+
     public String getRevenueSplitJson() {
         return revenueSplitJson;
     }

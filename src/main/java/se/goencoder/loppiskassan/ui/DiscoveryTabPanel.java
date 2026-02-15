@@ -48,8 +48,10 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JTextField marketOwnerSplitField;
     private JTextField vendorSplitField;
     private JTextField platformSplitField;
-    private JLabel cashierCodeLabel;
-    private JTextField cashierCodeField;
+    private JPanel credentialsPanel;
+    private JLabel credentialsLabel;
+    private JLabel credentialsStatusLabel;
+    private JButton forgetCashierCodeButton;
     private JButton getTokenButton;
 
     private JLabel discoveryDetailsHeaderLabel;
@@ -60,6 +62,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JLabel discoveryMarketOwnerStaticLabel;
     private JLabel discoveryVendorStaticLabel;
     private JLabel discoveryPlatformStaticLabel;
+    private boolean cachedCredentials = false;
 
     // Components for active event mode
     private JLabel activeEventNameLabel;
@@ -111,9 +114,11 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildDiscoveryModePanel() {
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(AppColors.WHITE);
 
         // Header: date picker + fetch button
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        headerPanel.setBackground(AppColors.WHITE);
         dateFromLabel = new JLabel();
         headerPanel.add(dateFromLabel);
         dateFromField = new JTextField(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 10);
@@ -127,6 +132,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         onlineEventsTable = createOnlineEventsTable();
         JScrollPane scrollPane = new JScrollPane(onlineEventsTable);
         scrollPane.setPreferredSize(new Dimension(600, 200));
+        scrollPane.getViewport().setBackground(AppColors.WHITE);
 
         // Detail card below table
         detailCardPanel = createDetailCardPanel();
@@ -136,6 +142,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
         // Bottom: Open Register button
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottomPanel.setBackground(AppColors.WHITE);
         getTokenButton = new JButton();
         AppButton.applyStyle(getTokenButton, AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         bottomPanel.add(getTokenButton);
@@ -147,18 +154,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             int rowIndex = onlineEventsTable.getSelectedRow();
             String eventId = rowIndex >= 0
                     ? (String) onlineEventsTableModel.getValueAt(rowIndex, 0) : null;
-            String cashierCode = getCashierCode();
-            if (eventId == null || eventId.isEmpty()) {
-                controller.openRegister(eventId, cashierCode);
-                return;
-            }
-            if (cashierCode.isEmpty()) {
-                Popup.ERROR.showAndWait(
-                        LocalizationManager.tr("error.title"),
-                        LocalizationManager.tr("error.cashier_code_required"));
-                return;
-            }
-            controller.openRegister(eventId, cashierCode);
+            controller.openRegister(eventId);
         });
 
         return panel;
@@ -200,6 +196,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JPanel createDetailCardPanel() {
         detailCardLayout = new CardLayout();
         JPanel panel = new JPanel(detailCardLayout);
+        panel.setBackground(AppColors.WHITE);
 
         noSelectionLabel = new JLabel("", SwingConstants.CENTER);
         panel.add(noSelectionLabel, "noSelection");
@@ -212,6 +209,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildDiscoveryDetailForm() {
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(AppColors.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -226,7 +224,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
         gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 2; gbc.weightx = 1.0;
         gbc.weighty = 0; gbc.fill = GridBagConstraints.HORIZONTAL;
-        panel.add(buildCashierCodePanel(), gbc);
+        panel.add(buildCredentialsPanel(), gbc);
 
         return panel;
     }
@@ -311,13 +309,43 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         return panel;
     }
 
-    private JPanel buildCashierCodePanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        cashierCodeLabel = new JLabel();
-        cashierCodeField = new JTextField(8);
-        TextFilters.install(cashierCodeField, new TextFilters.AlnumDashUpperFilter(16));
-        panel.add(cashierCodeLabel);
-        panel.add(cashierCodeField);
+    private JPanel buildCredentialsPanel() {
+        JPanel panel = new JPanel(new BorderLayout(12, 0));
+        panel.setBackground(AppColors.FIELD_BG);
+        panel.setBorder(new RoundedBorder(AppColors.BORDER, 1, 8, new Insets(8, 12, 8, 12)));
+
+        JPanel left = new JPanel();
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        left.setOpaque(false);
+
+        credentialsLabel = new JLabel();
+        credentialsLabel.setFont(credentialsLabel.getFont().deriveFont(Font.BOLD, 12f));
+        credentialsLabel.setForeground(AppColors.TEXT_SECONDARY);
+
+        credentialsStatusLabel = new JLabel();
+        credentialsStatusLabel.setFont(credentialsStatusLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        credentialsStatusLabel.setForeground(AppColors.TEXT_MUTED);
+
+        left.add(credentialsLabel);
+        left.add(Box.createVerticalStrut(2));
+        left.add(credentialsStatusLabel);
+
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        right.setOpaque(false);
+        forgetCashierCodeButton = new JButton();
+        AppButton.applyStyle(forgetCashierCodeButton, AppButton.Variant.GHOST, AppButton.Size.SMALL);
+        forgetCashierCodeButton.setVisible(false);
+        forgetCashierCodeButton.addActionListener(e -> {
+            int rowIndex = onlineEventsTable.getSelectedRow();
+            String eventId = rowIndex >= 0
+                    ? (String) onlineEventsTableModel.getValueAt(rowIndex, 0) : null;
+            controller.forgetCashierCode(eventId);
+        });
+        right.add(forgetCashierCodeButton);
+
+        panel.add(left, BorderLayout.CENTER);
+        panel.add(right, BorderLayout.EAST);
+        credentialsPanel = panel;
         return panel;
     }
 
@@ -494,10 +522,6 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         platform.setText(LocalizationManager.tr("revenue_split.platform"));
     }
 
-    private String getCashierCode() {
-        return cashierCodeField.getText().trim();
-    }
-
     // ── DiscoveryPanelInterface ──
 
     @Override
@@ -546,9 +570,10 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     @Override
     public void setLocalMode(boolean local) {
-        // In iLoppis mode the fields are always read-only; cashier code is always visible
-        cashierCodeLabel.setVisible(true);
-        cashierCodeField.setVisible(true);
+        // In iLoppis mode the fields are always read-only; credentials panel is online-only
+        if (credentialsPanel != null) {
+            credentialsPanel.setVisible(!local);
+        }
         eventNameField.setEditable(false);
         eventDescriptionField.setEditable(false);
         eventAddressField.setEditable(false);
@@ -569,11 +594,6 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
     @Override public void setCashierButtonEnabled(boolean enabled) { getTokenButton.setEnabled(enabled); }
-
-    @Override
-    public void clearCashierCodeField() {
-        cashierCodeField.setText("******");
-    }
 
     @Override
     public void setRegisterOpened(boolean opened) {
@@ -605,6 +625,21 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     @Override
     public void setChangeEventButtonVisible(boolean visible) { changeEventButton.setVisible(visible); }
+
+    @Override
+    public void setCachedCredentialsStatus(boolean cached) {
+        cachedCredentials = cached;
+        if (credentialsStatusLabel == null) {
+            return;
+        }
+        credentialsStatusLabel.setText(cached
+                ? LocalizationManager.tr("cashier_code.status.saved")
+                : LocalizationManager.tr("cashier_code.status.missing"));
+        credentialsStatusLabel.setForeground(cached ? AppColors.SUCCESS : AppColors.TEXT_MUTED);
+        if (forgetCashierCodeButton != null) {
+            forgetCashierCodeButton.setVisible(cached);
+        }
+    }
 
     @Override
     public void selected() { controller.initUIState(); }
@@ -645,7 +680,13 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
                 discoveryEventAddressStaticLabel, discoveryMarketOwnerStaticLabel,
                 discoveryVendorStaticLabel, discoveryPlatformStaticLabel);
 
-        cashierCodeLabel.setText(LocalizationManager.tr("cashier.code"));
+        if (credentialsLabel != null) {
+            credentialsLabel.setText(LocalizationManager.tr("cashier_code.label"));
+        }
+        if (forgetCashierCodeButton != null) {
+            forgetCashierCodeButton.setText(LocalizationManager.tr("cashier_code.forget"));
+        }
+        setCachedCredentialsStatus(cachedCredentials);
 
         // Active event panel
         selectedEventHeaderLabel.setText(LocalizationManager.tr("discovery.selected_event.title"));

@@ -53,4 +53,36 @@ public final class Renderers {
             }
         };
     }
+
+    /**
+     * Renderer for edit button column with pencil icon.
+     *
+     * @return table cell renderer that displays an edit button
+     */
+    public static TableCellRenderer editButton() {
+        return new DefaultTableCellRenderer() {
+            private final JButton button = new JButton("✎");
+
+            {
+                button.setForeground(AppColors.ACCENT);
+                button.setBackground(AppColors.WHITE);
+                button.setBorder(new RoundedBorder(new Color(0, 0, 0, 0), 0, 6, new Insets(4, 8, 4, 8)));
+                button.setFocusPainted(false);
+                button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                button.setFont(button.getFont().deriveFont(Font.BOLD, 14f));
+                button.setOpaque(true);
+            }
+
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                if (isSelected) {
+                    button.setBackground(table.getSelectionBackground());
+                } else {
+                    button.setBackground(table.getBackground());
+                }
+                return button;
+            }
+        };
+    }
 }

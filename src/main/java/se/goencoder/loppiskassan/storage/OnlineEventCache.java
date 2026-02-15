@@ -29,11 +29,11 @@ public class OnlineEventCache {
 
     /**
      * Cache an online event after successful register opening.
-     * Stores: event metadata, API key, approved sellers, revenue split.
+     * Stores: event metadata and revenue split. Credentials are optional.
      *
      * @param event       The V1Event from the API
-     * @param apiKey      The exchanged API key
-     * @param sellers     JSON string of approved sellers
+     * @param apiKey      The exchanged API key (optional)
+     * @param sellers     JSON string of approved sellers (optional)
      * @param split       Revenue split object
      */
     public static void cacheEvent(V1Event event, String apiKey, String sellers, V1RevenueSplit split) {
@@ -174,6 +174,65 @@ public class OnlineEventCache {
 
         CachedOnlineEvent cached = loadCachedEvent(eventId);
         return cached != null && !cached.isExpired(CACHE_TTL_MS);
+    }
+
+    /**
+     * Check if cached credentials (API key) exist for the given event.
+     *
+     * @param eventId The event ID
+     * @return true if a valid cache exists and includes an API key
+     */
+    public static boolean hasCachedCredentials(String eventId) {
+        if (eventId == null) {
+            return false;
+        }
+
+        CachedOnlineEvent cached = loadCachedEvent(eventId);
+        return cached != null && !cached.isExpired(CACHE_TTL_MS) && cached.hasApiKey();
+    }
+
+    /**
+     * Clear cached credentials for the given event while keeping event metadata.
+     *
+     * @param eventId The event ID
+     */
+    public static void clearCachedCredentials(String eventId) {
+        if (eventId == null) {
+            return;
+        }
+
+        CachedOnlineEvent cached = loadCachedEvent(eventId);
+        if (cached == null) {
+            return;
+        }
+
+        try {
+            LocalEventRepository.ensureBaseDirectories();
+            Path eventDir = LocalEventPaths.getEventDir(eventId);
+            Files.createDirectories(eventDir);
+
+            CachedOnlineEvent updated = new CachedOnlineEvent(
+                    cached.getEventId(),
+                    cached.getEventName(),
+                    cached.getDescription(),
+                    cached.getAddressStreet(),
+                    cached.getAddressCity(),
+                    cached.getMarketId(),
+                    "",
+                    "",
+                    cached.getRevenueSplitJson(),
+                    cached.getStartTime(),
+                    cached.getEndTime(),
+                    cached.getCachedAt()
+            );
+
+            Path cachePath = eventDir.resolve(CACHE_METADATA_FILENAME);
+            Files.writeString(cachePath, updated.toJsonString(), StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        } catch (IOException e) {
+            System.err.println("Warning: Failed to clear cached credentials for event " + eventId + ": " + e.getMessage());
+        }
     }
 
     /**

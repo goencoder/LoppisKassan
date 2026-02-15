@@ -14,7 +14,7 @@ import java.util.List;
  * <p>
  * This model holds all UI-relevant data for the discovery screen:
  * available events, selected event details, revenue split configuration,
- * cashier code, and mode flags.
+ * and mode flags.
  * <p>
  * Observability: Uses {@link PropertyChangeSupport} to notify listeners
  * when properties change. Views can register listeners to auto-update UI.
@@ -30,7 +30,6 @@ public class DiscoveryState {
 
     // UI state
     private boolean registerOpened = false;
-    private String cashierCode = "";
     private boolean localMode = false;
     private boolean offlineMode = false;
     private String dateFrom = "";
@@ -44,7 +43,6 @@ public class DiscoveryState {
     public static final String PROP_SELECTED_EVENT = "selectedEvent";
     public static final String PROP_REVENUE_SPLIT = "revenueSplit";
     public static final String PROP_REGISTER_OPENED = "registerOpened";
-    public static final String PROP_CASHIER_CODE = "cashierCode";
     public static final String PROP_LOCAL_MODE = "localMode";
     public static final String PROP_OFFLINE_MODE = "offlineMode";
     public static final String PROP_DATE_FROM = "dateFrom";
@@ -75,10 +73,6 @@ public class DiscoveryState {
 
     public boolean isRegisterOpened() {
         return registerOpened;
-    }
-
-    public String getCashierCode() {
-        return cashierCode;
     }
 
     public boolean isLocalMode() {
@@ -126,12 +120,6 @@ public class DiscoveryState {
         pcs.firePropertyChange(PROP_REGISTER_OPENED, oldValue, registerOpened);
     }
 
-    public void setCashierCode(String cashierCode) {
-        String oldValue = this.cashierCode;
-        this.cashierCode = cashierCode;
-        pcs.firePropertyChange(PROP_CASHIER_CODE, oldValue, cashierCode);
-    }
-
     public void setLocalMode(boolean localMode) {
         boolean oldValue = this.localMode;
         this.localMode = localMode;
@@ -170,7 +158,6 @@ public class DiscoveryState {
         setSelectedEvent(null);
         setRevenueSplit(null);
         setRegisterOpened(false);
-        setCashierCode("");
         setLocalMode(false);
         setOfflineMode(false);
         setDateFrom("");

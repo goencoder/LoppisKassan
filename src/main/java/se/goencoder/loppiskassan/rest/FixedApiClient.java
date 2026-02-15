@@ -85,4 +85,10 @@ public class FixedApiClient extends ApiClient {
             throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 500, Collections.emptyMap());
         }
     }
+
+    @Override
+    public <T> T handleResponse(okhttp3.Response response, java.lang.reflect.Type returnType) throws ApiException {
+        AuthErrorHandler.handleAuthStatus(response.code());
+        return super.handleResponse(response, returnType);
+    }
 }

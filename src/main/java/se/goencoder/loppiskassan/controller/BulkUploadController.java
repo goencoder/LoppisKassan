@@ -8,11 +8,16 @@ import se.goencoder.iloppis.model.V1GetApiKeyResponse;
 import se.goencoder.iloppis.model.V1RejectedItem;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.model.BulkUploadResult;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.records.FileHelper;
 import se.goencoder.loppiskassan.rest.ApiHelper;
+import se.goencoder.loppiskassan.rest.AuthErrorHandler;
 import se.goencoder.loppiskassan.storage.LocalEvent;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
+import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
+import se.goencoder.loppiskassan.service.RejectedItemsManager;
 
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -20,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Controller for bulk-uploading local event data to iLoppis backend.
@@ -29,6 +36,7 @@ public class BulkUploadController {
 
     private static final long RATE_LIMIT_DELAY_MS = 100;
     private static final int MAX_RETRIES = 3;
+    private static final Logger log = Logger.getLogger(BulkUploadController.class.getName());
 
     /**
      * Upload all pending items for a local event to the backend.
@@ -75,16 +83,23 @@ public class BulkUploadController {
             }
 
             // 5. Update local metadata if upload was successful
-            if (!result.acceptedItems.isEmpty() || !result.duplicateItems.isEmpty()) {
+            if (!result.acceptedItems.isEmpty() || !result.duplicateItems.isEmpty() || !result.failedItems.isEmpty()) {
                 updateLocalMetadata(localEvent, backendEvent, result);
+            }
+
+            if (!result.failedItems.isEmpty()) {
+                RejectedItemsHelper.saveRejectedItems(localEvent.getEventId(), result.failedItems);
+                RejectedItemsManager.getInstance().notifyRejectedCountChanged(localEvent.getEventId());
             }
 
         } catch (ApiException e) {
             handleApiException(e, result);
         } catch (IOException e) {
-            result.addError("IO error: " + e.getMessage());
+            log.log(Level.SEVERE, "Bulk upload IO error", e);
+            result.addError(LocalizationManager.tr("error.generic.message", FileHelper.getLogFilePath()));
         } catch (InterruptedException e) {
-            result.addError("Upload interrupted: " + e.getMessage());
+            log.log(Level.SEVERE, "Bulk upload interrupted", e);
+            result.addError(LocalizationManager.tr("error.generic.message", FileHelper.getLogFilePath()));
             Thread.currentThread().interrupt();
         }
 
@@ -200,32 +215,37 @@ public class BulkUploadController {
         List<V1SoldItem> items,
         BulkUploadResult result
     ) {
-        result.addError(String.format(
-            "Failed to upload purchase group: %s (HTTP %d)",
-            e.getMessage(),
-            e.getCode()
-        ));
+        if (AuthErrorHandler.isAuthError(e)) {
+            result.addError(LocalizationManager.tr("api_key.invalid.message"));
+            return;
+        }
+        if (ApiHelper.isLikelyNetworkError(e)) {
+            result.addError(LocalizationManager.tr("error.network_upload.message"));
+            return;
+        }
+        log.log(Level.SEVERE, "Bulk upload group failed", e);
+        result.addError(LocalizationManager.tr("error.generic.message", FileHelper.getLogFilePath()));
     }
 
     /**
      * Handle API exception with specific error handling
      */
     private static void handleApiException(ApiException e, BulkUploadResult result) {
-        String message;
-        
-        if (e.getCode() == 401) {
-            message = "Invalid code or unauthorized";
-        } else if (e.getCode() == 403) {
-            message = "Permission denied for this event";
-        } else if (e.getCode() == 404) {
-            message = "Event not found on backend";
-        } else if (e.getCode() == 0) {
-            message = "Network error - cannot reach server";
-        } else {
-            message = String.format("API error (HTTP %d): %s", e.getCode(), e.getMessage());
+        if (AuthErrorHandler.isInvalidCashierCode(e)) {
+            result.addError(LocalizationManager.tr("cashier_code.exchange_invalid.message"));
+            return;
         }
-        
-        result.addError(message);
+        if (AuthErrorHandler.isAuthError(e)) {
+            result.addError(LocalizationManager.tr("api_key.invalid.message"));
+            return;
+        }
+        if (ApiHelper.isLikelyNetworkError(e)) {
+            result.addError(LocalizationManager.tr("error.network_upload.message"));
+            return;
+        }
+
+        log.log(Level.SEVERE, "Bulk upload API error", e);
+        result.addError(LocalizationManager.tr("error.generic.message", FileHelper.getLogFilePath()));
     }
 
     /**
@@ -239,12 +259,10 @@ public class BulkUploadController {
         
         // Mark uploaded items in the full list
         for (V1SoldItem localItem : allItems) {
-            // Check if this item was in accepted list (by itemId)
             boolean wasAccepted = result.acceptedItems.stream()
                 .anyMatch(apiItem -> apiItem.getItemId() != null && 
                          apiItem.getItemId().equals(localItem.getItemId()));
             
-            // Check if this item was in duplicate list (by itemId)
             boolean wasDuplicate = result.duplicateItems.stream()
                 .anyMatch(rejected -> rejected.getItem() != null && 
                          rejected.getItem().getItemId() != null &&
@@ -253,6 +271,13 @@ public class BulkUploadController {
             if (wasAccepted || wasDuplicate) {
                 localItem.setUploaded(true);
             }
+        }
+
+        if (!result.failedItems.isEmpty()) {
+            allItems.removeIf(localItem -> result.failedItems.stream()
+                .anyMatch(rejected -> rejected.getItem() != null &&
+                        rejected.getItem().getItemId() != null &&
+                        rejected.getItem().getItemId().equals(localItem.getItemId())));
         }
         
         // Save updated items back to store

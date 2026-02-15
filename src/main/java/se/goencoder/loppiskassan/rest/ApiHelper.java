@@ -69,6 +69,10 @@ public enum ApiHelper {
         this.apiClient.addDefaultHeader("Authorization", "Bearer " + apiKey);
     }
 
+    public void clearCurrentApiKey() {
+        this.apiClient.addDefaultHeader("Authorization", "");
+    }
+
     /**
      * Heuristic to detect a network or connectivity type error.
      * You can expand this logic depending on how your `ApiException` is structured.
