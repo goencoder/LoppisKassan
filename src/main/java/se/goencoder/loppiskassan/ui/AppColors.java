@@ -62,6 +62,9 @@ public final class AppColors {
     /** Danger secondary — mode icon tint. */
     public static final Color DANGER_SECONDARY = new Color(0xE05A5A);
 
+    /** Warning — offline/pending indicators. */
+    public static final Color WARNING = new Color(0xF6C343);
+
     // ── Icons ──
     /** Icon stroke color — chevrons, small icons. */
     public static final Color ICON_STROKE = new Color(0x3C3C3C);

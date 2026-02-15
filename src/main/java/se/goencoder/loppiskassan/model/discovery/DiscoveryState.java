@@ -14,7 +14,7 @@ import java.util.List;
  * <p>
  * This model holds all UI-relevant data for the discovery screen:
  * available events, selected event details, revenue split configuration,
- * cashier code, and mode flags.
+ * and mode flags.
  * <p>
  * Observability: Uses {@link PropertyChangeSupport} to notify listeners
  * when properties change. Views can register listeners to auto-update UI.
@@ -30,8 +30,8 @@ public class DiscoveryState {
 
     // UI state
     private boolean registerOpened = false;
-    private String cashierCode = "";
     private boolean localMode = false;
+    private boolean offlineMode = false;
     private String dateFrom = "";
 
     // Button/field states
@@ -43,8 +43,8 @@ public class DiscoveryState {
     public static final String PROP_SELECTED_EVENT = "selectedEvent";
     public static final String PROP_REVENUE_SPLIT = "revenueSplit";
     public static final String PROP_REGISTER_OPENED = "registerOpened";
-    public static final String PROP_CASHIER_CODE = "cashierCode";
     public static final String PROP_LOCAL_MODE = "localMode";
+    public static final String PROP_OFFLINE_MODE = "offlineMode";
     public static final String PROP_DATE_FROM = "dateFrom";
     public static final String PROP_CASHIER_BUTTON_ENABLED = "cashierButtonEnabled";
     public static final String PROP_DETAIL_FORM_VISIBLE = "detailFormVisible";
@@ -75,12 +75,12 @@ public class DiscoveryState {
         return registerOpened;
     }
 
-    public String getCashierCode() {
-        return cashierCode;
-    }
-
     public boolean isLocalMode() {
         return localMode;
+    }
+
+    public boolean isOfflineMode() {
+        return offlineMode;
     }
 
     public String getDateFrom() {
@@ -120,16 +120,16 @@ public class DiscoveryState {
         pcs.firePropertyChange(PROP_REGISTER_OPENED, oldValue, registerOpened);
     }
 
-    public void setCashierCode(String cashierCode) {
-        String oldValue = this.cashierCode;
-        this.cashierCode = cashierCode;
-        pcs.firePropertyChange(PROP_CASHIER_CODE, oldValue, cashierCode);
-    }
-
     public void setLocalMode(boolean localMode) {
         boolean oldValue = this.localMode;
         this.localMode = localMode;
         pcs.firePropertyChange(PROP_LOCAL_MODE, oldValue, localMode);
+    }
+
+    public void setOfflineMode(boolean offlineMode) {
+        boolean oldValue = this.offlineMode;
+        this.offlineMode = offlineMode;
+        pcs.firePropertyChange(PROP_OFFLINE_MODE, oldValue, offlineMode);
     }
 
     public void setDateFrom(String dateFrom) {
@@ -158,8 +158,8 @@ public class DiscoveryState {
         setSelectedEvent(null);
         setRevenueSplit(null);
         setRegisterOpened(false);
-        setCashierCode("");
         setLocalMode(false);
+        setOfflineMode(false);
         setDateFrom("");
         setCashierButtonEnabled(true);
         setDetailFormVisible(false);

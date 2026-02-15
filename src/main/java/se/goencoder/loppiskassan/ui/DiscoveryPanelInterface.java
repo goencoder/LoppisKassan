@@ -10,7 +10,7 @@ import java.util.List;
  * <p>
  * Mode awareness:
  * <ul>
- *   <li><b>Online:</b> shows remote events and requires a valid cashier code to open the register.</li>
+ *   <li><b>Online:</b> shows remote events and may require a cashier code to open the register.</li>
  *   <li><b>Local:</b> shows locally configured events and should gate features accordingly.</li>
  * </ul>
  */
@@ -45,7 +45,7 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
 
     /**
      * Indicate whether the UI is in local mode.
-     * Implementations should hide/disable online-only controls (e.g., API key/ cashier code).
+     * Implementations should hide/disable online-only controls.
      *
      * @param local {@code true} for local mode, {@code false} for online
      */
@@ -77,12 +77,6 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
     void setCashierButtonEnabled(boolean enabled);
 
     /**
-     * Clear the cashier code input field.
-     * Typically used after successfully opening the register or when changing event.
-     */
-    void clearCashierCodeField();
-
-    /**
      * Show or hide the event details form area.
      * @param show {@code true} to show, {@code false} to hide
      */
@@ -106,6 +100,14 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
      * @param visible {@code true} to show, {@code false} to hide
      */
     void setChangeEventButtonVisible(boolean visible);
+
+    /**
+     * Update the UI to reflect whether cached cashier credentials exist for the selected event.
+     * Implementations can show status text and a "forget" action when cached.
+     *
+     * @param cached {@code true} if cached credentials exist
+     */
+    void setCachedCredentialsStatus(boolean cached);
 
     /**
      * Re-select an event in the table by id (best-effort).

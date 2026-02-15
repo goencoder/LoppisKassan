@@ -7,8 +7,8 @@ import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
  * <p>
  * Mode behavior:
  * <ul>
- *   <li><b>Online:</b> fetch events from the backend; opening the register requires a valid cashier code.</li>
- *   <li><b>Local:</b> list locally configured events; opening the register ignores cashier code and uses local defaults.</li>
+ *   <li><b>Online:</b> fetch events from the backend; opening the register may require a cashier code.</li>
+ *   <li><b>Local:</b> list locally configured events; opening the register uses local defaults.</li>
  * </ul>
  */
 public interface DiscoveryControllerInterface {
@@ -30,13 +30,20 @@ public interface DiscoveryControllerInterface {
     /**
      * Open the register for a selected event.
      * <p>
-     * <b>Online:</b> {@code cashierCode} must be present and validated.
-     * <b>Local:</b> {@code cashierCode} may be ignored and the register opens immediately.
+     * <b>Online:</b> prompts for a cashier code if no cached credentials exist
+     * or if the cached credentials are invalid.
+     * <b>Local:</b> opens immediately.
      *
      * @param eventId unique event identifier
-     * @param cashierCode cashier/ API code (required online)
      */
-    void openRegister(String eventId, String cashierCode);
+    void openRegister(String eventId);
+
+    /**
+     * Forget cached cashier credentials for the selected online event.
+     *
+     * @param eventId unique event identifier
+     */
+    void forgetCashierCode(String eventId);
 
     /**
      * Notify that the user selected a new event in the UI.

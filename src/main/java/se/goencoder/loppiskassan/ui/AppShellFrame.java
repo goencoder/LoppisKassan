@@ -5,6 +5,10 @@ import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
+import se.goencoder.loppiskassan.service.RejectedItemsManager;
+import se.goencoder.loppiskassan.storage.PendingItemsStore;
+import se.goencoder.loppiskassan.ui.dialogs.PendingItemsDialog;
+import se.goencoder.loppiskassan.ui.dialogs.RejectedItemsDialog;
 
 import javax.swing.*;
 import java.awt.*;
@@ -50,12 +54,16 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         // Wire up pending count listener for statusbar in iLoppis mode
         if (!AppModeManager.isLocalMode()) {
             BackgroundSyncManager.getInstance().setPendingCountListener(count -> {
-                if (count > 0) {
-                    statusbar.setOfflineStatus(count);
-                } else {
-                    statusbar.setOnlineStatus();
-                }
+                statusbar.setPendingStatus(count);
             });
+            RejectedItemsManager.getInstance().setRejectedCountListener(statusbar::setRejectedStatus);
+
+            statusbar.setPendingClickListener(() ->
+                    PendingItemsDialog.show(this, AppModeManager.getEventId()));
+            statusbar.setRejectedClickListener(() ->
+                    RejectedItemsDialog.show(this, AppModeManager.getEventId()));
+
+            refreshStatusIndicators();
         }
         
         // Visa första vyn beroende på om evenemang är valt
@@ -72,6 +80,30 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1024, 700);
         setLocationRelativeTo(null);
+    }
+
+    private void refreshStatusIndicators() {
+        if (AppModeManager.isLocalMode()) {
+            statusbar.setOnlineStatus();
+            statusbar.setRejectedStatus(0);
+            return;
+        }
+
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            statusbar.setOnlineStatus();
+            statusbar.setRejectedStatus(0);
+            return;
+        }
+
+        int pendingCount = 0;
+        try {
+            pendingCount = new PendingItemsStore(eventId).readPending().size();
+        } catch (Exception ignored) {
+            pendingCount = 0;
+        }
+        statusbar.setPendingStatus(pendingCount);
+        statusbar.setRejectedStatus(RejectedItemsManager.getInstance().getRejectedCount(eventId));
     }
     
     private void initializeViews() {

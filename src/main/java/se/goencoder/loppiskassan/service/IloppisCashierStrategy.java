@@ -4,6 +4,7 @@ import org.json.JSONObject;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.iloppis.model.V1CreateSoldItemsResponse;
+import se.goencoder.iloppis.model.V1RejectedItem;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
@@ -13,10 +14,15 @@ import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
+import se.goencoder.loppiskassan.utils.SoldItemsResponseClassifier;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
+import se.goencoder.loppiskassan.utils.VendorRefreshHelper;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -26,6 +32,7 @@ import java.util.logging.Logger;
  * - Seller approval checked against vendor registry
  * - Items uploaded to API
  * - Falls back to local save on network error (degraded mode)
+ * - Auto-refreshes vendor list if seller not found initially (similar to Android app)
  */
 public class IloppisCashierStrategy implements CashierStrategy {
     
@@ -33,22 +40,36 @@ public class IloppisCashierStrategy implements CashierStrategy {
     
     @Override
     public boolean validateSeller(int sellerId) {
-        // Check if seller is in the approved vendors list
-        String approvedSellersJson = ILoppisConfigurationStore.getApprovedSellers();
-        if (approvedSellersJson == null || approvedSellersJson.isBlank()) {
-            log.warning("No approved sellers list available - rejecting seller " + sellerId);
-            return false;
+        // First check: Use cached approved sellers list
+        log.info(String.format("=== validateSeller(%d) START ===", sellerId));
+        
+        if (VendorRefreshHelper.isSellerApproved(sellerId)) {
+            log.info(String.format("✓ Seller %d found in cache (approved)", sellerId));
+            return true;
         }
         
-        try {
-            return new JSONObject(approvedSellersJson)
-                    .getJSONArray("approvedSellers")
-                    .toList()
-                    .contains(sellerId);
-        } catch (Exception e) {
-            log.warning("Failed to parse approved sellers JSON: " + e.getMessage());
-            return false;
+        // Seller not found in cache - attempt auto-recovery by refreshing list
+        // This handles the case where seller was approved AFTER cashier opened
+        log.info(String.format("✗ Seller %d NOT in cached list - attempting auto-recovery", sellerId));
+        
+        String eventId = ILoppisConfigurationStore.getEventId();
+        boolean refreshSuccess = VendorRefreshHelper.refreshApprovedSellers(eventId);
+        log.info(String.format("Auto-recovery refresh result: %s", refreshSuccess ? "SUCCESS" : "FAILED"));
+        
+        if (refreshSuccess) {
+            // Retry validation with fresh list
+            boolean nowApproved = VendorRefreshHelper.isSellerApproved(sellerId);
+            if (nowApproved) {
+                log.info(String.format("✓ Auto-recovery SUCCESS: Seller %d now approved", sellerId));
+                return true;
+            } else {
+                log.warning(String.format("✗ Auto-recovery FAILED: Seller %d still not in approved list", sellerId));
+            }
         }
+        
+        // Seller still not approved after refresh
+        log.warning(String.format("=== validateSeller(%d) END === RESULT: NOT APPROVED", sellerId));
+        return false;
     }
     
     @Override
@@ -62,53 +83,46 @@ public class IloppisCashierStrategy implements CashierStrategy {
         
         // Try to upload to API first
         try {
-            SoldItemsServiceCreateSoldItemsBody createSoldItems = new SoldItemsServiceCreateSoldItemsBody();
-            for (V1SoldItem item : items) {
-                se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
-                createSoldItems.addItemsItem(apiItem);
-                
-                // DEBUG: Log each item being sent
-                log.info(String.format("[API-REQ] Item: purchaseId=%s, itemId=%s, seller=%d, price=%d",
-                    apiItem.getPurchaseId(), apiItem.getItemId(), apiItem.getSeller(), apiItem.getPrice()));
-            }
-            
             log.info(() -> String.format("iLoppis: Uploading %d items to API (purchase=%s)", 
                 items.size(), purchaseId));
             
-            V1CreateSoldItemsResponse response = ApiHelper.INSTANCE
-                    .getSoldItemsServiceApi()
-                    .soldItemsServiceCreateSoldItems(eventId, createSoldItems);
-            
-            log.info(() -> String.format("iLoppis: Upload successful - %d accepted, %d rejected",
-                response.getAcceptedItems().size(), 
-                response.getRejectedItems() != null ? response.getRejectedItems().size() : 0));
-            
-            // Mark items as uploaded and save to local file for history view
+            SoldItemsResponseClassifier.UploadOutcome outcome = uploadPurchaseWithRetry(eventId, items);
+
+            log.info(() -> String.format("iLoppis: Upload successful - %d accepted, %d duplicates, %d rejected",
+                outcome.acceptedItemIds().size(),
+                outcome.duplicateItemIds().size(),
+                outcome.rejectedItems().size()));
+
+            List<V1SoldItem> uploadedItems = new java.util.ArrayList<>();
             for (V1SoldItem item : items) {
-                item.setUploaded(true);
+                if (item.getItemId() == null) {
+                    continue;
+                }
+                if (outcome.uploadedItemIds().contains(item.getItemId())) {
+                    item.setUploaded(true);
+                    uploadedItems.add(item);
+                }
             }
-            Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
-            JsonlHelper.appendItems(pendingPath, items);
-            log.info("iLoppis: Items saved to local file for history tracking");
-            
-            // Notify UI of pending count change (items are uploaded, count should be 0)
-            BackgroundSyncManager.getInstance().notifyPendingCountChanged();
-            
-            // Handle rejected items (duplicate receipts, validation errors, etc.)
-            if (response.getRejectedItems() != null && !response.getRejectedItems().isEmpty()) {
-                int rejectedCount = response.getRejectedItems().size();
+
+            if (!uploadedItems.isEmpty()) {
+                Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
+                JsonlHelper.appendItems(pendingPath, uploadedItems);
+                log.info("iLoppis: Items saved to local file for history tracking");
+            }
+
+            // Handle rejected items (validation errors, etc.)
+            if (outcome.hasRejectedItems()) {
+                int rejectedCount = outcome.rejectedItems().size();
                 log.warning("Items rejected by server: " + rejectedCount);
-                
-                // Save rejected items to log file
-                RejectedItemsHelper.saveRejectedItems(eventId, response.getRejectedItems());
-                
-                // Show warning popup to cashier
-                String message = String.format(
-                    LocalizationManager.tr("error.upload_rejected") + "\n\n" +
-                    RejectedItemsHelper.buildRejectionMessage(response.getRejectedItems())
-                );
-                Popup.warn(message);
+
+                RejectedItemsHelper.saveRejectedItems(eventId, outcome.rejectedItems());
+                Popup.WARNING.showAndWait(
+                        LocalizationManager.tr("rejected.saved.title"),
+                        LocalizationManager.tr("rejected.saved.message", rejectedCount));
             }
+
+            BackgroundSyncManager.getInstance().notifyPendingCountChanged();
+            RejectedItemsManager.getInstance().notifyRejectedCountChanged(eventId);
             
             return true;
             
@@ -133,6 +147,83 @@ public class IloppisCashierStrategy implements CashierStrategy {
                 throw e;
             }
         }
+    }
+
+    private SoldItemsResponseClassifier.UploadOutcome uploadPurchaseWithRetry(String eventId, List<V1SoldItem> items) throws ApiException {
+        V1CreateSoldItemsResponse response = uploadItemsToApi(eventId, items);
+        SoldItemsResponseClassifier.UploadOutcome outcome = SoldItemsResponseClassifier.classify(response);
+
+        List<V1RejectedItem> rejected = new ArrayList<>(outcome.rejectedItems());
+        HashSet<String> accepted = new HashSet<>(outcome.acceptedItemIds());
+        HashSet<String> duplicates = new HashSet<>(outcome.duplicateItemIds());
+
+        boolean hasInvalidSeller = false;
+        HashSet<String> collateralIds = new HashSet<>();
+        for (V1RejectedItem rejectedItem : rejected) {
+            if (SoldItemsResponseClassifier.isInvalidSeller(rejectedItem)) {
+                hasInvalidSeller = true;
+            }
+            if (SoldItemsResponseClassifier.isCollateral(rejectedItem)) {
+                String itemId = getRejectedItemId(rejectedItem);
+                if (itemId != null && !itemId.isBlank()) {
+                    collateralIds.add(itemId);
+                }
+            }
+        }
+
+        if (!hasInvalidSeller || collateralIds.isEmpty()) {
+            return outcome;
+        }
+
+        List<V1SoldItem> retryItems = new ArrayList<>();
+        for (V1SoldItem item : items) {
+            if (item.getItemId() != null && collateralIds.contains(item.getItemId())) {
+                retryItems.add(item);
+            }
+        }
+
+        if (retryItems.isEmpty()) {
+            return outcome;
+        }
+
+        rejected.removeIf(rejectedItem -> {
+            String itemId = getRejectedItemId(rejectedItem);
+            return itemId != null && collateralIds.contains(itemId);
+        });
+
+        V1CreateSoldItemsResponse retryResponse = uploadItemsToApi(eventId, retryItems);
+        SoldItemsResponseClassifier.UploadOutcome retryOutcome = SoldItemsResponseClassifier.classify(retryResponse);
+
+        accepted.addAll(retryOutcome.acceptedItemIds());
+        duplicates.addAll(retryOutcome.duplicateItemIds());
+        rejected.addAll(retryOutcome.rejectedItems());
+
+        return new SoldItemsResponseClassifier.UploadOutcome(accepted, duplicates, rejected);
+    }
+
+    private V1CreateSoldItemsResponse uploadItemsToApi(String eventId, List<V1SoldItem> items) throws ApiException {
+        SoldItemsServiceCreateSoldItemsBody createSoldItems = new SoldItemsServiceCreateSoldItemsBody();
+        for (V1SoldItem item : items) {
+            se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
+            if (item.getSoldTime() != null) {
+                apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), OffsetDateTime.now().getOffset()));
+            }
+            createSoldItems.addItemsItem(apiItem);
+
+            log.info(String.format("[API-REQ] Item: purchaseId=%s, itemId=%s, seller=%d, price=%d",
+                apiItem.getPurchaseId(), apiItem.getItemId(), apiItem.getSeller(), apiItem.getPrice()));
+        }
+
+        return ApiHelper.INSTANCE
+                .getSoldItemsServiceApi()
+                .soldItemsServiceCreateSoldItems(eventId, createSoldItems);
+    }
+
+    private static String getRejectedItemId(V1RejectedItem rejectedItem) {
+        if (rejectedItem == null || rejectedItem.getItem() == null) {
+            return null;
+        }
+        return rejectedItem.getItem().getItemId();
     }
     
     @Override

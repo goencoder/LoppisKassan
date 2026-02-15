@@ -8,18 +8,23 @@ import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.model.cashier.CashierState;
 import se.goencoder.loppiskassan.rest.ApiHelper;
+import se.goencoder.loppiskassan.rest.AuthErrorHandler;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.service.CashierStrategy;
 import se.goencoder.loppiskassan.service.LocalCashierStrategy;
 import se.goencoder.loppiskassan.service.IloppisCashierStrategy;
+import se.goencoder.loppiskassan.service.RejectedItemsManager;
+import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.ProgressDialog;
 import se.goencoder.loppiskassan.utils.ConfigurationUtils;
 import se.goencoder.loppiskassan.utils.FileUtils;
+import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
+import se.goencoder.loppiskassan.utils.SoldItemsResponseClassifier;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
@@ -217,7 +222,9 @@ public class CashierTabController implements CashierControllerInterface {
                     },
                     unused -> finishCheckoutFlow(paymentMethod, totalAmount),
                     ex -> {
-                        if (isLikelyNetworkError(ex)) {
+                        if (ex instanceof ApiException apiEx && AuthErrorHandler.isAuthError(apiEx)) {
+                            // Auth errors are handled by the global re-auth dialog.
+                        } else if (isLikelyNetworkError(ex)) {
                             degradedMode = true;
                             Popup.warn("warning.degraded_mode");
                         } else {
@@ -238,6 +245,7 @@ public class CashierTabController implements CashierControllerInterface {
         view.clearView();
         state.reset();  // Reset state to initial values
 
+        String eventId = AppModeManager.getEventId();
         // 4) If we are in degraded mode, spawn a background thread to attempt a catch-up
         boolean isLocal = AppModeManager.isLocalMode();
         if (!isLocal && degradedMode) {
@@ -247,6 +255,8 @@ public class CashierTabController implements CashierControllerInterface {
                     degradedMode = false;
                 }
             }).start();
+        } else if (!isLocal && eventId != null && !eventId.isBlank()) {
+            BackgroundSyncManager.getInstance().ensureRunning(eventId);
         }
     }
 
@@ -317,9 +327,9 @@ public class CashierTabController implements CashierControllerInterface {
      * @throws RuntimeException or other exceptions for network connectivity errors
      *                          (some might bubble as ApiException with code=0)
      */
-    private void saveItemsToWeb(List<V1SoldItem> items) throws ApiException {
+    private SoldItemsResponseClassifier.UploadOutcome saveItemsToWeb(List<V1SoldItem> items) throws ApiException {
         if (items == null || items.isEmpty()) {
-            return;
+            return new SoldItemsResponseClassifier.UploadOutcome(Set.of(), Set.of(), List.of());
         }
 
         SoldItemsServiceCreateSoldItemsBody createSoldItems = new SoldItemsServiceCreateSoldItemsBody();
@@ -338,7 +348,7 @@ public class CashierTabController implements CashierControllerInterface {
                 .getSoldItemsServiceApi()
                 .soldItemsServiceCreateSoldItems(AppModeManager.getEventId(), createSoldItems);
 
-        updateLocalItemsStatus(response, itemMap);
+        return updateLocalItemsStatus(response, itemMap);
     }
 
     /**
@@ -368,8 +378,9 @@ public class CashierTabController implements CashierControllerInterface {
                 return true; // Nothing to push, so "success" in terms of connectivity
             }
 
+            SoldItemsResponseClassifier.UploadOutcome outcome = null;
             try {
-                saveItemsToWeb(notUploaded);
+                outcome = saveItemsToWeb(notUploaded);
             } catch (ApiException apiEx) {
                 // If code=0 or other sign of no connectivity => degrade remains
                 if (isLikelyNetworkError(apiEx)) {
@@ -385,14 +396,20 @@ public class CashierTabController implements CashierControllerInterface {
                 return false;
             }
 
-            // On partial success, some items may now be uploaded
-            // -> re-save entire file with updated statuses
+            // On partial success, some items may now be uploaded or rejected
+            // -> re-save entire file with updated statuses (remove rejected items)
             try {
                 String eventId = AppModeManager.getEventId();
                 if (eventId == null || eventId.isBlank()) {
                     return false;
                 }
+                if (outcome != null && !outcome.rejectedItems().isEmpty()) {
+                    Set<String> rejectedIds = outcome.rejectedItemIds();
+                    allItems.removeIf(item -> item.getItemId() != null
+                            && rejectedIds.contains(item.getItemId()));
+                }
                 FileUtils.saveSoldItems(eventId, allItems);
+                RejectedItemsManager.getInstance().notifyRejectedCountChanged(eventId);
             } catch (IOException e) {
                 // local file write error is not a reason to remain degraded
                 // but we do show a warning
@@ -403,26 +420,22 @@ public class CashierTabController implements CashierControllerInterface {
         }
     }
 
-    private void updateLocalItemsStatus(V1CreateSoldItemsResponse response,
+    private SoldItemsResponseClassifier.UploadOutcome updateLocalItemsStatus(V1CreateSoldItemsResponse response,
                                         Map<String, V1SoldItem> itemMap) {
-        if (response.getAcceptedItems() != null) {
-            for (se.goencoder.iloppis.model.V1SoldItem acceptedItem : response.getAcceptedItems()) {
-                V1SoldItem localItem = itemMap.get(acceptedItem.getItemId());
-                if (localItem != null) {
-                    localItem.setUploaded(true);
-                }
+        SoldItemsResponseClassifier.UploadOutcome outcome = SoldItemsResponseClassifier.classify(response);
+
+        for (String uploadedId : outcome.uploadedItemIds()) {
+            V1SoldItem localItem = itemMap.get(uploadedId);
+            if (localItem != null) {
+                localItem.setUploaded(true);
             }
         }
 
-        if (!Objects.requireNonNull(response.getRejectedItems()).isEmpty()) {
-            Popup.warn("warning.partial_upload", response.getRejectedItems());
-            for (se.goencoder.iloppis.model.V1RejectedItem rejectedItem : response.getRejectedItems()) {
-                V1SoldItem localItem = itemMap.get(rejectedItem.getItem().getItemId());
-                if (localItem != null) {
-                    localItem.setUploaded(false);
-                }
-            }
+        if (outcome.hasRejectedItems()) {
+            RejectedItemsHelper.saveRejectedItems(AppModeManager.getEventId(), outcome.rejectedItems());
         }
+
+        return outcome;
     }
 
 

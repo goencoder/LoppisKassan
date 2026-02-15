@@ -1,17 +1,14 @@
 package se.goencoder.loppiskassan.utils;
 
-import org.json.JSONObject;
 import se.goencoder.iloppis.model.V1RejectedItem;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
-import se.goencoder.loppiskassan.storage.LocalEventPaths;
+import se.goencoder.loppiskassan.service.RejectedItemsManager;
+import se.goencoder.loppiskassan.storage.RejectedItemEntry;
+import se.goencoder.loppiskassan.storage.RejectedItemsStore;
 
-import java.io.BufferedWriter;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -31,45 +28,62 @@ public class RejectedItemsHelper {
      * @param rejectedItems list of rejected items from API response
      */
     public static void saveRejectedItems(String eventId, List<V1RejectedItem> rejectedItems) {
-        if (rejectedItems == null || rejectedItems.isEmpty()) {
+        if (eventId == null || eventId.isBlank() || rejectedItems == null || rejectedItems.isEmpty()) {
             return;
         }
         
         try {
-            Path rejectedPath = LocalEventPaths.getRejectedPurchasesPath(eventId);
-            if (rejectedPath.getParent() != null) {
-                Files.createDirectories(rejectedPath.getParent());
-            }
-            
-            try (BufferedWriter writer = Files.newBufferedWriter(
-                    rejectedPath,
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND)) {
-                
-                for (V1RejectedItem rejected : rejectedItems) {
-                    JSONObject entry = new JSONObject();
-                    entry.put("timestamp", OffsetDateTime.now().format(TIMESTAMP_FORMAT));
-                    entry.put("errorCode", rejected.getErrorCode() != null ? rejected.getErrorCode().toString() : "UNKNOWN");
-                    entry.put("reason", rejected.getReason() != null ? rejected.getReason() : "No reason");
-                    
-                    // Add item details if available
-                    if (rejected.getItem() != null) {
-                        JSONObject itemDetails = new JSONObject();
-                        itemDetails.put("itemId", rejected.getItem().getItemId());
-                        itemDetails.put("seller", rejected.getItem().getSeller());
-                        itemDetails.put("price", rejected.getItem().getPrice());
-                        itemDetails.put("paymentMethod", rejected.getItem().getPaymentMethod());
-                        entry.put("item", itemDetails);
-                    }
-                    
-                    writer.write(entry.toString());
-                    writer.newLine();
+            List<RejectedItemEntry> entries = new ArrayList<>();
+            String timestamp = OffsetDateTime.now().format(TIMESTAMP_FORMAT);
+
+            for (V1RejectedItem rejected : rejectedItems) {
+                if (rejected == null || rejected.getItem() == null) {
+                    continue;
                 }
+
+                String errorCode = rejected.getErrorCode() != null ? rejected.getErrorCode().toString() : "";
+                String reason = rejected.getReason();
+                if (reason == null || reason.isBlank()) {
+                    reason = errorCode;
+                }
+
+                se.goencoder.loppiskassan.V1PaymentMethod paymentMethod = null;
+                if (rejected.getItem().getPaymentMethod() != null) {
+                    String raw = rejected.getItem().getPaymentMethod().toString();
+                    if (raw != null) {
+                        try {
+                            paymentMethod = se.goencoder.loppiskassan.V1PaymentMethod.valueOf(raw);
+                        } catch (IllegalArgumentException ignored) {
+                            if ("SWISH".equalsIgnoreCase(raw)) {
+                                paymentMethod = se.goencoder.loppiskassan.V1PaymentMethod.Swish;
+                            } else if ("KONTANT".equalsIgnoreCase(raw) || "CASH".equalsIgnoreCase(raw)) {
+                                paymentMethod = se.goencoder.loppiskassan.V1PaymentMethod.Kontant;
+                            }
+                        }
+                    }
+                }
+
+                entries.add(new RejectedItemEntry(
+                        rejected.getItem().getItemId(),
+                        rejected.getItem().getPurchaseId(),
+                        rejected.getItem().getSeller(),
+                        rejected.getItem().getPrice(),
+                        paymentMethod,
+                        rejected.getItem().getSoldTime() == null
+                                ? null
+                                : rejected.getItem().getSoldTime().toLocalDateTime(),
+                        errorCode,
+                        reason,
+                        timestamp
+                ));
             }
-            
-            log.info(() -> String.format("Saved %d rejected items to %s", rejectedItems.size(), rejectedPath));
-            
+
+            if (!entries.isEmpty()) {
+                RejectedItemsStore store = new RejectedItemsStore(eventId);
+                store.appendAll(entries);
+                RejectedItemsManager.getInstance().notifyRejectedCountChanged(eventId);
+                log.info(() -> String.format("Saved %d rejected items for event %s", entries.size(), eventId));
+            }
         } catch (Exception e) {
             log.warning("Failed to save rejected items: " + e.getMessage());
         }
@@ -94,7 +108,7 @@ public class RejectedItemsHelper {
             String seller = "?";
             String price = "?";
             String payment = "?";
-            String reason = rejected.getReason() != null ? rejected.getReason() : 
+            String reason = rejected.getReason() != null ? rejected.getReason() :
                            (rejected.getErrorCode() != null ? rejected.getErrorCode().toString() : "Unknown");
             
             if (rejected.getItem() != null) {

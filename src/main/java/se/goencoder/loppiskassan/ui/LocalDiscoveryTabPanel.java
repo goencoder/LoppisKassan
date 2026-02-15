@@ -154,7 +154,7 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
 
         getTokenButton.addActionListener(e -> {
             if (selectedCard != null) {
-                controller.openRegister(selectedCard.eventId, "");
+                controller.openRegister(selectedCard.eventId);
             }
         });
 
@@ -307,7 +307,7 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
                 public void mousePressed(java.awt.event.MouseEvent e) {
                     // Use mousePressed for reliable click
                     if (e.getClickCount() == 2) {
-                        controller.openRegister(eventId, "");
+                        controller.openRegister(eventId);
                     } else {
                         selectCard(EventCard.this);
                     }
@@ -708,8 +708,6 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
         catch (NumberFormatException ex) { return 0f; }
     }
 
-    private String getCashierCode() { return ""; }
-
     private void setEventTexts(JLabel dHeader, JLabel rHeader,
                                JLabel name, JLabel desc, JLabel addr,
                                JLabel mOwner, JLabel vendor, JLabel platform) {
@@ -810,7 +808,6 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
     }
 
     @Override public void setCashierButtonEnabled(boolean enabled) { getTokenButton.setEnabled(enabled); }
-    @Override public void clearCashierCodeField() { /* no-op in local mode */ }
 
     @Override public void setRegisterOpened(boolean opened) {
         rootCardLayout.show(rootCardPanel, opened ? "activeEvent" : "discoveryMode");
@@ -838,6 +835,11 @@ public class LocalDiscoveryTabPanel extends JPanel implements DiscoveryPanelInte
     }
 
     @Override public void setChangeEventButtonVisible(boolean visible) { changeEventButton.setVisible(visible); }
+
+    @Override
+    public void setCachedCredentialsStatus(boolean cached) {
+        // No-op: local mode does not use cashier credentials.
+    }
 
     @Override public void selected() { controller.initUIState(); }
 
