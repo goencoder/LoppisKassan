@@ -3,22 +3,21 @@ package se.goencoder.loppiskassan.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.util.AppPaths;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Global configuration store for application-wide settings.
  * These settings persist across mode switches (Local vs iLoppis).
  * 
- * Stored in: config/global.json
+ * Stored in: ~/.loppiskassan/config/global.json
  */
 public class GlobalConfigurationStore {
-    private static final String CONFIG_DIR = "config";
     private static final String CONFIG_FILE = "global.json";
-    private static final Path CONFIG_PATH = Paths.get(CONFIG_DIR, CONFIG_FILE);
+    private static final Path CONFIG_PATH = AppPaths.getConfigDir().resolve(CONFIG_FILE);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
     private static GlobalConfig config;
@@ -39,7 +38,7 @@ public class GlobalConfigurationStore {
     private static void load() {
         try {
             // Create config directory if it doesn't exist
-            Files.createDirectories(Paths.get(CONFIG_DIR));
+            Files.createDirectories(AppPaths.getConfigDir());
             
             if (Files.exists(CONFIG_PATH)) {
                 try (Reader reader = new FileReader(CONFIG_PATH.toFile())) {
@@ -62,7 +61,7 @@ public class GlobalConfigurationStore {
     
     private static void save() {
         try {
-            Files.createDirectories(Paths.get(CONFIG_DIR));
+            Files.createDirectories(AppPaths.getConfigDir());
             try (Writer writer = new FileWriter(CONFIG_PATH.toFile())) {
                 GSON.toJson(config, writer);
             }

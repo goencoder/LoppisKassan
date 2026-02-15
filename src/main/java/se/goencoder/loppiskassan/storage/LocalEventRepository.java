@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -38,7 +39,7 @@ public class LocalEventRepository {
         }
         Files.createDirectories(eventDir);
 
-        Path metadataPath = LocalEventPaths.getMetadataPath(event.getEventId());
+        Path metadataPath = LocalEventPaths.getLocalMetadataPath(event.getEventId());
         Files.writeString(metadataPath, event.toJsonString(), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
@@ -52,7 +53,7 @@ public class LocalEventRepository {
     }
 
     public static LocalEvent load(String eventId) throws IOException {
-        Path metadataPath = LocalEventPaths.getMetadataPath(eventId);
+        Path metadataPath = resolveLocalMetadataPath(eventId);
         if (Files.notExists(metadataPath)) {
             return null;
         }
@@ -62,7 +63,7 @@ public class LocalEventRepository {
 
     public static void save(LocalEvent event) throws IOException {
         ensureEventStorage(event.getEventId());
-        Path metadataPath = LocalEventPaths.getMetadataPath(event.getEventId());
+        Path metadataPath = resolveLocalMetadataPath(event.getEventId());
         Files.writeString(metadataPath, event.toJsonString(), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
     }
@@ -74,7 +75,8 @@ public class LocalEventRepository {
             paths.filter(Files::isDirectory)
                     .sorted(Comparator.comparing(Path::getFileName))
                     .forEach(dir -> {
-                        Path metadataPath = dir.resolve("metadata.json");
+                        String eventId = dir.getFileName().toString();
+                        Path metadataPath = resolveLocalMetadataPath(eventId);
                         if (Files.exists(metadataPath)) {
                             try {
                                 String json = Files.readString(metadataPath, StandardCharsets.UTF_8);
@@ -111,5 +113,25 @@ public class LocalEventRepository {
             }
         }
         Files.deleteIfExists(path);
+    }
+
+    private static Path resolveLocalMetadataPath(String eventId) {
+        Path newPath = LocalEventPaths.getLocalMetadataPath(eventId);
+        if (Files.exists(newPath)) {
+            return newPath;
+        }
+
+        Path legacyPath = LocalEventPaths.getEventDir(eventId)
+                .resolve(LocalEventPaths.LEGACY_METADATA_FILE_NAME);
+        if (Files.exists(legacyPath)) {
+            try {
+                Files.move(legacyPath, newPath, StandardCopyOption.REPLACE_EXISTING);
+                return newPath;
+            } catch (IOException e) {
+                return legacyPath;
+            }
+        }
+
+        return newPath;
     }
 }

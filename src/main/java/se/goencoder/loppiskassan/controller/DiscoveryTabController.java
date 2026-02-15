@@ -18,6 +18,7 @@ import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.ui.DiscoveryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.dialogs.CashierCodeDialog;
+import se.goencoder.loppiskassan.util.AppPaths;
 import se.goencoder.loppiskassan.utils.EventUtils;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.storage.LocalEvent;
@@ -481,7 +482,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             } catch (IOException e) {
                 Popup.FATAL.showAndWait(
                         LocalizationManager.tr("error.load_saved_event.title"),
-                        LocalizationManager.tr("error.load_saved_event.message", "config/", e.getMessage()));
+                        LocalizationManager.tr("error.load_saved_event.message",
+                                AppPaths.getConfigDir().toString(),
+                                e.getMessage()));
             }
             return null;
         }

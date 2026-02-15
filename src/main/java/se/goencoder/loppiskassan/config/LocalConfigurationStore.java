@@ -1,18 +1,17 @@
 package se.goencoder.loppiskassan.config;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Configuration store for Local mode (offline, file-based).
  * Contains settings specific to local event management.
  * 
- * Stored in: config/local-mode.json
+ * Stored in: ~/.loppiskassan/config/local-mode.json
  */
 public class LocalConfigurationStore extends ConfigurationStore<LocalConfigurationStore.LocalConfig> {
     
     private static final String CONFIG_FILE = "local-mode.json";
-    private static final Path CONFIG_PATH = Paths.get(CONFIG_DIR, CONFIG_FILE);
+    private static final Path CONFIG_PATH = CONFIG_DIR.resolve(CONFIG_FILE);
     
     private static final LocalConfigurationStore INSTANCE = new LocalConfigurationStore();
     

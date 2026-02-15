@@ -1,63 +1,31 @@
 package se.goencoder.loppiskassan.controller;
 
-import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
-import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.iloppis.model.V1CreateSoldItemsResponse;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.model.cashier.CashierState;
-import se.goencoder.loppiskassan.rest.ApiHelper;
-import se.goencoder.loppiskassan.rest.AuthErrorHandler;
-import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.service.CashierStrategy;
 import se.goencoder.loppiskassan.service.LocalCashierStrategy;
 import se.goencoder.loppiskassan.service.IloppisCashierStrategy;
-import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
-import se.goencoder.loppiskassan.ui.ProgressDialog;
-import se.goencoder.loppiskassan.utils.ConfigurationUtils;
-import se.goencoder.loppiskassan.utils.FileUtils;
-import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
-import se.goencoder.loppiskassan.utils.SoldItemsResponseClassifier;
-import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import java.util.logging.Logger;
-
-import static se.goencoder.loppiskassan.rest.ApiHelper.isLikelyNetworkError;
 
 public class CashierTabController implements CashierControllerInterface {
 
     private static final CashierTabController instance = new CashierTabController();
     private static final Logger log = Logger.getLogger(CashierTabController.class.getName());
-
-    /**
-     * True if the system encountered a network error and is now in "degraded mode".
-     * When degraded, we skip attempts to upload new purchases. Instead, we save them
-     * locally and spawn a background sync attempt. If that sync succeeds, we switch
-     * back to normal (degradedMode = false).
-     */
-    private static boolean degradedMode = false;
-
-    /**
-     * A lock object to synchronize file reads/writes and web push
-     * across the main thread and any background threads.
-     */
-    private final Object lock = new Object();
 
     private final List<V1SoldItem> items = new ArrayList<>();
     private final CashierState state = new CashierState();
@@ -211,28 +179,16 @@ public class CashierTabController implements CashierControllerInterface {
                 );
             }
         } else {
-            // iLoppis mode: async with progress dialog
-            ProgressDialog.runTask(
-                    view.getComponent(),
-                    LocalizationManager.tr("cashier.progress.processing"),
-                    LocalizationManager.tr("cashier.progress.saving_web"),
-                    () -> {
-                        strategy.persistItems(items, purchaseId, paymentMethod, now);
-                        return null;
-                    },
-                    unused -> finishCheckoutFlow(paymentMethod, totalAmount),
-                    ex -> {
-                        if (ex instanceof ApiException apiEx && AuthErrorHandler.isAuthError(apiEx)) {
-                            // Auth errors are handled by the global re-auth dialog.
-                        } else if (isLikelyNetworkError(ex)) {
-                            degradedMode = true;
-                            Popup.warn("warning.degraded_mode");
-                        } else {
-                            Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_web"), ex.getMessage());
-                        }
-                        finishCheckoutFlow(paymentMethod, totalAmount);
-                    }
-            );
+            // iLoppis mode: local-first, enqueue for background sync
+            try {
+                strategy.persistItems(items, purchaseId, paymentMethod, now);
+                finishCheckoutFlow(paymentMethod, totalAmount);
+            } catch (Exception e) {
+                Popup.ERROR.showAndWait(
+                        LocalizationManager.tr("error.upload_web"),
+                        e.getMessage()
+                );
+            }
         }
     }
 
@@ -246,16 +202,9 @@ public class CashierTabController implements CashierControllerInterface {
         state.reset();  // Reset state to initial values
 
         String eventId = AppModeManager.getEventId();
-        // 4) If we are in degraded mode, spawn a background thread to attempt a catch-up
+        // 4) Ensure background sync is running (non-local mode)
         boolean isLocal = AppModeManager.isLocalMode();
-        if (!isLocal && degradedMode) {
-            new Thread(() -> {
-                boolean success = pushLocalUnsyncedRecords();
-                if (success) {
-                    degradedMode = false;
-                }
-            }).start();
-        } else if (!isLocal && eventId != null && !eventId.isBlank()) {
+        if (!isLocal && eventId != null && !eventId.isBlank()) {
             BackgroundSyncManager.getInstance().ensureRunning(eventId);
         }
     }
@@ -316,127 +265,5 @@ public class CashierTabController implements CashierControllerInterface {
             item.setPurchaseId(purchaseId);
         }
     }
-
-    /**
-     * Attempts to upload the given items to the web in a single batch request.
-     * <p>
-     * Note: This method does NOT handle concurrency by itself. Make sure you
-     * synchronize if reading from or modifying shared structures.
-     *
-     * @throws ApiException if there's an API-level or partial success
-     * @throws RuntimeException or other exceptions for network connectivity errors
-     *                          (some might bubble as ApiException with code=0)
-     */
-    private SoldItemsResponseClassifier.UploadOutcome saveItemsToWeb(List<V1SoldItem> items) throws ApiException {
-        if (items == null || items.isEmpty()) {
-            return new SoldItemsResponseClassifier.UploadOutcome(Set.of(), Set.of(), List.of());
-        }
-
-        SoldItemsServiceCreateSoldItemsBody createSoldItems = new SoldItemsServiceCreateSoldItemsBody();
-        ZoneOffset currentOffset = OffsetDateTime.now().getOffset();
-
-        Map<String, V1SoldItem> itemMap = items.stream()
-                .collect(Collectors.toMap(V1SoldItem::getItemId, x -> x));
-
-        for (V1SoldItem item : items) {
-            se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(item);
-            apiItem.setSoldTime(OffsetDateTime.of(item.getSoldTime(), currentOffset));
-            createSoldItems.addItemsItem(apiItem);
-        }
-
-        V1CreateSoldItemsResponse response = ApiHelper.INSTANCE
-                .getSoldItemsServiceApi()
-                .soldItemsServiceCreateSoldItems(AppModeManager.getEventId(), createSoldItems);
-
-        return updateLocalItemsStatus(response, itemMap);
-    }
-
-    /**
-     * Reads the local file, finds all items not uploaded, attempts to upload them.
-     * Updates local file based on partial success. Returns true if no network error
-     * occurred (i.e. connectivity was OK, even if some items were rejected for data reasons).
-     */
-    private boolean pushLocalUnsyncedRecords() {
-        synchronized (lock) {
-            List<V1SoldItem> allItems;
-            try {
-                String eventId = AppModeManager.getEventId();
-                if (eventId == null || eventId.isBlank()) {
-                    return false;
-                }
-                Path localJsonl = LocalEventPaths.getPendingItemsPath(eventId);
-                allItems = JsonlHelper.readItems(localJsonl);
-            } catch (IOException e) {
-                return false;
-            }
-
-            List<V1SoldItem> notUploaded = allItems.stream()
-                    .filter(item -> !item.isUploaded())
-                    .collect(Collectors.toList());
-
-            if (notUploaded.isEmpty()) {
-                return true; // Nothing to push, so "success" in terms of connectivity
-            }
-
-            SoldItemsResponseClassifier.UploadOutcome outcome = null;
-            try {
-                outcome = saveItemsToWeb(notUploaded);
-            } catch (ApiException apiEx) {
-                // If code=0 or other sign of no connectivity => degrade remains
-                if (isLikelyNetworkError(apiEx)) {
-                    return false;
-                }
-                // Otherwise partial success or data error => keep going
-            } catch (Exception ex) {
-                // Non-ApiException network or other error => degrade remains
-                if (isLikelyNetworkError(ex)) {
-                    return false;
-                }
-                // Some other unknown error => treat as connectivity for safety
-                return false;
-            }
-
-            // On partial success, some items may now be uploaded or rejected
-            // -> re-save entire file with updated statuses (remove rejected items)
-            try {
-                String eventId = AppModeManager.getEventId();
-                if (eventId == null || eventId.isBlank()) {
-                    return false;
-                }
-                if (outcome != null && !outcome.rejectedItems().isEmpty()) {
-                    Set<String> rejectedIds = outcome.rejectedItemIds();
-                    allItems.removeIf(item -> item.getItemId() != null
-                            && rejectedIds.contains(item.getItemId()));
-                }
-                FileUtils.saveSoldItems(eventId, allItems);
-                RejectedItemsManager.getInstance().notifyRejectedCountChanged(eventId);
-            } catch (IOException e) {
-                // local file write error is not a reason to remain degraded
-                // but we do show a warning
-                Popup.warn("warning.update_items", e.getMessage());
-            }
-
-            return true;
-        }
-    }
-
-    private SoldItemsResponseClassifier.UploadOutcome updateLocalItemsStatus(V1CreateSoldItemsResponse response,
-                                        Map<String, V1SoldItem> itemMap) {
-        SoldItemsResponseClassifier.UploadOutcome outcome = SoldItemsResponseClassifier.classify(response);
-
-        for (String uploadedId : outcome.uploadedItemIds()) {
-            V1SoldItem localItem = itemMap.get(uploadedId);
-            if (localItem != null) {
-                localItem.setUploaded(true);
-            }
-        }
-
-        if (outcome.hasRejectedItems()) {
-            RejectedItemsHelper.saveRejectedItems(AppModeManager.getEventId(), outcome.rejectedItems());
-        }
-
-        return outcome;
-    }
-
 
 }

@@ -9,6 +9,7 @@ import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.ui.AppShellFrame;
 import se.goencoder.loppiskassan.ui.Theme;
 import se.goencoder.loppiskassan.ui.dialogs.ModeSelectionDialog;
+import se.goencoder.loppiskassan.util.AppPaths;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -105,6 +106,7 @@ public class Main {
     public static void main(String[] args) {
         // Omge med try-catch för att hantera IO-undantag
         try {
+            AppPaths.migrateLegacyPaths();
             FileHelper.createDirectories();
             createLogger();
 

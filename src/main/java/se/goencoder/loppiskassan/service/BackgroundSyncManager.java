@@ -5,13 +5,14 @@ import se.goencoder.iloppis.model.SoldItemsServiceCreateSoldItemsBody;
 import se.goencoder.iloppis.model.V1CreateSoldItemsResponse;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.rest.ApiHelper;
+import se.goencoder.loppiskassan.rest.AuthErrorHandler;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
 import se.goencoder.loppiskassan.utils.SoldItemsResponseClassifier;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,69 +21,121 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.stream.Collectors;
+import java.util.Queue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
- * Background service that periodically attempts to upload pending items.
- * Runs when in iLoppis mode and stops on mode change or app exit.
+ * Background service that persists sold items locally and uploads them in the background.
+ * <p>
+ * Design goals:
+ * <ul>
+ *   <li>Local-first: items are always written to disk before any upload attempt.</li>
+ *   <li>Single-threaded I/O: all writes/reads to the pending JSONL file and all API uploads
+ *       happen on ONE background thread to avoid races and lost updates.</li>
+ *   <li>Unified pipeline: the same upload logic (classify + retry + update file) is used
+ *       regardless of what triggers the sync.</li>
+ * </ul>
+ *
+ * This class owns the "sync thread". Any code path that needs to mutate the pending
+ * file MUST go through this class.
  */
 public class BackgroundSyncManager {
-    
+
     private static final Logger log = Logger.getLogger(BackgroundSyncManager.class.getName());
     private static final long SYNC_INTERVAL_MS = 30_000; // 30 seconds
-    
+
     private static BackgroundSyncManager instance;
-    private Timer syncTimer;
+
+    /**
+     * The single-threaded executor that performs ALL file I/O and uploads.
+     */
+    private ScheduledExecutorService syncExecutor;
+    private ScheduledFuture<?> periodicTask;
+    private volatile Thread syncThread;
+    private final Queue<List<V1SoldItem>> pendingQueue = new ConcurrentLinkedQueue<>();
+
     private String activeEventId;
     private boolean isRunning = false;
-    
+
     /** Listener interface for pending count changes. */
     public interface PendingCountListener {
         void onPendingCountChanged(int pendingCount);
     }
-    
+
     private PendingCountListener pendingCountListener;
-    
+
+    /**
+     * Result summary from a sync run.
+     * Used by manual sync actions (e.g. History "Uppdatera web").
+     */
+    public record SyncResult(
+            int accepted,
+            int duplicates,
+            int rejected,
+            boolean networkError,
+            boolean authError,
+            boolean fileError
+    ) {
+        public static SyncResult empty() {
+            return new SyncResult(0, 0, 0, false, false, false);
+        }
+    }
+
     private BackgroundSyncManager() {
         // Private constructor for singleton
     }
-    
+
     public static synchronized BackgroundSyncManager getInstance() {
         if (instance == null) {
             instance = new BackgroundSyncManager();
         }
         return instance;
     }
-    
+
     /**
      * Start background sync for the given event.
-     * 
+     * Creates a single-threaded executor that owns all file I/O + upload.
+     *
      * @param eventId the event ID to sync pending items for
      */
     public synchronized void start(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
         if (isRunning && eventId.equals(activeEventId)) {
-            log.fine("Background sync already running for event: " + eventId);
             triggerSyncNow();
             return;
         }
-        
-        stop(); // Stop any existing timer
-        
+
+        stop();
+
         this.activeEventId = eventId;
         this.isRunning = true;
-        
+
+        syncExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "BackgroundSync-" + eventId);
+            thread.setDaemon(true);
+            syncThread = thread;
+            return thread;
+        });
+
         log.info("Starting background sync for event: " + eventId);
-        
-        syncTimer = new Timer("BackgroundSync-" + eventId, true); // daemon thread
-        syncTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                attemptSync();
-            }
-        }, SYNC_INTERVAL_MS, SYNC_INTERVAL_MS);
+
+        periodicTask = syncExecutor.scheduleWithFixedDelay(
+                this::syncOnceSafely,
+                SYNC_INTERVAL_MS,
+                SYNC_INTERVAL_MS,
+                TimeUnit.MILLISECONDS
+        );
+
         triggerSyncNow();
     }
 
@@ -101,35 +154,118 @@ public class BackgroundSyncManager {
     }
 
     /**
-     * Trigger a best-effort sync attempt immediately on a background thread.
-     */
-    public void triggerSyncNow() {
-        if (activeEventId == null) {
-            return;
-        }
-        new Thread(this::attemptSync, "BackgroundSync-Now").start();
-    }
-    
-    /**
-     * Stop background sync.
+     * Stop background sync and clear state.
      */
     public synchronized void stop() {
-        if (syncTimer != null) {
-            log.info("Stopping background sync");
-            syncTimer.cancel();
-            syncTimer = null;
+        if (periodicTask != null) {
+            periodicTask.cancel(false);
+            periodicTask = null;
+        }
+        if (syncExecutor != null) {
+            syncExecutor.shutdownNow();
+            syncExecutor = null;
         }
         isRunning = false;
         activeEventId = null;
     }
-    
+
     /**
      * Check if background sync is running.
      */
     public synchronized boolean isRunning() {
         return isRunning;
     }
-    
+
+    /**
+     * Enqueue items for local persistence and background upload.
+     * This method is fast and non-blocking for the caller.
+     *
+     * NOTE: Actual disk writes happen on the sync thread.
+     */
+    public void enqueueItems(String eventId, List<V1SoldItem> items) {
+        if (eventId == null || eventId.isBlank() || items == null || items.isEmpty()) {
+            return;
+        }
+        ensureRunning(eventId);
+        // Defensive copy of the list (items are immutable enough for our use)
+        pendingQueue.add(new ArrayList<>(items));
+        triggerSyncNow();
+    }
+
+    /**
+     * Persist all items to the pending file on the sync thread (blocking).
+     * Used by manual operations like History sync or imports.
+     */
+    public void savePendingItems(String eventId, List<V1SoldItem> items) throws IOException {
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+        ensureRunning(eventId);
+        runOnSyncThread(() -> {
+            PendingItemsStore store = new PendingItemsStore(eventId);
+            store.saveAll(items);
+            return null;
+        });
+        notifyPendingCountChanged();
+    }
+
+    /**
+     * Insert or replace a single item in the pending file (blocking).
+     * This is used when a rejected item is edited and re-queued.
+     */
+    public void upsertPendingItem(String eventId, V1SoldItem item) throws IOException {
+        if (eventId == null || eventId.isBlank() || item == null) {
+            return;
+        }
+        ensureRunning(eventId);
+        runOnSyncThread(() -> {
+            PendingItemsStore store = new PendingItemsStore(eventId);
+            List<V1SoldItem> allItems = store.readAll();
+            boolean updatedExisting = false;
+            for (int i = 0; i < allItems.size(); i++) {
+                V1SoldItem existing = allItems.get(i);
+                if (existing.getItemId() != null && existing.getItemId().equals(item.getItemId())) {
+                    allItems.set(i, item);
+                    updatedExisting = true;
+                }
+            }
+            if (updatedExisting) {
+                store.saveAll(allItems);
+            } else {
+                store.appendItems(List.of(item));
+            }
+            return null;
+        });
+        notifyPendingCountChanged();
+    }
+
+    /**
+     * Trigger a best-effort sync attempt immediately on the sync thread.
+     */
+    public void triggerSyncNow() {
+        ScheduledExecutorService executor = syncExecutor;
+        if (executor == null) {
+            return;
+        }
+        executor.submit(this::syncOnceSafely);
+    }
+
+    /**
+     * Run a sync cycle and wait for completion. Intended for manual actions (e.g. History).
+     */
+    public SyncResult syncNowBlocking() {
+        String eventId = activeEventId;
+        if (eventId == null || eventId.isBlank()) {
+            return SyncResult.empty();
+        }
+        ensureRunning(eventId);
+        try {
+            return runOnSyncThread(this::syncOnceInternal);
+        } catch (IOException e) {
+            return new SyncResult(0, 0, 0, false, false, true);
+        }
+    }
+
     /**
      * Set listener for pending count changes.
      * Called on EDT when pending count changes.
@@ -137,7 +273,7 @@ public class BackgroundSyncManager {
     public void setPendingCountListener(PendingCountListener listener) {
         this.pendingCountListener = listener;
     }
-    
+
     /**
      * Get the current count of pending (non-uploaded) items for the active event.
      * Returns 0 if no event is active or on any error.
@@ -152,122 +288,179 @@ public class BackgroundSyncManager {
             return 0;
         }
     }
-    
+
     public void notifyPendingCountChanged() {
         if (pendingCountListener != null) {
             int count = getPendingCount();
             SwingUtilities.invokeLater(() -> pendingCountListener.onPendingCountChanged(count));
         }
     }
-    
-    /**
-     * Attempt to upload pending items for the active event.
-     * Called periodically by the timer.
-     */
-    private void attemptSync() {
-        if (activeEventId == null) {
-            return;
-        }
-        
+
+    private void syncOnceSafely() {
         try {
-            Path pendingPath = LocalEventPaths.getPendingItemsPath(activeEventId);
-            
-            // Check if pending file exists and has content
-            if (!Files.exists(pendingPath) || Files.size(pendingPath) == 0) {
-                return; // Nothing to sync
-            }
-            
-            log.info("Background sync: Found pending items, attempting upload");
-            
-            // Load pending items
-            PendingItemsStore store = new PendingItemsStore(activeEventId);
-            List<V1SoldItem> pendingItems = store.readPending();
-            if (pendingItems.isEmpty()) {
-                return;
-            }
-            
-            Map<String, List<V1SoldItem>> purchaseGroups = pendingItems.stream()
-                    .collect(Collectors.groupingBy(item -> {
-                        String purchaseId = item.getPurchaseId();
-                        if (purchaseId == null || purchaseId.isBlank()) {
-                            purchaseId = UlidGenerator.generate();
-                            item.setPurchaseId(purchaseId);
-                        }
-                        return purchaseId;
-                    }));
-
-            HashSet<String> acceptedIds = new HashSet<>();
-            HashSet<String> duplicateIds = new HashSet<>();
-            List<se.goencoder.iloppis.model.V1RejectedItem> rejectedItems = new ArrayList<>();
-
-            try {
-                for (List<V1SoldItem> purchaseItems : purchaseGroups.values()) {
-                    SoldItemsResponseClassifier.UploadOutcome outcome = uploadPurchaseGroupWithRetry(activeEventId, purchaseItems);
-                    acceptedIds.addAll(outcome.acceptedItemIds());
-                    duplicateIds.addAll(outcome.duplicateItemIds());
-                    rejectedItems.addAll(outcome.rejectedItems());
-                }
-            } catch (ApiException e) {
-                if (ApiHelper.isLikelyNetworkError(e)) {
-                    log.fine("Background sync: Network error, will retry later");
-                } else {
-                    log.warning("Background sync: API error - " + e.getMessage());
-                }
-            }
-
-            int accepted = acceptedIds.size();
-            int rejected = rejectedItems.size();
-            int duplicates = duplicateIds.size();
-
-            log.info(() -> String.format(
-                    "Background sync: Upload processed - %d accepted, %d duplicates, %d rejected",
-                    accepted, duplicates, rejected));
-
-            if (!rejectedItems.isEmpty()) {
-                RejectedItemsHelper.saveRejectedItems(activeEventId, rejectedItems);
-            }
-
-            if (!acceptedIds.isEmpty() || !duplicateIds.isEmpty() || !rejectedItems.isEmpty()) {
-                try {
-                    List<V1SoldItem> allItems = store.readAll();
-                    List<V1SoldItem> updatedItems = new ArrayList<>();
-                    HashSet<String> rejectedIds = new HashSet<>();
-                    for (se.goencoder.iloppis.model.V1RejectedItem rejectedItem : rejectedItems) {
-                        if (rejectedItem.getItem() != null && rejectedItem.getItem().getItemId() != null) {
-                            rejectedIds.add(rejectedItem.getItem().getItemId());
-                        }
-                    }
-                    HashSet<String> uploadedIds = new HashSet<>(acceptedIds);
-                    uploadedIds.addAll(duplicateIds);
-
-                    for (V1SoldItem allItem : allItems) {
-                        if (allItem.getItemId() == null) {
-                            updatedItems.add(allItem);
-                            continue;
-                        }
-                        if (rejectedIds.contains(allItem.getItemId())) {
-                            continue;
-                        }
-                        if (uploadedIds.contains(allItem.getItemId())) {
-                            allItem.setUploaded(true);
-                        }
-                        updatedItems.add(allItem);
-                    }
-                    store.saveAll(updatedItems);
-                } catch (IOException ioEx) {
-                    log.warning("Background sync: Failed to update local file - " + ioEx.getMessage());
-                }
-            }
-
-            log.info("Background sync: Upload processing complete");
-
-            // Notify UI on EDT
-            notifyPendingCountChanged();
-            RejectedItemsManager.getInstance().notifyRejectedCountChanged(activeEventId);
-            
+            syncOnceInternal();
         } catch (Exception e) {
             log.warning("Background sync: Unexpected error - " + e.getMessage());
         }
+    }
+
+    /**
+     * Sync cycle. Runs ONLY on the sync thread.
+     *
+     * Steps:
+     * 1) Flush queued items to disk (local-first)
+     * 2) Read pending items
+     * 3) Upload + classify + retry collateral
+     * 4) Update pending file, append rejected
+     */
+    private SyncResult syncOnceInternal() throws IOException {
+        String eventId = activeEventId;
+        if (eventId == null || eventId.isBlank()) {
+            return SyncResult.empty();
+        }
+
+        flushQueueToDisk(eventId);
+
+        Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
+        if (!Files.exists(pendingPath) || Files.size(pendingPath) == 0) {
+            return SyncResult.empty();
+        }
+
+        PendingItemsStore store = new PendingItemsStore(eventId);
+        List<V1SoldItem> pendingItems = store.readPending();
+        if (pendingItems.isEmpty()) {
+            return SyncResult.empty();
+        }
+
+        Map<String, List<V1SoldItem>> purchaseGroups = pendingItems.stream()
+                .collect(Collectors.groupingBy(item -> {
+                    String purchaseId = item.getPurchaseId();
+                    if (purchaseId == null || purchaseId.isBlank()) {
+                        purchaseId = UlidGenerator.generate();
+                        item.setPurchaseId(purchaseId);
+                    }
+                    return purchaseId;
+                }));
+
+        HashSet<String> acceptedIds = new HashSet<>();
+        HashSet<String> duplicateIds = new HashSet<>();
+        List<se.goencoder.iloppis.model.V1RejectedItem> rejectedItems = new ArrayList<>();
+
+        boolean networkError = false;
+        boolean authError = false;
+
+        for (List<V1SoldItem> purchaseItems : purchaseGroups.values()) {
+            try {
+                SoldItemsResponseClassifier.UploadOutcome outcome = uploadPurchaseGroupWithRetry(eventId, purchaseItems);
+                acceptedIds.addAll(outcome.acceptedItemIds());
+                duplicateIds.addAll(outcome.duplicateItemIds());
+                rejectedItems.addAll(outcome.rejectedItems());
+            } catch (ApiException e) {
+                if (AuthErrorHandler.isAuthError(e)) {
+                    AuthErrorHandler.handleAuthStatus(e.getCode());
+                    authError = true;
+                } else if (ApiHelper.isLikelyNetworkError(e)) {
+                    networkError = true;
+                } else {
+                    log.warning("Background sync: API error - " + e.getMessage());
+                }
+                break; // stop this sync cycle on any API failure
+            }
+        }
+
+        if (!rejectedItems.isEmpty()) {
+            RejectedItemsHelper.saveRejectedItems(eventId, rejectedItems);
+        }
+
+        if (!acceptedIds.isEmpty() || !duplicateIds.isEmpty() || !rejectedItems.isEmpty()) {
+            List<V1SoldItem> allItems = store.readAll();
+            List<V1SoldItem> updatedItems = new ArrayList<>();
+            HashSet<String> rejectedIds = new HashSet<>();
+            for (se.goencoder.iloppis.model.V1RejectedItem rejectedItem : rejectedItems) {
+                if (rejectedItem.getItem() != null && rejectedItem.getItem().getItemId() != null) {
+                    rejectedIds.add(rejectedItem.getItem().getItemId());
+                }
+            }
+            HashSet<String> uploadedIds = new HashSet<>(acceptedIds);
+            uploadedIds.addAll(duplicateIds);
+
+            for (V1SoldItem allItem : allItems) {
+                if (allItem.getItemId() == null) {
+                    updatedItems.add(allItem);
+                    continue;
+                }
+                if (rejectedIds.contains(allItem.getItemId())) {
+                    continue;
+                }
+                if (uploadedIds.contains(allItem.getItemId())) {
+                    allItem.setUploaded(true);
+                }
+                updatedItems.add(allItem);
+            }
+            store.saveAll(updatedItems);
+        }
+
+        notifyPendingCountChanged();
+        RejectedItemsManager.getInstance().notifyRejectedCountChanged(eventId);
+
+        return new SyncResult(
+                acceptedIds.size(),
+                duplicateIds.size(),
+                rejectedItems.size(),
+                networkError,
+                authError,
+                false
+        );
+    }
+
+    /**
+     * Append queued items to disk before any upload attempt.
+     * This is the "local-first" guarantee.
+     */
+    private void flushQueueToDisk(String eventId) throws IOException {
+        List<V1SoldItem> drained = new ArrayList<>();
+        List<V1SoldItem> batch;
+        while ((batch = pendingQueue.poll()) != null) {
+            drained.addAll(batch);
+        }
+        if (drained.isEmpty()) {
+            return;
+        }
+        PendingItemsStore store = new PendingItemsStore(eventId);
+        store.appendItems(drained);
+    }
+
+    private <T> T runOnSyncThread(Callable<T> task) throws IOException {
+        ScheduledExecutorService executor = syncExecutor;
+        if (executor == null) {
+            try {
+                return task.call();
+            } catch (Exception e) {
+                throw unwrapIo(e);
+            }
+        }
+        if (Thread.currentThread() == syncThread) {
+            try {
+                return task.call();
+            } catch (Exception e) {
+                throw unwrapIo(e);
+            }
+        }
+        try {
+            return executor.submit(task).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException(e);
+        } catch (ExecutionException e) {
+            throw unwrapIo(e.getCause());
+        }
+    }
+
+    private IOException unwrapIo(Throwable throwable) {
+        if (throwable instanceof IOException io) {
+            return io;
+        }
+        return new IOException(throwable);
     }
 
     private SoldItemsResponseClassifier.UploadOutcome uploadPurchaseGroupWithRetry(String eventId, List<V1SoldItem> purchaseItems) throws ApiException {
