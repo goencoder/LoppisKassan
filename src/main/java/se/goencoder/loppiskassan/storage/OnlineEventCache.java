@@ -25,7 +25,8 @@ public class OnlineEventCache {
     // - Short enough to prevent severely outdated seller lists
     // - Aligns with typical flea market event durations
     public static final long CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000L; // 7 days
-    private static final String CACHE_METADATA_FILENAME = "online_cache_metadata.json";
+    private static final String ILOPPIS_METADATA_FILENAME = "iloppis_metadata.json";
+    private static final String LEGACY_CACHE_METADATA_FILENAME = "online_cache_metadata.json";
 
     /**
      * Cache an online event after successful register opening.
@@ -63,7 +64,7 @@ public class OnlineEventCache {
             );
 
             // Write to cache metadata file
-            Path cachePath = eventDir.resolve(CACHE_METADATA_FILENAME);
+            Path cachePath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
             Files.writeString(cachePath, cached.toJsonString(), StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
@@ -91,7 +92,7 @@ public class OnlineEventCache {
             try (Stream<Path> paths = Files.list(eventsDir)) {
                 paths.filter(Files::isDirectory)
                         .forEach(eventDir -> {
-                            Path cachePath = eventDir.resolve(CACHE_METADATA_FILENAME);
+                            Path cachePath = resolveCachePath(eventDir);
                             if (Files.exists(cachePath)) {
                                 try {
                                     String json = Files.readString(cachePath, StandardCharsets.UTF_8);
@@ -127,7 +128,7 @@ public class OnlineEventCache {
         }
 
         try {
-            Path cachePath = LocalEventPaths.getEventDir(eventId).resolve(CACHE_METADATA_FILENAME);
+            Path cachePath = resolveCachePath(LocalEventPaths.getEventDir(eventId));
             if (Files.notExists(cachePath)) {
                 return null;
             }
@@ -152,9 +153,14 @@ public class OnlineEventCache {
         }
 
         try {
-            Path cachePath = LocalEventPaths.getEventDir(eventId).resolve(CACHE_METADATA_FILENAME);
+            Path eventDir = LocalEventPaths.getEventDir(eventId);
+            Path cachePath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
             if (Files.exists(cachePath)) {
                 Files.delete(cachePath);
+            }
+            Path legacyPath = eventDir.resolve(LEGACY_CACHE_METADATA_FILENAME);
+            if (Files.exists(legacyPath)) {
+                Files.delete(legacyPath);
             }
         } catch (IOException e) {
             System.err.println("Warning: Failed to remove cache for event " + eventId + ": " + e.getMessage());
@@ -226,7 +232,7 @@ public class OnlineEventCache {
                     cached.getCachedAt()
             );
 
-            Path cachePath = eventDir.resolve(CACHE_METADATA_FILENAME);
+            Path cachePath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
             Files.writeString(cachePath, updated.toJsonString(), StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
@@ -252,7 +258,7 @@ public class OnlineEventCache {
             }
 
             // Only refresh if cache already exists (don't auto-cache all events)
-            Path cachePath = LocalEventPaths.getEventDir(event.getId()).resolve(CACHE_METADATA_FILENAME);
+            Path cachePath = resolveCachePath(LocalEventPaths.getEventDir(event.getId()));
             if (Files.exists(cachePath)) {
                 try {
                     // Load existing cache to preserve credentials
@@ -282,5 +288,22 @@ public class OnlineEventCache {
                 }
             }
         }
+    }
+
+    private static Path resolveCachePath(Path eventDir) {
+        Path newPath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
+        if (Files.exists(newPath)) {
+            return newPath;
+        }
+        Path legacyPath = eventDir.resolve(LEGACY_CACHE_METADATA_FILENAME);
+        if (Files.exists(legacyPath)) {
+            try {
+                Files.move(legacyPath, newPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                return newPath;
+            } catch (IOException e) {
+                return legacyPath;
+            }
+        }
+        return newPath;
     }
 }

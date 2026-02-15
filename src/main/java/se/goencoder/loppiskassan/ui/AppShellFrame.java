@@ -64,6 +64,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                     RejectedItemsDialog.show(this, AppModeManager.getEventId()));
 
             refreshStatusIndicators();
+            String eventId = AppModeManager.getEventId();
+            if (eventId != null && !eventId.isBlank()) {
+                BackgroundSyncManager.getInstance().ensureRunning(eventId);
+            }
         }
         
         // Visa första vyn beroende på om evenemang är valt

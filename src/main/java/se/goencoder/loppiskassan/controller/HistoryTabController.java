@@ -17,16 +17,12 @@ import se.goencoder.loppiskassan.rest.ApiHelper;
 import se.goencoder.loppiskassan.rest.AuthErrorHandler;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
-import se.goencoder.loppiskassan.ui.ProgressDialog;
 import se.goencoder.loppiskassan.ui.dialogs.DestructiveConfirmationDialog;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.FilterUtils;
 import se.goencoder.loppiskassan.utils.FilterUtils.FilterResult;
-import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
-import se.goencoder.loppiskassan.utils.SoldItemsResponseClassifier;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
-import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import se.goencoder.loppiskassan.service.UIThreadingService;
@@ -42,11 +38,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -487,7 +481,11 @@ public class HistoryTabController implements HistoryControllerInterface {
                 return;
             }
             historyPath = LocalEventPaths.getPendingItemsPath(eventId);
-            FileUtils.saveSoldItems(eventId, allHistoryItems);
+            if (AppModeManager.isLocalMode()) {
+                FileUtils.saveSoldItems(eventId, allHistoryItems);
+            } else {
+                BackgroundSyncManager.getInstance().savePendingItems(eventId, allHistoryItems);
+            }
         } catch (IOException e) {
             String pathInfo = historyPath == null ? e.getMessage() : historyPath.toString();
             Popup.FATAL.showAndWait(
@@ -602,177 +600,37 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private boolean uploadSoldItems() {
-        // 1) Hitta alla poster som inte redan är uppladdade
-        List<V1SoldItem> notUploaded = allHistoryItems.stream()
-                .filter(item -> !item.isUploaded())
-                .collect(Collectors.toList());
-
-        if (notUploaded.isEmpty()) {
-            // Inget att ladda upp => returnera true, allt "ok"
-            return true;
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            return false;
         }
 
-        List<V1RejectedItem> allRejected = new ArrayList<>();
-        Set<String> rejectedItemIds = new HashSet<>();
-        boolean networkError = false; // För att särskilja nätverksfel
+        BackgroundSyncManager.getInstance().ensureRunning(eventId);
+        BackgroundSyncManager.SyncResult result = BackgroundSyncManager.getInstance().syncNowBlocking();
 
-        // 2) Kör i sub‐batchar om 100 poster
-        for (int i = 0; i < notUploaded.size(); i += 100) {
-            int end = Math.min(i + 100, notUploaded.size());
-            List<V1SoldItem> subBatch = notUploaded.subList(i, end);
-
-            try {
-                // 2.1) Skicka upp subBatch
-                SoldItemsResponseClassifier.UploadOutcome outcome = uploadBatch(subBatch);
-                allRejected.addAll(outcome.rejectedItems());
-                rejectedItemIds.addAll(outcome.rejectedItemIds());
-
-            } catch (ApiException e) {
-                // 3) Skilj på nätverksfel och "riktiga" API-fel
-                if (AuthErrorHandler.isAuthError(e)) {
-                    AuthErrorHandler.handleAuthStatus(e.getCode());
-                    return false;
-                }
-                if (ApiHelper.isLikelyNetworkError(e)) {
-                    // Avbryt uppladdning helt
-                    networkError = true;
-                    break;
-                } else {
-                    showUnexpectedError("History upload batch failed", e);
-                    return false;
-                }
-            }
+        if (result.authError()) {
+            return false;
         }
-
-        // 4) Spara ner de eventuella lyckade uppladdningar som utfördes *innan* ev. fel
-        if (!rejectedItemIds.isEmpty()) {
-            allHistoryItems.removeIf(item -> item.getItemId() != null && rejectedItemIds.contains(item.getItemId()));
-        }
-        saveHistoryToFile();
-        BackgroundSyncManager.getInstance().notifyPendingCountChanged();
-
-        // 5) Om vi träffade nätverksfel => visa popup, return false
-        if (networkError) {
-            // Möjligen vill du också räkna hur många sub‐batchar som redan hade laddats upp innan felet.
+        if (result.networkError()) {
             Popup.ERROR.showAndWait(
                     LocalizationManager.tr("error.network_upload.title"),
                     LocalizationManager.tr("error.network_upload.message"));
             return false;
         }
+        if (result.fileError()) {
+            showUnexpectedError("History upload failed", new IOException("Failed to update local history file"));
+            return false;
+        }
 
-        if (!allRejected.isEmpty()) {
-            RejectedItemsHelper.saveRejectedItems(AppModeManager.getEventId(), allRejected);
-            RejectedItemsManager.getInstance().notifyRejectedCountChanged(AppModeManager.getEventId());
+        if (result.rejected() > 0) {
             Popup.WARNING.showAndWait(
                     LocalizationManager.tr("rejected.saved.title"),
-                    LocalizationManager.tr("rejected.saved.message", allRejected.size()));
+                    LocalizationManager.tr("rejected.saved.message", result.rejected()));
         }
 
+        loadHistory();
+        filterUpdated();
         return true;
-    }
-
-    private SoldItemsResponseClassifier.UploadOutcome uploadBatch(List<V1SoldItem> batch) throws ApiException {
-        // Group items by purchase ID to ensure server compatibility
-        Map<String, List<V1SoldItem>> purchaseGroups = batch.stream()
-                .collect(Collectors.groupingBy(item -> {
-                    String purchaseId = item.getPurchaseId();
-                    if (purchaseId == null || purchaseId.trim().isEmpty()) {
-                        purchaseId = se.goencoder.loppiskassan.utils.UlidGenerator.generate();
-                        item.setPurchaseId(purchaseId);
-                    }
-                    return purchaseId;
-                }));
-
-        Set<String> accepted = new HashSet<>();
-        Set<String> duplicates = new HashSet<>();
-        List<V1RejectedItem> allRejected = new ArrayList<>();
-
-        // Upload each purchase group separately to avoid "purchaseId mismatch" errors
-        for (List<V1SoldItem> purchaseItems : purchaseGroups.values()) {
-            SoldItemsResponseClassifier.UploadOutcome outcome = uploadPurchaseGroupWithRetry(purchaseItems);
-            accepted.addAll(outcome.acceptedItemIds());
-            duplicates.addAll(outcome.duplicateItemIds());
-            allRejected.addAll(outcome.rejectedItems());
-
-            Set<String> uploadedIds = outcome.uploadedItemIds();
-            for (V1SoldItem localItem : purchaseItems) {
-                if (localItem.getItemId() != null && uploadedIds.contains(localItem.getItemId())) {
-                    localItem.setUploaded(true);
-                }
-            }
-        }
-        return new SoldItemsResponseClassifier.UploadOutcome(accepted, duplicates, allRejected);
-    }
-
-    private SoldItemsResponseClassifier.UploadOutcome uploadPurchaseGroupWithRetry(List<V1SoldItem> purchaseItems) throws ApiException {
-        V1CreateSoldItemsResponse response = uploadItemsToApi(purchaseItems);
-        SoldItemsResponseClassifier.UploadOutcome outcome = SoldItemsResponseClassifier.classify(response);
-
-        List<V1RejectedItem> rejected = new ArrayList<>(outcome.rejectedItems());
-        Set<String> accepted = new HashSet<>(outcome.acceptedItemIds());
-        Set<String> duplicates = new HashSet<>(outcome.duplicateItemIds());
-
-        boolean hasInvalidSeller = rejected.stream().anyMatch(SoldItemsResponseClassifier::isInvalidSeller);
-        if (!hasInvalidSeller) {
-            return outcome;
-        }
-
-        Set<String> collateralIds = rejected.stream()
-                .filter(SoldItemsResponseClassifier::isCollateral)
-                .map(HistoryTabController::getRejectedItemId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        if (collateralIds.isEmpty()) {
-            return outcome;
-        }
-
-        List<V1SoldItem> retryItems = purchaseItems.stream()
-                .filter(item -> item.getItemId() != null && collateralIds.contains(item.getItemId()))
-                .collect(Collectors.toList());
-
-        if (retryItems.isEmpty()) {
-            return outcome;
-        }
-
-        rejected.removeIf(rejectedItem -> {
-            String itemId = getRejectedItemId(rejectedItem);
-            return itemId != null && collateralIds.contains(itemId);
-        });
-
-        V1CreateSoldItemsResponse retryResponse = uploadItemsToApi(retryItems);
-        SoldItemsResponseClassifier.UploadOutcome retryOutcome = SoldItemsResponseClassifier.classify(retryResponse);
-
-        accepted.addAll(retryOutcome.acceptedItemIds());
-        duplicates.addAll(retryOutcome.duplicateItemIds());
-        rejected.addAll(retryOutcome.rejectedItems());
-
-        return new SoldItemsResponseClassifier.UploadOutcome(accepted, duplicates, rejected);
-    }
-
-    private V1CreateSoldItemsResponse uploadItemsToApi(List<V1SoldItem> items) throws ApiException {
-        SoldItemsServiceCreateSoldItemsBody requestBody = new SoldItemsServiceCreateSoldItemsBody();
-
-        for (V1SoldItem localItem : items) {
-            se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
-            if (localItem.getSoldTime() != null) {
-                apiItem.setSoldTime(OffsetDateTime.of(
-                        localItem.getSoldTime(),
-                        OffsetDateTime.now().getOffset()
-                ));
-            }
-            requestBody.addItemsItem(apiItem);
-        }
-
-        return ApiHelper.INSTANCE.getSoldItemsServiceApi()
-                .soldItemsServiceCreateSoldItems(AppModeManager.getEventId(), requestBody);
-    }
-
-    private static String getRejectedItemId(V1RejectedItem rejectedItem) {
-        if (rejectedItem == null || rejectedItem.getItem() == null) {
-            return null;
-        }
-        return rejectedItem.getItem().getItemId();
     }
 
     private boolean isPayoutEnabled(List<V1SoldItem> filteredItems) {

@@ -1,19 +1,18 @@
 package se.goencoder.loppiskassan.config;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Configuration store for iLoppis mode (online, API-based).
  * Contains settings specific to iLoppis event management including API credentials
  * and cached data for offline validation.
  * 
- * Stored in: config/iloppis-mode.json
+ * Stored in: ~/.loppiskassan/config/iloppis-mode.json
  */
 public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigurationStore.ILoppisConfig> {
     
     private static final String CONFIG_FILE = "iloppis-mode.json";
-    private static final Path CONFIG_PATH = Paths.get(CONFIG_DIR, CONFIG_FILE);
+    private static final Path CONFIG_PATH = CONFIG_DIR.resolve(CONFIG_FILE);
     
     private static final ILoppisConfigurationStore INSTANCE = new ILoppisConfigurationStore();
     

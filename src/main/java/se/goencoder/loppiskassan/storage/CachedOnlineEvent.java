@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Represents a cached iLoppis online event with associated credentials.
- * Stored as metadata.json under ~/.loppiskassan/events/{eventId}/.
+ * Stored as iloppis_metadata.json under ~/.loppiskassan/events/{eventId}/.
  */
 public class CachedOnlineEvent {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;

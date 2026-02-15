@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.records;
 
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
+import se.goencoder.loppiskassan.util.AppPaths;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +15,7 @@ import static java.nio.file.StandardCopyOption.*;
 
 public class FileHelper {
     private static final Logger logger = Logger.getLogger(FileHelper.class.getName());
-    private static final String baseDir = System.getProperty("user.dir");
+    private static final Path baseDir = AppPaths.getBaseDir();
     public static final String LOPPISKASSAN_CSV = "loppiskassan.csv";
     private static final String[] backupRecordsFileNames = new String[10];
     private static int backupRecordsIndex = Math.abs(new Random(System.currentTimeMillis()).nextInt() % 10);
@@ -53,7 +54,7 @@ public class FileHelper {
     }
 
     private static Path getFilePath(String relativePath) {
-        return Paths.get(baseDir, relativePath);
+        return baseDir.resolve(relativePath);
     }
 
     public static boolean assertRecordFileRights(String fileName) {

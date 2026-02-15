@@ -1,22 +1,24 @@
 package se.goencoder.loppiskassan.storage;
 
+import se.goencoder.loppiskassan.util.AppPaths;
+
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public final class LocalEventPaths {
-    private static final String BASE_DIR_NAME = ".loppiskassan";
     private static final String EVENTS_DIR_NAME = "events";
     private static final String ARCHIVE_DIR_NAME = "archive";
-    private static final String METADATA_FILE_NAME = "metadata.json";
+    private static final String LOCAL_METADATA_FILE_NAME = "local_metadata.json";
+    private static final String ILOPPIS_METADATA_FILE_NAME = "iloppis_metadata.json";
     private static final String PENDING_ITEMS_FILE_NAME = "pending_items.jsonl";
     private static final String SOLD_ITEMS_FILE_NAME = "sold_items.jsonl";
     private static final String REJECTED_PURCHASES_FILE_NAME = "rejected_purchases.jsonl";
 
+    public static final String LEGACY_METADATA_FILE_NAME = "metadata.json";
+
     private LocalEventPaths() {}
 
     public static Path getBaseDir() {
-        String homeDir = System.getProperty("user.home");
-        return Paths.get(homeDir, BASE_DIR_NAME);
+        return AppPaths.getBaseDir();
     }
 
     public static Path getEventsDir() {
@@ -27,8 +29,16 @@ public final class LocalEventPaths {
         return getEventsDir().resolve(eventId);
     }
 
+    public static Path getLocalMetadataPath(String eventId) {
+        return getEventDir(eventId).resolve(LOCAL_METADATA_FILE_NAME);
+    }
+
+    public static Path getIloppisMetadataPath(String eventId) {
+        return getEventDir(eventId).resolve(ILOPPIS_METADATA_FILE_NAME);
+    }
+
     public static Path getMetadataPath(String eventId) {
-        return getEventDir(eventId).resolve(METADATA_FILE_NAME);
+        return getLocalMetadataPath(eventId);
     }
 
     public static Path getPendingItemsPath(String eventId) {

@@ -1,13 +1,14 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
-import org.json.JSONObject;
 import se.goencoder.loppiskassan.storage.LocalEvent;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
+import se.goencoder.loppiskassan.ui.dialogs.SettingsDialog;
 import se.goencoder.loppiskassan.util.SwedishDateFormatter;
-import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
+import org.json.JSONObject;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,6 +23,7 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
     private final JLabel appNameLabel;
     private final JLabel eventBadgeLabel;
     private final LanguageSelector languageSelector;
+    private final JButton settingsButton;
     
     public AppShellTopbar() {
         setLayout(new BorderLayout());
@@ -32,7 +34,7 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
         ));
         
         // Vänster: Appnamn
-        appNameLabel = new JLabel("iLoppis Kassa");
+        appNameLabel = new JLabel(LocalizationManager.tr("app.name"));
         appNameLabel.setFont(appNameLabel.getFont().deriveFont(Font.BOLD, 16f));
         appNameLabel.setForeground(AppColors.TEXT_PRIMARY);
         
@@ -43,10 +45,18 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
         eventBadgeLabel.setHorizontalAlignment(SwingConstants.CENTER);
         updateEventBadge();
         
-        // Höger: Språkväljare
+        // Höger: Inställningar + Språkväljare
+        settingsButton = AppButton.create(
+                LocalizationManager.tr("settings.button"),
+                AppButton.Variant.SECONDARY,
+                AppButton.Size.SMALL);
+        settingsButton.addActionListener(e -> SettingsDialog.show(this));
+        settingsButton.setFocusable(false);
+
         languageSelector = new LanguageSelector();
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         rightPanel.setOpaque(false);
+        rightPanel.add(settingsButton);
         rightPanel.add(languageSelector);
         
         add(appNameLabel, BorderLayout.WEST);
@@ -59,8 +69,8 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
         
         if (eventId == null || eventId.isEmpty()) {
             String placeholder = AppModeManager.isLocalMode()
-                    ? "Lokalt evenemang"
-                    : "iLoppis-evenemang";
+                    ? LocalizationManager.tr("topbar.placeholder.local_event")
+                    : LocalizationManager.tr("topbar.placeholder.iloppis_event");
             eventBadgeLabel.setText(placeholder);
             return;
         }
@@ -168,6 +178,8 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
     
     @Override
     public void reloadTexts() {
+        appNameLabel.setText(LocalizationManager.tr("app.name"));
+        settingsButton.setText(LocalizationManager.tr("settings.button"));
         updateEventBadge();
     }
 }

@@ -3,6 +3,7 @@ package se.goencoder.loppiskassan.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.util.AppPaths;
 import se.goencoder.loppiskassan.ui.Popup;
 
 import java.io.FileReader;
@@ -11,7 +12,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * Abstract base class for configuration stores using Template Method pattern.
@@ -27,7 +27,7 @@ import java.nio.file.Paths;
  */
 public abstract class ConfigurationStore<T> {
     
-    protected static final String CONFIG_DIR = "config";
+    protected static final Path CONFIG_DIR = AppPaths.getConfigDir();
     protected static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
     protected T config;
@@ -58,7 +58,7 @@ public abstract class ConfigurationStore<T> {
      */
     protected final void load() {
         try {
-            Files.createDirectories(Paths.get(CONFIG_DIR));
+            Files.createDirectories(CONFIG_DIR);
             
             if (Files.exists(getConfigPath())) {
                 try (Reader reader = new FileReader(getConfigPath().toFile())) {
@@ -82,7 +82,7 @@ public abstract class ConfigurationStore<T> {
      */
     protected final void save() {
         try {
-            Files.createDirectories(Paths.get(CONFIG_DIR));
+            Files.createDirectories(CONFIG_DIR);
             try (Writer writer = new FileWriter(getConfigPath().toFile())) {
                 GSON.toJson(config, writer);
             }
