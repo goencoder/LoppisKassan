@@ -22,11 +22,11 @@ public class FixedApiClient extends ApiClient {
 
     public FixedApiClient() {
         super();
-        // Add HTTP logging interceptor
+        // Add HTTP logging interceptor (BASIC level to avoid logging sensitive payloads)
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(message -> 
             log.info("[HTTP] " + message)
         );
-        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
         
         OkHttpClient client = getHttpClient().newBuilder()
             .addInterceptor(loggingInterceptor)

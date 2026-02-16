@@ -46,6 +46,9 @@ public class GlobalConfigurationStore {
                     if (config == null) {
                         config = new GlobalConfig();
                     }
+                } catch (Exception ex) {
+                    // Handle malformed JSON gracefully (GSON throws RuntimeException on parse errors)
+                    config = new GlobalConfig();
                 }
             } else {
                 config = new GlobalConfig();

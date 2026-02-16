@@ -79,7 +79,7 @@ public class SnackbarPanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        // Collapse height entirely when hidden or no message so ingen mörk rand visas
+        // Collapse height entirely when hidden or when there is no message, so no dark line is shown
         if (!hasMessage) {
             return new Dimension(0, 0);
         }

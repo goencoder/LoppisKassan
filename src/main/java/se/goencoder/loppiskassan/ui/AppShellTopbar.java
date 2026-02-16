@@ -113,9 +113,9 @@ public class AppShellTopbar extends JPanel implements LocalizationAware {
             }
         }
 
-        // Fallback till ID eller standardnamn
+        // Fallback to ID or standard name
         if (eventId.equals("local-test")) {
-            return "Lokalt evenemang";
+            return LocalizationManager.tr("topbar.placeholder.local_event");
         }
         return eventId;
     }

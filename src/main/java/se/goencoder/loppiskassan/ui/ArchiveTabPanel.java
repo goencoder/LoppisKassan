@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Arkiv-vy för lokal kassa.
- * Visar lista över arkiverade försäljningar (CSV-filer).
+ * Archive view for the local cash register.
+ * Displays a list of archived sales (CSV files).
  */
 public class ArchiveTabPanel extends JPanel implements LocalizationAware, SelectabableTab {
     
