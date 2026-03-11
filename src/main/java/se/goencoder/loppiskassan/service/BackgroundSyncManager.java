@@ -178,17 +178,21 @@ public class BackgroundSyncManager {
 
     /**
      * Enqueue items for local persistence and background upload.
-     * This method is fast and non-blocking for the caller.
+     * The method returns only after items are durably written to pending JSONL.
      *
-     * NOTE: Actual disk writes happen on the sync thread.
+     * NOTE: File I/O still runs on the sync thread to preserve single-writer semantics.
      */
-    public void enqueueItems(String eventId, List<V1SoldItem> items) {
+    public void enqueueItems(String eventId, List<V1SoldItem> items) throws IOException {
         if (eventId == null || eventId.isBlank() || items == null || items.isEmpty()) {
             return;
         }
         ensureRunning(eventId);
-        // Defensive copy of the list (items are immutable enough for our use)
         pendingQueue.add(new ArrayList<>(items));
+        runOnSyncThread(() -> {
+            flushQueueToDisk(eventId);
+            return null;
+        });
+        notifyPendingCountChanged();
         triggerSyncNow();
     }
 

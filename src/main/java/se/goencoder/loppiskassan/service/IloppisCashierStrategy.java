@@ -71,7 +71,7 @@ public class IloppisCashierStrategy implements CashierStrategy {
             return false;
         }
 
-        // Local-first: enqueue for background persistence + upload.
+        // Local-first: persist on sync thread, then trigger background upload.
         BackgroundSyncManager.getInstance().enqueueItems(eventId, items);
         return true;
     }
