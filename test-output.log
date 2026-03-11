@@ -1,0 +1,1208 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< se.teddy:LoppisKassan >------------------------
+[INFO] Building LoppisKassan v2.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ LoppisKassan ---
+[INFO] Copying 7 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.0:compile (default-compile) @ LoppisKassan ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ LoppisKassan ---
+[INFO] skip non existing resourceDirectory /Users/goranengdahl/IntellijProjects/LoppisKassan/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ LoppisKassan ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.3:test (default-test) @ LoppisKassan ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running se.goencoder.loppiskassan.integration.NetworkStabilityIT
+
+╔══════════════════════════════════════════════╗
+║      Network Stability Integration Test     ║
+╚══════════════════════════════════════════════╝
+  Event ID:     d8e2ed70-94b0-4ef8-af64-98612edd0138
+  Proxy URL:    http://localhost:8081
+  Direct URL:   http://localhost:8080
+  Toxiproxy:    http://localhost:8474 (iloppis-backend)
+  Temp dir:     /var/folders/57/k5d239j9107cz9j4jsgy3cn80000gn/T/network-stability-test11334050131521892319
+
+  Toxiproxy:    v{"version": "2.9.0"} ✓
+  Proxy 'iloppis-backend':  ✓
+  Event:        ✓ (status 200)
+  Toxics:       cleared ✓
+
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PD2TJ9ZS1YQAZ1G0SHD)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PD2TJ9ZS1YQAZ1G0SHD)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager start
+INFO: Starting background sync for event: d8e2ed70-94b0-4ef8-af64-98612edd0138
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager start
+INFO: Starting background sync for event: d8e2ed70-94b0-4ef8-af64-98612edd0138
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDBGBBMBP7BEAAPDFBC)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDBGBBMBP7BEAAPDFBC)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDEYXCM2JSAGX6T725A)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDEYXCM2JSAGX6T725A)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDFYM804F0FY3A45VS8)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDFYM804F0FY3A45VS8)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDH84ZPGYW9MQ4HCY46)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDH84ZPGYW9MQ4HCY46)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDPTDF1MSFCSJS2D7H6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDPTDF1MSFCSJS2D7H6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDQVY6KJ3BDZN431GG7)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDQVY6KJ3BDZN431GG7)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDV6AN3BRD81Z67RD3B)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDV6AN3BRD81Z67RD3B)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDWJW6AYE5P2GS29R1E)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDWJW6AYE5P2GS29R1E)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDZ2YD4KMECK5EN7K6K)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PDZ2YD4KMECK5EN7K6K)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PE5QJ1ZXKA4A746G3AH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PE5QJ1ZXKA4A746G3AH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PE5N0MQM0NT9Y1K4664)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PE5N0MQM0NT9Y1K4664)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PEPFNB1YD3BNFA3E6Y1)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PEPFNB1YD3BNFA3E6Y1)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PETW2ZECFN9GWRG2VSH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PETW2ZECFN9GWRG2VSH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PETRM6AYP2FQ0WYZG4G)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PETRM6AYP2FQ0WYZG4G)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PEXMQVWYT97H9HC3C1S)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PEXMQVWYT97H9HC3C1S)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PF431ZNQTZK16NMTC7E)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PF431ZNQTZK16NMTC7E)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PF8BRY6B6KRD8SGC0N3)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PF8BRY6B6KRD8SGC0N3)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PF9G3AM2XJ3PEQZXZQE)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PF9G3AM2XJ3PEQZXZQE)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFDGZ10XC7N5T4DFJ1B)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFDGZ10XC7N5T4DFJ1B)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFGZYR1R0MXZCNK1N0G)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFGZYR1R0MXZCNK1N0G)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFKVJ4JEA5ATE1F3138)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFKVJ4JEA5ATE1F3138)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFPBYHPS1YHCFGGX9NH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFPBYHPS1YHCFGGX9NH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFSTVKHRYDYJ1DVJ1BS)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFSTVKHRYDYJ1DVJ1BS)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFXRJW5RNMZKCDF3XJW)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PFXRJW5RNMZKCDF3XJW)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG0ES73MSAQ1F5M3D6M)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG0ES73MSAQ1F5M3D6M)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG29GXR579T09GW2EK6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG29GXR579T09GW2EK6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG8CVH0Q2Z0YBPEVTY6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG8CVH0Q2Z0YBPEVTY6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG9R5ZGNF5JWAX5YFAA)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PG9R5ZGNF5JWAX5YFAA)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PGCGVCRJ2F0EMM8TXY2)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PGCGVCRJ2F0EMM8TXY2)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PGQ2GK00WM9DR7RXHSJ)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PGQ2GK00WM9DR7RXHSJ)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PGRAG1GM3YWF73XAP9D)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PGRAG1GM3YWF73XAP9D)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PH13G3TA49VAWDJDJRE)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PH13G3TA49VAWDJDJRE)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PHRTW5YZ9RZC9V7GNK2)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PHRTW5YZ9RZC9V7GNK2)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 90 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 90 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PJC76TBTHA9WFGPW98W)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PJC76TBTHA9WFGPW98W)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 10 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 10 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 150 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 150 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 120 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 120 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 90 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 90 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 80 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 80 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 110 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 110 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 90 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 90 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 110 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 110 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 140 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 140 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 110 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 110 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 140 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 140 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 180 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 180 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 190 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 190 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PNXNR2Q4SXRDG5ZZP7G)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PNXNR2Q4SXRDG5ZZP7G)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 160 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 160 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 230 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 230 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 150 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 150 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 210 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 210 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 10 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 10 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 220 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 220 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 150 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 150 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 260 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 260 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 250 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 250 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 200 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 200 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 120 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 120 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 240 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 240 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 90 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 90 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 280 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 280 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 290 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 290 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 260 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 260 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 290 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 290 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 320 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 320 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 310 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 310 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 320 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 320 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 80 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 80 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 110 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 110 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 340 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 340 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 180 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 180 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 190 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 190 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PQRNJA7N8HMC0HDAR8C)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PQRNJA7N8HMC0HDAR8C)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 160 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 160 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 230 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 230 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 150 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 150 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 210 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 210 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 220 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 220 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 260 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 260 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 170 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 170 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 250 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 250 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 200 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 200 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 240 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 240 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 280 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 280 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 290 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 290 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 260 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 260 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 290 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 290 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 320 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 320 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 310 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 310 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 320 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 320 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 340 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 340 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PS8AHKBBW9XSX04TNZ4)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PS8AHKBBW9XSX04TNZ4)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 170 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 170 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSC9A38K3JKCPC54C8B)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSC9A38K3JKCPC54C8B)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSD46ZN7KNRK3BGWXZ0)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSD46ZN7KNRK3BGWXZ0)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSFY0WK4T8KVPHDANJW)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSFY0WK4T8KVPHDANJW)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 20 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 20 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSNBZ7K6BA8FK6W79A6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSNBZ7K6BA8FK6W79A6)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 10 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 10 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 20 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 20 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSRE94EMV50QENQXXQH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSRE94EMV50QENQXXQH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 10 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 10 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSZHPME25FQZD3V449W)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PSZHPME25FQZD3V449W)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PT4HFXGHFYHFRWMJT15)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PT4HFXGHFYHFRWMJT15)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PTE9K1J60DHX2PA90PH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PTE9K1J60DHX2PA90PH)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 60 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 50 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 50 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PTP0GVJ8CNHMV844V02)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PTP0GVJ8CNHMV844V02)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 60 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 50 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 50 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 50 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 50 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PTW8WMGMEPZHZT6GVK3)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PTW8WMGMEPZHZT6GVK3)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 50 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 50 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PV2FCE3Q0VBD9QC641E)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PV2FCE3Q0VBD9QC641E)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PV7CGBVSVPC8XZD3JXK)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PV7CGBVSVPC8XZD3JXK)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+  Phase 1: 500 items in 50 purchases, total = 262 050 SEK
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 40 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 40 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PXWC0W4R9CKCK7609SP)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PXWC0W4R9CKCK7609SP)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PXXB7D8C4BV8GVEJ2RR)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PXXB7D8C4BV8GVEJ2RR)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PXX5QZKDTMFK93VWGXF)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 10 items locally (purchase=01KH671PXX5QZKDTMFK93VWGXF)
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+  Phase 2: 30 items in 3 purchases (network down), total = 16 690 SEK
+  Phase 3: Network restored. Waiting for background sync...
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 30 accepted, 0 rejected
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+feb. 11, 2026 12:23:10 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 30 items as uploaded
+  Phase 3: Sync complete. Backend has 1000 items.
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1HBAE9AK3MY74N6YM7)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1HBAE9AK3MY74N6YM7)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1H7CTH5GQDKSDX2CKA)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1H7CTH5GQDKSDX2CKA)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1JCSX1F4E0ASFMH5TZ)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1JCSX1F4E0ASFMH5TZ)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1NVF8GJBFH54PRD6ZT)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1NVF8GJBFH54PRD6ZT)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1QBQ4TJ337AGZE5CA7)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Persisting 5 items locally (purchase=01KH671S1QBQ4TJ337AGZE5CA7)
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.IloppisCashierStrategy persistItems
+INFO: iLoppis: Items saved to local file
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Found pending items, attempting upload
+  Phase 4: 25 items with high latency, total = 13 734 SEK
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 10 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 10 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 10 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 10 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 15 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 15 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 20 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 20 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 25 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 25 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 25 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Upload successful - 25 accepted, 0 rejected
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 15 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 15 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 20 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 20 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 25 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 25 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 25 items as uploaded
+feb. 11, 2026 12:23:12 EM se.goencoder.loppiskassan.service.BackgroundSyncManager attemptSync
+INFO: Background sync: Marked 25 items as uploaded
+
+  ┌───────────────────────────────────────────┐
+  │         Final Verification Summary        │
+  ├───────────────────────────────────────────┤
+  │ Created:     555 items       292 474 SEK │
+  │ Local:       555 items       292 474 SEK │
+  │ Backend:    1000 items       601 739 SEK │
+  │ Pending:       0 items                  │
+  └───────────────────────────────────────────┘
+
+feb. 11, 2026 12:23:15 EM se.goencoder.loppiskassan.service.BackgroundSyncManager stop
+INFO: Stopping background sync
+feb. 11, 2026 12:23:15 EM se.goencoder.loppiskassan.service.BackgroundSyncManager stop
+INFO: Stopping background sync
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.074 s -- in se.goencoder.loppiskassan.integration.NetworkStabilityIT
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.281 s
+[INFO] Finished at: 2026-02-11T12:23:16+01:00
+[INFO] ------------------------------------------------------------------------

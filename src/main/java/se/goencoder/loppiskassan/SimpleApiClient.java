@@ -46,8 +46,12 @@ public class SimpleApiClient {
                 .build();
 
             // Build the request manually with proper content type
+            String apiUrl = System.getenv("ILOPPIS_API_URL");
+            if (apiUrl == null || apiUrl.isBlank()) {
+                apiUrl = "http://127.0.0.1:8080";
+            }
             Request httpRequest = new Request.Builder()
-                .url("http://127.0.0.1:8080/v1/events:filter")
+                .url(apiUrl + "/v1/events:filter")
                 .post(RequestBody.create(MediaType.get("application/json"), jsonBody.getBytes(StandardCharsets.UTF_8)))
                 .build();
 

@@ -13,6 +13,7 @@ import java.awt.Dimension;
 import org.json.JSONObject;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.rest.AuthErrorHandler;
 
 
 /**
@@ -61,6 +62,11 @@ public enum Popup {
     public void showAndWait(String title, Object content) {
         String message = null;
         String details = null;
+        if (content instanceof ApiException api && AuthErrorHandler.isAuthError(api)
+                && !AuthErrorHandler.isPromptActive()) {
+            AuthErrorHandler.handleAuthStatus(api.getCode());
+            return;
+        }
         if (content instanceof ApiException api) {
             String body = api.getResponseBody();
             if (body != null && !body.isEmpty()) {

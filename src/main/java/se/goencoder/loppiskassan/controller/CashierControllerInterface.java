@@ -1,8 +1,7 @@
 package se.goencoder.loppiskassan.controller;
 
+import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
-
-import javax.swing.*;
 
 /**
  * Controller contract for cashier interactions.
@@ -10,42 +9,34 @@ import javax.swing.*;
  * Mode behavior:
  * <ul>
  *   <li><b>Online:</b> may validate sellers against the server and offer Swish checkout.</li>
- *   <li><b>Offline:</b> should skip remote validations and disable Swish, allowing cash-only flow.</li>
+ *   <li><b>Local:</b> should skip remote validations and disable Swish, allowing cash-only flow.</li>
  * </ul>
  */
 public interface CashierControllerInterface {
-
-    /**
-     * Wire the cash checkout action to the provided button.
-     * @param checkoutCashButton Swing button to receive the action
-     */
-    void setupCheckoutCashButtonAction(JButton checkoutCashButton);
-
-    /**
-     * Wire the Swish checkout action to the provided button.
-     * Implementations should disable or no-op this action in offline mode.
-     *
-     * @param checkoutSwishButton Swing button to receive the action
-     */
-    void setupCheckoutSwishButtonAction(JButton checkoutSwishButton);
-
-    /**
-     * Wire the cancel checkout action to the provided button.
-     * @param cancelCheckoutButton Swing button to receive the action
-     */
-    void setupCancelCheckoutButtonAction(JButton cancelCheckoutButton);
-
-    /**
-     * Attach input handling to the prices text field (e.g., Enter to add item, validation).
-     * @param pricesTextField the text field with price input
-     */
-    void setupPricesTextFieldAction(JTextField pricesTextField);
 
     /**
      * Register the view so the controller can push updates and read user inputs.
      * @param view cashier panel view
      */
     void registerView(CashierPanelInterface view);
+
+    /**
+     * Handle user submitting prices for a given seller.
+     * Called when user presses Enter in the prices field.
+     */
+    void onPricesSubmitted();
+
+    /**
+     * Handle checkout request with the specified payment method.
+     * @param paymentMethod the payment method (cash or Swish)
+     */
+    void onCheckout(V1PaymentMethod paymentMethod);
+
+    /**
+     * Handle cancel checkout request.
+     * Clears the current transaction and resets the UI.
+     */
+    void onCancelCheckout();
 
     /**
      * Delete a previously added item by its identifier.
@@ -64,11 +55,22 @@ public interface CashierControllerInterface {
     /**
      * Determine whether a seller is approved to sell.
      * <p>
-     * <b>Online:</b> typically verified via server lookup.
-     * <b>Offline:</b> rely on locally cached state or default to permissive rules.
+    /**
+     * Validates if a seller can be used in the current mode (local/iLoppis).
+     * 
+     * <b>Local mode:</b> always returns true (no approval needed)
+     * <b>iLoppis mode:</b> checks against approved vendor list
      *
      * @param sellerId numeric seller identifier
      * @return {@code true} if approved, otherwise {@code false}
      */
-    boolean isSellerApproved(int sellerId);
+    boolean validateSeller(int sellerId);
+    
+    /**
+     * Gets the localization key for the error message when seller validation fails.
+     * Only relevant for iLoppis mode where seller approval is required.
+     * 
+     * @return localization key for the error message
+     */
+    String getSellerValidationErrorKey();
 }

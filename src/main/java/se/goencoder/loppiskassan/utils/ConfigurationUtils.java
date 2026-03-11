@@ -1,12 +1,11 @@
 package se.goencoder.loppiskassan.utils;
 
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 
 
 public class ConfigurationUtils {
 
-    public static boolean isOfflineMode() {
-        return ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
+    public static boolean isLocalMode() {
+        return AppModeManager.isLocalMode();
     }
 }
-

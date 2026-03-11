@@ -13,6 +13,9 @@
 - No JPMS modules; plain classpath build.
 - Build tool: Maven 3.9+.
 
+## Decision rule (NO ASSUMPTIONS)
+- Always ask the user when information is missing or uncertain; never introduce defaults, fallbacks, or inferred values that could be wrong. If data is absent or unclear, fail fast and surface the ambiguity instead of guessing.
+
 ## Dependencies
 - Install local API client from `lib/openapi-java-client-0.0.4.jar` using the sidecar POM:
   `make install-client`
@@ -36,19 +39,100 @@ This is a Java Swing desktop application for managing a flea market cash registe
   3. Enter submits prices and resets fields.
   4. Cursor returns to seller number field.
 
+## UI Architecture (Model/View/Controller)
+- Views are Swing panels implementing `*PanelInterface` in `se.goencoder.loppiskassan.ui`.
+- Controllers live in `se.goencoder.loppiskassan.controller` and own logic, validation, and I/O.
+- Views call controller methods on user actions; controllers update views through their interfaces.
+- Keep business logic and storage out of UI classes; use services/interactors where available.
+
+## UI Design System (Issue 003 – Modern UI Redesign)
+- Use `AppButton` for all buttons. Do not create ad‑hoc `JButton` styles.
+- Use `AppColors` for all colors. No raw hex values or named constants like `YELLOW`.
+- Prefer cards (plain `JPanel` + rounded border + padding) over `TitledBorder`/GroupBox.
+- Spacing tokens: `xs=4`, `sm=8`, `md=16`, `lg=24`, `xl=32` px.
+- Typography: 20px titles, 16px section headers, 13–14px body, 11px help text, 28–36px totals.
+- Modern light UI across the app. Avoid gray form fields or heavy borders.
+- Date/time must use `SwedishDateFormatter` (never ISO strings in UI).
+- Icons and custom painting should use `AppColors` and `RenderingHints` for crisp HiDPI output.
+- MigLayout is optional and requires explicit approval (new dependency).
+
+## Local vs iLoppis Modes (Behavioral Differences)
+- Mode is driven by `AppModeManager` and the selected event.
+- Local mode:
+  - Events come from `LocalEventRepository` (disk, JSONL per event).
+  - Register opens without cashier code.
+  - Seller validation is skipped (all sellers accepted).
+  - Sales persist to local JSONL immediately.
+  - Export/Import and Archive views are visible.
+  - Web sync actions are hidden/disabled.
+- iLoppis mode:
+  - Events come from backend API.
+  - Register requires a valid cashier code.
+  - Seller validation is enforced via API.
+  - Sales upload to API (with local fallback on network errors).
+  - Export/Import and Archive are hidden.
+
 ## Configuration
 - Persist UI language and other settings using `ConfigurationStore`.
 - Use: `ConfigurationStore.UI_LANGUAGE_STR.getOrDefault("sv")` as the single source of truth.
 - Always update both memory and `config.properties` on change.
 
 ## Internationalization
-- All UI text must come from `LocalizationManager.tr("key")`.
+
+### Critical Rules
+- **All UI text must come from `LocalizationManager.tr("key")`** — never hardcode strings.
+- **Never use `String.format()` with localized text** — always pass parameters directly to `tr()`.
 - Keys live under `src/main/resources/lang/{sv,en}.json`.
 - Do not hardcode text in Swing components.
-- Language selector must:
-  - Show flags and labels.
-  - Persist selected language.
-  - Update UI immediately on change.
+
+### Parameter Formatting (MessageFormat)
+`LocalizationManager.tr()` uses Java's `MessageFormat.format()` internally:
+
+**✅ CORRECT - Pass parameters to tr():**
+```java
+LocalizationManager.tr("discovery.delete.confirm", eventName)
+LocalizationManager.tr("history.summary.items", itemCount, totalAmount)
+```
+
+**❌ WRONG - Using String.format():**
+```java
+// WRONG! This will show literal {0} in the UI
+String.format(LocalizationManager.tr("discovery.delete.confirm"), eventName)
+```
+
+**Language file format:**
+```json
+{
+  "discovery.delete.confirm": "Är du säker på att du vill radera ''{0}''?",
+  "history.summary.items": "{0} varor sålda för totalt {1} SEK"
+}
+```
+
+**Parameter placeholders:**
+- Use `{0}`, `{1}`, `{2}`, etc. (NOT `%s`, `%d`, etc.)
+- MessageFormat handles all formatting automatically
+- Supports multiple parameters in any order
+
+**⚠️ CRITICAL: Single Quote Escaping in MessageFormat**
+MessageFormat uses single quotes (`'`) to escape text. This is the most common localization bug:
+
+```json
+// ❌ WRONG - Single quotes prevent parameter substitution
+"message": "Delete '{0}'?"     // Shows literal: Delete {0}?
+
+// ✅ CORRECT - Escape single quotes with double single-quotes
+"message": "Delete ''{0}''?"   // Shows: Delete 'EventName'?
+
+// ✅ ALSO CORRECT - No quotes around parameter
+"message": "Delete {0}?"       // Shows: Delete EventName?
+```
+
+**Rule:** If you want to show a single quote (`'`) in the formatted message, write it as `''` (two single quotes).
+
+### Language Selector
+- Show flags and labels
+- Persist selected language via `ConfigurationStore`
+- Update UI immediately on change via `LocalizationManager.setLanguage()`
 
 ## Environment Detection
 The Makefile automatically detects Codex vs local environment:

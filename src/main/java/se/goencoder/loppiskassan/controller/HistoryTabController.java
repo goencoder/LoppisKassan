@@ -3,36 +3,50 @@ package se.goencoder.loppiskassan.controller;
 import se.goencoder.iloppis.invoker.ApiException;
 import se.goencoder.iloppis.model.*;
 import se.goencoder.loppiskassan.V1SoldItem;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
-import se.goencoder.loppiskassan.records.FileHelper;
+import se.goencoder.loppiskassan.V1PaymentMethod;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
+import se.goencoder.loppiskassan.config.LocalConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.model.history.HistoryState;
 import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.records.FileHelper;
+import se.goencoder.loppiskassan.storage.JsonlHelper;
+import se.goencoder.loppiskassan.storage.LocalEventPaths;
+import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.rest.ApiHelper;
+import se.goencoder.loppiskassan.rest.AuthErrorHandler;
 import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
 import se.goencoder.loppiskassan.ui.Popup;
-import se.goencoder.loppiskassan.ui.ProgressDialog;
+import se.goencoder.loppiskassan.ui.dialogs.DestructiveConfirmationDialog;
 import se.goencoder.loppiskassan.utils.FileUtils;
 import se.goencoder.loppiskassan.utils.FilterUtils;
+import se.goencoder.loppiskassan.utils.FilterUtils.FilterResult;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
+import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
+import se.goencoder.loppiskassan.service.UIThreadingService;
+import se.goencoder.loppiskassan.service.HistoryOperations;
+import se.goencoder.loppiskassan.service.LocalHistoryOperations;
+import se.goencoder.loppiskassan.service.OnlineHistoryOperations;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static se.goencoder.iloppis.model.V1PaidFilter.PAID_FILTER_UNSPECIFIED;
 import static se.goencoder.iloppis.model.V1PaymentMethodFilter.PAYMENT_METHOD_FILTER_UNSPECIFIED;
-import static se.goencoder.loppiskassan.records.FileHelper.LOPPISKASSAN_CSV;
 import static se.goencoder.loppiskassan.ui.Constants.*;
 
 /**
@@ -40,6 +54,7 @@ import static se.goencoder.loppiskassan.ui.Constants.*;
  */
 public class HistoryTabController implements HistoryControllerInterface {
     private static final HistoryTabController instance = new HistoryTabController();
+    private static final Logger log = Logger.getLogger(HistoryTabController.class.getName());
 
     // Constants for API queries and timing tolerance
     private static final int PAGE_SIZE = 500;
@@ -47,11 +62,57 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private HistoryPanelInterface view;
     private List<V1SoldItem> allHistoryItems;
+    private final HistoryState state = new HistoryState();
+    private final HistoryOperations operations;
 
-    private HistoryTabController() {}
+    private HistoryTabController() {
+        // Initialize history operations based on mode using strategy pattern
+        if (AppModeManager.isLocalMode()) {
+            operations = new LocalHistoryOperations(new LocalHistoryOperations.LocalHistoryCallback() {
+                @Override
+                public void saveHistoryToFile() {
+                    HistoryTabController.this.saveHistoryToFile();
+                }
+                
+                @Override
+                public void archiveItemsToFile(List<V1SoldItem> items) {
+                    HistoryTabController.this.archiveItemsToFile(items);
+                }
+                
+                @Override
+                public void removeItems(List<V1SoldItem> items) {
+                    HistoryTabController.this.removeFilteredItems(items);
+                }
+                
+                @Override
+                public void updateDistinctSellers() {
+                    HistoryTabController.this.updateDistinctSellers();
+                }
+                
+                @Override
+                public void refreshView() {
+                    HistoryTabController.this.filterUpdated();
+                }
+            });
+        } else {
+            operations = new OnlineHistoryOperations();
+        }
+    }
 
     public static HistoryTabController getInstance() {
         return instance;
+    }
+
+
+
+    /**
+     * Get the current history state for observers.
+     * Views can register PropertyChangeListeners on this state to react to changes.
+     *
+     * @return the history state
+     */
+    public HistoryState getState() {
+        return state;
     }
 
     @Override
@@ -61,14 +122,31 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     @Override
     public void loadHistory() {
+        // Ensure import button visibility matches current mode on every load
+        updateImportButton();
+
+        java.nio.file.Path historyPath = null;
         try {
-            // Load the history from the local CSV file and populate the seller dropdown with distinct sellers.
-            allHistoryItems = FormatHelper.toItems(FileHelper.readFromFile(LOPPISKASSAN_CSV), true);
+            // Load the history from the local JSONL file and populate the seller dropdown with distinct sellers.
+            String eventId = AppModeManager.getEventId();
+            if (eventId == null || eventId.isBlank()) {
+                allHistoryItems = new ArrayList<>();
+            } else {
+                LocalEventRepository.ensureEventStorage(eventId);
+                historyPath = LocalEventPaths.getPendingItemsPath(eventId);
+                allHistoryItems = JsonlHelper.readItems(historyPath);
+            }
             Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
-            SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
+            
+            // Update state
+            state.setAllItems(allHistoryItems);
+            state.setDistinctSellers(distinctSellers);
+            
+            UIThreadingService.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
         } catch (IOException e) {
+            String pathInfo = historyPath == null ? e.getMessage() : historyPath.toString();
             Popup.FATAL.showAndWait(
-                    LocalizationManager.tr("error.read_register_file", LOPPISKASSAN_CSV),
+                    LocalizationManager.tr("error.read_register_file", pathInfo),
                     e.getMessage());
         }
     }
@@ -78,18 +156,28 @@ public class HistoryTabController implements HistoryControllerInterface {
         updateImportButton();
 
         // Apply the current filters and update the view accordingly.
-        List<V1SoldItem> filteredItems = applyFilters();
+        FilterResult filterResult = applyFiltersWithResult();
+        List<V1SoldItem> filteredItems = filterResult.items();
 
+        // Update state with filtered results
+        state.setFilteredItems(filteredItems);
+        state.setItemCount(filteredItems.size());
+        int sum = filterResult.totalSum();
+        state.setTotalSum(sum);
+
+        boolean isLocal = AppModeManager.isLocalMode();
+        boolean enablePayout = isLocal && isPayoutEnabled(filteredItems);
+        state.setPayoutEnabled(enablePayout);
+
+        boolean enableArchive = isLocal && isArchiveEnabled();
+        state.setArchiveEnabled(enableArchive);
+
+        // Update view (keeping existing behavior)
         view.updateHistoryTable(filteredItems);
         view.updateNoItemsLabel(String.valueOf(filteredItems.size()));
-        view.updateSumLabel(String.valueOf(filteredItems.stream().mapToDouble(V1SoldItem::getPrice).sum()));
-
-        boolean enablePayout = isPayoutEnabled(filteredItems);
+        view.updateSumLabel(String.valueOf(sum));
         view.enableButton(BUTTON_PAY_OUT, enablePayout);
-
-        boolean enableArchive = isArchiveEnabled();
         view.enableButton(BUTTON_ARCHIVE, enableArchive);
-
     }
 
     @Override
@@ -97,16 +185,16 @@ public class HistoryTabController implements HistoryControllerInterface {
         switch (actionCommand) {
             case BUTTON_ERASE -> clearData();
             case BUTTON_IMPORT -> handleImportAction();
-            case BUTTON_PAY_OUT -> payout();
+            case BUTTON_PAY_OUT -> operations.performPayout(applyFilters());
             case BUTTON_COPY_TO_CLIPBOARD -> copyToClipboard();
-            case BUTTON_ARCHIVE -> archiveFilteredItems();
+            case BUTTON_ARCHIVE -> performArchiveAction();
             default -> throw new IllegalStateException("Unexpected action: " + actionCommand);
         }
     }
 
     private void downloadSoldItems() {
         // Retrieve all sold items from the web, merge with local items, and save them to the local file.
-        String eventId = ConfigurationStore.EVENT_ID_STR.get();
+        String eventId = AppModeManager.getEventId();
         Map<String, V1SoldItem> fetchedItems = fetchItemsFromWeb(eventId);
         mergeFetchedItems(fetchedItems);
         saveHistoryToFile();
@@ -115,53 +203,86 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void clearData() {
-        // Clear all local data after user confirmation.
-        try {
-            if (Popup.CONFIRM.showConfirmDialog(
-                    LocalizationManager.tr(BUTTON_ERASE),
-                    LocalizationManager.tr("confirm.erase_register"))) {
-                FileHelper.createBackupFile();
-                allHistoryItems.clear();
-                filterUpdated();
-            }
-        } catch (IOException e) {
-            Popup.FATAL.showAndWait(
-                    "Fel vid rensning av kassafil: " + LOPPISKASSAN_CSV,
-                    e.getMessage());
+        // Clear all local data after user confirmation using destructive dialog.
+        java.awt.Frame owner = (java.awt.Frame) javax.swing.SwingUtilities.getWindowAncestor(view.getComponent());
+        boolean confirmed = DestructiveConfirmationDialog.show(
+                owner,
+                LocalizationManager.tr(BUTTON_ERASE),
+                LocalizationManager.tr("confirm.erase_register"),
+                "RADERA");
+        
+        if (confirmed) {
+            allHistoryItems.clear();
+            saveHistoryToFile();
+            filterUpdated();
         }
     }
 
     private void importData() {
-        // Import sold items from an external file selected by the user.
-        File file = selectFileForImport();
-        if (file == null) return;
+        // Import sold items from one or more external files selected by the user.
+        File[] files = selectFilesForImport();
+        if (files == null || files.length == 0) {
+            return;
+        }
+
+        long addedCount = 0;
+        long totalCount = 0;
 
         try {
-            importSoldItemsFromFile(file);
+            for (File file : files) {
+                ImportResult result = importSoldItemsFromFile(file);
+                addedCount += result.added;
+                totalCount += result.total;
+            }
         } catch (Exception e) {
             Popup.ERROR.showAndWait(LocalizationManager.tr("error.import_failed"), e.getMessage());
+            return;
         }
+
+        saveHistoryToFile();
+        filterUpdated();
+
+        Popup.INFORMATION.showAndWait(
+                LocalizationManager.tr("info.import_done.title"),
+                LocalizationManager.tr("info.import_done.message", addedCount, totalCount));
+    }
+
+    private void performArchiveAction() {
+        // Delegate to strategy
+        List<V1SoldItem> filteredItems = applyFilters();
+        operations.performArchive(filteredItems);
     }
 
     private void archiveFilteredItems() {
-        // Archive filtered items to a CSV file and remove them from the history list.
-        List<V1SoldItem> filteredItems = applyFilters();
+        // Archive ALL paid out items (regardless of filter) to a CSV file and remove them from the history list.
+        List<V1SoldItem> paidItems = allHistoryItems.stream()
+                .filter(V1SoldItem::isCollectedBySeller)
+                .collect(Collectors.toList());
 
-        if (filteredItems.stream().anyMatch(item -> !item.isCollectedBySeller())) {
-            Popup.ERROR.showAndWait(
-                    LocalizationManager.tr("error.archive_failed.title"),
-                    LocalizationManager.tr("error.archive_unpaid"));
+        if (paidItems.isEmpty()) {
             return;
         }
+
+        // Count unique sellers
+        long uniqueSellers = paidItems.stream()
+                .map(V1SoldItem::getSeller)
+                .distinct()
+                .count();
+
+        // Show confirmation dialog with statistics
+        String confirmMessage = LocalizationManager.tr(
+                "confirm.archive_paid_items",
+                paidItems.size(),
+                uniqueSellers);
 
         if (!Popup.CONFIRM.showConfirmDialog(
                 LocalizationManager.tr(BUTTON_ARCHIVE),
-                LocalizationManager.tr("confirm.archive_displayed"))) {
+                confirmMessage)) {
             return;
         }
 
-        archiveItemsToFile(filteredItems);
-        removeFilteredItems(filteredItems);
+        archiveItemsToFile(paidItems);
+        removeFilteredItems(paidItems);
         saveHistoryToFile();
         // Refresh UI components
         updateDistinctSellers();
@@ -170,51 +291,7 @@ public class HistoryTabController implements HistoryControllerInterface {
 
     private void updateDistinctSellers() {
         Set<String> distinctSellers = SoldItemUtils.getDistinctSellers(allHistoryItems);
-        SwingUtilities.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
-    }
-
-    private void payout() {
-        // Mark filtered items as paid out and update the history.
-        List<V1SoldItem> filteredItems = applyFilters();
-        LocalDateTime now = LocalDateTime.now();
-
-        filteredItems.forEach(item -> item.setCollectedBySellerTime(now));
-        try {
-            if (!ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
-                payoutWeb();
-            }
-            saveHistoryToFile();
-            filterUpdated();
-        } catch (ApiException e) {
-            Popup.ERROR.showAndWait(LocalizationManager.tr("error.payout"), e.getMessage());
-        }
-    }
-
-    private void payoutWeb() throws ApiException {
-        // Create a payout request with the current filter settings
-        SoldItemsServicePayoutBody payoutBody = new SoldItemsServicePayoutBody();
-
-        try {
-            int seller = Integer.parseInt(view.getSellerFilter());
-            payoutBody.setSeller(seller);
-        } catch (NumberFormatException e) {
-            // Do nothing if seller filter isn't a valid number
-        }
-
-        try {
-            V1PaymentMethodFilter paymentMethodFilter = V1PaymentMethodFilter.fromValue(view.getPaymentMethodFilter());
-            payoutBody.setPaymentMethodFilter(paymentMethodFilter);
-        } catch (IllegalArgumentException e) {
-            // Do nothing if payment method filter isn't valid
-        }
-
-        payoutBody.setUntilTimestamp(OffsetDateTime.now());
-
-        // Call the API to process the payout
-        ApiHelper.INSTANCE.getSoldItemsServiceApi().soldItemsServicePayout(
-                ConfigurationStore.EVENT_ID_STR.get(),
-                payoutBody
-        );
+            UIThreadingService.invokeLater(() -> view.updateSellerDropdown(distinctSellers));
     }
 
     private void copyToClipboard() {
@@ -222,13 +299,16 @@ public class HistoryTabController implements HistoryControllerInterface {
         List<V1SoldItem> filteredItems = applyFilters();
         String summary = generateSummary(filteredItems);
 
-        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-        clipboard.setContents(new StringSelection(summary), null);
+        view.copyToClipboard(summary);
     }
 
     private List<V1SoldItem> applyFilters() {
         // Apply the current filters to the history items.
-        return FilterUtils.applyFilters(
+        return applyFiltersWithResult().items();
+    }
+
+    private FilterResult applyFiltersWithResult() {
+        return FilterUtils.applyFiltersWithSum(
                 allHistoryItems,
                 view.getPaidFilter(),
                 view.getSellerFilter(),
@@ -237,24 +317,71 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void handleImportAction() {
-        if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
-            importData();
-        } else {
-            ProgressDialog.runTask(
-                    view.getComponent(),
-                    LocalizationManager.tr("history.progress.updating_items"),
-                    LocalizationManager.tr("history.progress.syncing"),
-                    () -> {
-                        uploadSoldItems();
+        try {
+            operations.performSync(() -> {
+                if (AppModeManager.isLocalMode()) {
+                    // Local mode: Import from CSV
+                    importData();
+                } else {
+                    // Online mode: Upload pending items and download from API
+                    boolean uploadSucceeded = false;
+                    boolean downloadSucceeded = false;
+                    
+                    try {
+                        uploadSucceeded = uploadSoldItems();
+                    } catch (Exception uploadError) {
+                        ApiException apiEx = extractApiException(uploadError);
+                        if (apiEx != null && AuthErrorHandler.isAuthError(apiEx)) {
+                            AuthErrorHandler.handleAuthStatus(apiEx.getCode());
+                        } else if (apiEx != null && ApiHelper.isLikelyNetworkError(apiEx)) {
+                            Popup.ERROR.showAndWait(
+                                LocalizationManager.tr("error.network_upload.title"),
+                                LocalizationManager.tr("error.network_upload.message")
+                            );
+                        } else {
+                            showUnexpectedError("History upload failed", uploadError);
+                        }
+                    }
+                    
+                    try {
                         downloadSoldItems();
-                        return null;
-                    },
-                    unused -> {
-                    },
-                    e -> Popup.ERROR.showAndWait(
-                            LocalizationManager.tr("error.network_fetch_history.title"),
-                            LocalizationManager.tr("error.network_fetch_history.message"))
-            );
+                        downloadSucceeded = true;
+                    } catch (Exception downloadError) {
+                        ApiException apiEx = extractApiException(downloadError);
+                        if (apiEx != null && AuthErrorHandler.isAuthError(apiEx)) {
+                            AuthErrorHandler.handleAuthStatus(apiEx.getCode());
+                        } else if (apiEx != null && ApiHelper.isLikelyNetworkError(apiEx)) {
+                            Popup.ERROR.showAndWait(
+                                LocalizationManager.tr("error.network_fetch_history.title"),
+                                LocalizationManager.tr("error.network_fetch_history.message")
+                            );
+                        } else {
+                            showUnexpectedError("History download failed", downloadError);
+                        }
+                    }
+                    
+                    // Show success if at least one operation succeeded
+                    if (uploadSucceeded || downloadSucceeded) {
+                        StringBuilder successMsg = new StringBuilder();
+                        if (uploadSucceeded) {
+                            successMsg.append(LocalizationManager.tr("info.upload_success"));
+                        }
+                        if (downloadSucceeded) {
+                            if (successMsg.length() > 0) successMsg.append(" ");
+                            successMsg.append(LocalizationManager.tr("info.download_success"));
+                        }
+                        if (successMsg.length() > 0) {
+                            Popup.INFORMATION.showAndWait(
+                                LocalizationManager.tr("info.sync_complete"),
+                                successMsg.toString()
+                            );
+                        }
+                    }
+                }
+            });
+        } catch (Exception e) {
+            // This catch is for service-level errors, specific operation errors are handled above
+            showUnexpectedError("History sync failed", e);
         }
     }
 
@@ -347,32 +474,83 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private void saveHistoryToFile() {
+        java.nio.file.Path historyPath = null;
         try {
-            FileUtils.saveSoldItems(allHistoryItems);
+            String eventId = AppModeManager.getEventId();
+            if (eventId == null || eventId.isBlank()) {
+                return;
+            }
+            historyPath = LocalEventPaths.getPendingItemsPath(eventId);
+            if (AppModeManager.isLocalMode()) {
+                FileUtils.saveSoldItems(eventId, allHistoryItems);
+            } else {
+                BackgroundSyncManager.getInstance().savePendingItems(eventId, allHistoryItems);
+            }
         } catch (IOException e) {
+            String pathInfo = historyPath == null ? e.getMessage() : historyPath.toString();
             Popup.FATAL.showAndWait(
-                    LocalizationManager.tr("error.write_register_file", LOPPISKASSAN_CSV),
+                    LocalizationManager.tr("error.write_register_file", pathInfo),
                     e.getMessage());
         }
     }
 
-    private void archiveItemsToFile(List<V1SoldItem> filteredItems) {
-        // Save filtered items to an archive file with a timestamped filename.
+    private void archiveItemsToFile(List<V1SoldItem> paidItems) {
+        // Save paid items to an archive file with a timestamped filename in event-specific directory.
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isEmpty()) {
+            Popup.ERROR.showAndWait(
+                    LocalizationManager.tr("error.no_event_selected"),
+                    LocalizationManager.tr("error.select_event_first"));
+            return;
+        }
+
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss"));
         String fileName = LocalizationManager.tr("history.archive_prefix") + timestamp + ".csv";
 
-        String comment = "# " + LocalizationManager.tr("history.comment.seller") + ": " +
-                (view.getSellerFilter() == null ? LocalizationManager.tr("filter.all") : view.getSellerFilter()) +
-                ", " + LocalizationManager.tr("history.comment.payment_method") + ": " +
-                (view.getPaymentMethodFilter() == null ? LocalizationManager.tr("filter.all") : view.getPaymentMethodFilter());
-
         try {
-            FileHelper.saveToFile(fileName, comment, FormatHelper.toCVS(filteredItems));
+            // Create event-specific archive directory if it doesn't exist
+            Path archiveDir = LocalEventPaths.getArchiveDir(eventId);
+            Files.createDirectories(archiveDir);
+
+            // Save archive file to event-specific directory
+            Path archivePath = archiveDir.resolve(fileName);
+            saveArchiveFile(archivePath, FormatHelper.toCVS(paidItems));
         } catch (IOException e) {
             Popup.FATAL.showAndWait(
                     LocalizationManager.tr("error.archive_file", fileName),
                     e.getMessage());
         }
+    }
+
+    private void saveArchiveFile(Path path, String csv) throws IOException {
+        // Save archive CSV file
+        try (OutputStream outputStream = new BufferedOutputStream(
+                Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))) {
+            // Write CSV headers
+            outputStream.write(FormatHelper.CVS_HEADERS.getBytes(StandardCharsets.UTF_8));
+            outputStream.write(FormatHelper.LINE_ENDING.getBytes(StandardCharsets.UTF_8));
+
+            // Write CSV data
+            outputStream.write(csv.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private ApiException extractApiException(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof ApiException apiEx) {
+                return apiEx;
+            }
+            current = current.getCause();
+        }
+        return null;
+    }
+
+    private void showUnexpectedError(String context, Throwable error) {
+        log.log(Level.SEVERE, context, error);
+        Popup.ERROR.showAndWait(
+                LocalizationManager.tr("error.generic.title"),
+                LocalizationManager.tr("error.generic.message", FileHelper.getLogFilePath()));
     }
 
     private void removeFilteredItems(List<V1SoldItem> filteredItems) {
@@ -385,142 +563,74 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private String generateSummary(List<V1SoldItem> filteredItems) {
-        // Generate a summary string for filtered items.
+        // Generate a CSV-like summary with headers + localized totals.
         int totalItems = filteredItems.size();
         int totalSum = filteredItems.stream().mapToInt(V1SoldItem::getPrice).sum();
-        int provision = (int) (0.1 * totalSum);
 
-        StringBuilder summary = new StringBuilder(LocalizationManager.tr("history.summary.header"));
+        StringBuilder summary = new StringBuilder();
+        summary.append(LocalizationManager.tr("history.summary.header"));
         summary.append(LocalizationManager.tr("history.summary.items", totalItems, totalSum));
-        summary.append(LocalizationManager.tr("history.summary.provision", provision));
+        summary.append('\n');
+        summary.append(LocalizationManager.tr("history.summary.csv_header"));
+        summary.append('\n');
 
-        filteredItems.forEach(item -> summary.append(item.toString()).append("\n"));
+        filteredItems.forEach(item -> summary.append(formatItemForClipboard(item)).append('\n'));
 
         return summary.toString();
     }
 
-    // TODO: This is not working, if offline with items to upload, message says we failed download - but all items uploaded which is not correct
-    // TODO: If we have incorret items in the list not uploaded (eg incorrect seller id) and we try to sync - we do not show popup telling that some items could not be uploaded
+    private String formatItemForClipboard(V1SoldItem item) {
+        // Format a single item as CSV row for clipboard export
+        String soldAt = item.getSoldTime() == null
+                ? ""
+                : item.getSoldTime().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String paidOut = item.isCollectedBySeller()
+                ? LocalizationManager.tr("common.yes")
+                : LocalizationManager.tr("common.no");
+        String payment = LocalizationManager.tr(item.getPaymentMethod() == se.goencoder.loppiskassan.V1PaymentMethod.Kontant
+                ? "payment.cash"
+                : "payment.swish");
+
+        return String.join(",",
+                String.valueOf(item.getSeller()),
+                String.valueOf(item.getPrice()),
+                soldAt,
+                paidOut,
+                payment);
+    }
+
     private boolean uploadSoldItems() {
-        // 1) Hitta alla poster som inte redan är uppladdade
-        List<V1SoldItem> notUploaded = allHistoryItems.stream()
-                .filter(item -> !item.isUploaded())
-                .collect(Collectors.toList());
-
-        if (notUploaded.isEmpty()) {
-            // Inget att ladda upp => returnera true, allt "ok"
-            return true;
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            return false;
         }
 
-        List<V1RejectedItem> allRejected = new ArrayList<>();
-        boolean networkError = false; // För att särskilja nätverksfel
+        BackgroundSyncManager.getInstance().ensureRunning(eventId);
+        BackgroundSyncManager.SyncResult result = BackgroundSyncManager.getInstance().syncNowBlocking();
 
-        // 2) Kör i sub‐batchar om 100 poster
-        for (int i = 0; i < notUploaded.size(); i += 100) {
-            int end = Math.min(i + 100, notUploaded.size());
-            List<V1SoldItem> subBatch = notUploaded.subList(i, end);
-
-            try {
-                // 2.1) Skicka upp subBatch
-                List<V1RejectedItem> rejectedItems = uploadBatch(subBatch);
-                // 2.2) Spara eventuella avvisade
-                allRejected.addAll(rejectedItems);
-
-            } catch (ApiException e) {
-                // 3) Skilj på nätverksfel och "riktiga" API-fel
-                if (ApiHelper.isLikelyNetworkError(e)) {
-                    // Avbryt uppladdning helt
-                    networkError = true;
-                    break;
-                } else {
-                    Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_web"), e.getMessage());
-                    break;
-                }
-            }
+        if (result.authError()) {
+            return false;
         }
-
-        // 4) Spara ner de eventuella lyckade uppladdningar som utfördes *innan* ev. fel
-        saveHistoryToFile();
-
-        // 5) Om vi träffade nätverksfel => visa popup, return false
-        if (networkError) {
-            // Möjligen vill du också räkna hur många sub‐batchar som redan hade laddats upp innan felet.
+        if (result.networkError()) {
             Popup.ERROR.showAndWait(
                     LocalizationManager.tr("error.network_upload.title"),
                     LocalizationManager.tr("error.network_upload.message"));
             return false;
         }
-
-        // 6) Show rejected items due to API errors
-        if (!allRejected.isEmpty()) {
-            StringBuilder msg = new StringBuilder(LocalizationManager.tr("error.upload_rejected.header"));
-            for (V1RejectedItem rejectedItem : allRejected) {
-                msg.append(LocalizationManager.tr(
-                        "error.upload_rejected.entry",
-                        rejectedItem.getItem().getItemId(),
-                        rejectedItem.getItem().getSeller(),
-                        rejectedItem.getItem().getPrice(),
-                        rejectedItem.getItem().getPaymentMethod(),
-                        rejectedItem.getReason()));
-            }
-            Popup.ERROR.showAndWait(LocalizationManager.tr("error.upload_rejected"), msg.toString());
+        if (result.fileError()) {
+            showUnexpectedError("History upload failed", new IOException("Failed to update local history file"));
             return false;
         }
 
-        // 7) Kommer vi hit har vi varken nätverksfel eller avvisade poster => allt gick bra
-        return true;
-    }
-
-    private List<V1RejectedItem> uploadBatch(List<V1SoldItem> batch) throws ApiException {
-        // Group items by purchase ID to ensure server compatibility
-        Map<String, List<V1SoldItem>> purchaseGroups = batch.stream()
-                .collect(Collectors.groupingBy(item -> {
-                    String purchaseId = item.getPurchaseId();
-                    if (purchaseId == null || purchaseId.trim().isEmpty()) {
-                        purchaseId = se.goencoder.loppiskassan.utils.UlidGenerator.generate();
-                        item.setPurchaseId(purchaseId);
-                    }
-                    return purchaseId;
-                }));
-
-        List<V1RejectedItem> allRejected = new ArrayList<>();
-
-        // Upload each purchase group separately to avoid "purchaseId mismatch" errors
-        for (List<V1SoldItem> purchaseItems : purchaseGroups.values()) {
-            SoldItemsServiceCreateSoldItemsBody requestBody = new SoldItemsServiceCreateSoldItemsBody();
-
-            for (V1SoldItem localItem : purchaseItems) {
-                se.goencoder.iloppis.model.V1SoldItem apiItem = SoldItemUtils.toApiSoldItem(localItem);
-                apiItem.setSoldTime(OffsetDateTime.of(
-                        localItem.getSoldTime(),
-                        OffsetDateTime.now().getOffset()
-                ));
-                requestBody.addItemsItem(apiItem);
-            }
-
-            V1CreateSoldItemsResponse response = ApiHelper.INSTANCE.getSoldItemsServiceApi()
-                    .soldItemsServiceCreateSoldItems(ConfigurationStore.EVENT_ID_STR.get(), requestBody);
-
-            // Mark accepted items as uploaded
-            if (response.getAcceptedItems() != null) {
-                Map<String, V1SoldItem> localMap = purchaseItems.stream()
-                        .collect(Collectors.toMap(V1SoldItem::getItemId, Function.identity()));
-
-                for (se.goencoder.iloppis.model.V1SoldItem accepted : response.getAcceptedItems()) {
-                    V1SoldItem localItem = localMap.get(accepted.getItemId());
-                    if (localItem != null) {
-                        localItem.setUploaded(true);
-                    }
-                }
-            }
-
-            // Collect rejected items
-            if (response.getRejectedItems() != null) {
-                allRejected.addAll(response.getRejectedItems());
-            }
+        if (result.rejected() > 0) {
+            Popup.WARNING.showAndWait(
+                    LocalizationManager.tr("rejected.saved.title"),
+                    LocalizationManager.tr("rejected.saved.message", result.rejected()));
         }
 
-        return allRejected;
+        loadHistory();
+        filterUpdated();
+        return true;
     }
 
     private boolean isPayoutEnabled(List<V1SoldItem> filteredItems) {
@@ -529,48 +639,53 @@ public class HistoryTabController implements HistoryControllerInterface {
     }
 
     private boolean isArchiveEnabled() {
-        // Enable archive if the "Paid" filter is set to "Yes."
-        return "true".equals(view.getPaidFilter());
+        // Enable archive if there is at least one paid item in all history
+        return allHistoryItems != null && allHistoryItems.stream().anyMatch(V1SoldItem::isCollectedBySeller);
     }
 
     private void updateImportButton() {
-        // Update the import button text and enable it based on the current mode.
-        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
-        if (isOffline) {
-            view.setImportButtonText(LocalizationManager.tr(BUTTON_IMPORT));
+        // Update the import button visibility and text based on the current mode.
+        boolean isLocal = AppModeManager.isLocalMode();
+        if (isLocal) {
+            // Local mode: hide the button entirely (no web sync available)
+            view.setImportButtonVisible(false);
+            view.enableButton(BUTTON_IMPORT, false);
         } else {
+            // Online mode: show and enable the button
+            view.setImportButtonVisible(true);
             view.setImportButtonText(LocalizationManager.tr("button.update_web"));
+            view.enableButton(BUTTON_IMPORT, true);
         }
-        view.enableButton(BUTTON_IMPORT, true);
     }
 
-    private File selectFileForImport() {
-        // Open a file chooser dialog to select an external file for import.
-        JFileChooser fileChooser = new JFileChooser(FileHelper.getRecordFilePath(LOPPISKASSAN_CSV).toFile());
-        fileChooser.setDialogTitle(LocalizationManager.tr("history.open_other_register"));
-        fileChooser.setFileFilter(new FileNameExtensionFilter(LocalizationManager.tr("history.csv_files"), "csv"));
-
-        int result = fileChooser.showOpenDialog(null);
-        return result == JFileChooser.APPROVE_OPTION ? fileChooser.getSelectedFile() : null;
+    private File[] selectFilesForImport() {
+        // Open a file chooser dialog to select external JSONL files for import.
+        String eventId = AppModeManager.getEventId();
+        File initialDir = eventId == null
+                ? LocalEventPaths.getEventsDir().toFile()
+                : LocalEventPaths.getEventDir(eventId).toFile();
+        
+        return view.selectFilesForImport(initialDir);
     }
 
-    private void importSoldItemsFromFile(File file) throws IOException {
+    private ImportResult importSoldItemsFromFile(File file) throws IOException {
         // Import sold items from the selected file, avoiding duplicates.
-        List<V1SoldItem> importedItems = FormatHelper.toItems(FileHelper.readFromFile(file.toPath()), true);
+        List<V1SoldItem> importedItems = JsonlHelper.readItems(file.toPath());
 
         Set<String> existingItemIds = allHistoryItems.stream()
                 .map(V1SoldItem::getItemId)
                 .collect(Collectors.toSet());
 
-        importedItems.stream()
-                .filter(item -> !existingItemIds.contains(item.getItemId()))
-                .forEach(allHistoryItems::add);
+        long added = 0;
+        for (V1SoldItem item : importedItems) {
+            if (!existingItemIds.contains(item.getItemId())) {
+                allHistoryItems.add(item);
+                added++;
+            }
+        }
 
-        saveHistoryToFile();
-        filterUpdated();
-
-        Popup.INFORMATION.showAndWait(
-                LocalizationManager.tr("info.import_done.title"),
-                LocalizationManager.tr("info.import_done.message", importedItems.size()));
+        return new ImportResult(added, importedItems.size());
     }
+
+    private record ImportResult(long added, long total) {}
 }

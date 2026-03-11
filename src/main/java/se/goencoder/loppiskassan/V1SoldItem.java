@@ -1,8 +1,9 @@
 package se.goencoder.loppiskassan;
 
+import se.goencoder.loppiskassan.utils.UlidGenerator;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Created by gengdahl on 2016-08-16.
@@ -44,12 +45,13 @@ public class V1SoldItem {
     }
 
     /**
-     * Konstruktor som skapar en såld vara med en genererad unik identifierare och aktuell tidpunkt som säljtid.
+     * Konstruktor som skapar en såld vara med en genererad unik identifierare (ULID) och aktuell tidpunkt som säljtid.
+     * ULID format: 26 characters matching ^[0-9A-HJKMNP-TV-Z]{26}$
      */
     public V1SoldItem(int seller, int price, V1PaymentMethod paymentMethod) {
         this(
-                UUID.randomUUID().toString(),
-                UUID.randomUUID().toString(),
+                UlidGenerator.generate(),  // purchaseId (ULID)
+                UlidGenerator.generate(),  // itemId (ULID)
                 LocalDateTime.now(),
                 seller,
                 price,

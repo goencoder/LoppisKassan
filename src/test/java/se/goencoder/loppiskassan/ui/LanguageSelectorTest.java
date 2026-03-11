@@ -3,7 +3,9 @@ package se.goencoder.loppiskassan.ui;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
+import se.goencoder.loppiskassan.config.LocalConfigurationStore;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,9 +19,11 @@ class LanguageSelectorTest {
 
     @BeforeEach
     void resetConfig() {
-        ConfigurationStore.reset();
+        GlobalConfigurationStore.reset();
+        LocalConfigurationStore.reset();
+        ILoppisConfigurationStore.reset();
         // Explicitly set language to Swedish for tests
-        ConfigurationStore.LANGUAGE_STR.set("sv");
+        GlobalConfigurationStore.setLanguage("sv");
     }
 
     @Test
@@ -29,12 +33,12 @@ class LanguageSelectorTest {
 
         selector.selectLanguage("en");
         assertEquals("en", selector.getSelectedLanguageCode());
-        assertEquals("en", ConfigurationStore.LANGUAGE_STR.get());
+        assertEquals("en", GlobalConfigurationStore.getLanguage());
     }
 
     @Test
     void usesPersistedLanguageOnInit() {
-        ConfigurationStore.LANGUAGE_STR.set("en");
+        GlobalConfigurationStore.setLanguage("en");
 
         LanguageSelector selector = new LanguageSelector();
         assertEquals("en", selector.getSelectedLanguageCode());

@@ -1,109 +1,95 @@
 package se.goencoder.loppiskassan.config;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.util.AppPaths;
 import se.goencoder.loppiskassan.ui.Popup;
 
-import java.io.*;
-import java.util.Properties;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
- * A simple configuration store for the application.
- * Naming conventions and how to use:
- * - Use the key as a string constant in the enum.
- * - Use the get() method to retrieve the value.
- * - Use the set() method to set the value.
- * - Use the getIntValueOrDefault() method to retrieve an integer value with a default value (Enum name has _INT).
- * - Use the setIntValue() method to set an integer value (Enum name has _INT).
- * - Use the getBooleanValueOrDefault() method to retrieve a boolean value with a default value (Enum name has _BOOL).
- * - Use the setBooleanValue() method to set a boolean value (Enum name has _BOOL).
+ * Abstract base class for configuration stores using Template Method pattern.
+ * Eliminates duplication between LocalConfigurationStore and ILoppisConfigurationStore.
+ * 
+ * Subclasses provide:
+ * - Config file path
+ * - Default config instance
+ * - Config class type
+ * - Mode name for error messages
+ * 
+ * @param <T> The configuration data class type
  */
-public enum ConfigurationStore {
-    EVENT_JSON("event"),
-    EVENT_ID_STR("event_id"),
-    API_KEY_STR("api_key"),
-    APPROVED_SELLERS_JSON("approved_sellers"),
-    OFFLINE_EVENT_BOOL("offline_event"),
-    REVENUE_SPLIT_JSON("revenue_split"),
-    LANGUAGE_STR("language");
-
-    public static final String CONFIG_FILE_PATH = "config.properties";
-    private final String key;
-    private static final Properties properties = new Properties();
-
-    static {
+public abstract class ConfigurationStore<T> {
+    
+    protected static final Path CONFIG_DIR = AppPaths.getConfigDir();
+    protected static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    
+    protected T config;
+    
+    /**
+     * Get the path to the configuration file.
+     */
+    protected abstract Path getConfigPath();
+    
+    /**
+     * Create a new default configuration instance.
+     */
+    protected abstract T createDefaultConfig();
+    
+    /**
+     * Get the configuration class type for Gson deserialization.
+     */
+    protected abstract Class<T> getConfigClass();
+    
+    /**
+     * Get the mode name for error messages ("local" or "iLoppis").
+     */
+    protected abstract String getModeName();
+    
+    /**
+     * Template method: Load configuration from disk.
+     * Common logic with mode-specific variations delegated to abstract methods.
+     */
+    protected final void load() {
         try {
-            File configFile = new File(CONFIG_FILE_PATH);
-            if (configFile.exists()) {
-                try (InputStream input = new FileInputStream(configFile)) {
-                    properties.load(input);
+            Files.createDirectories(CONFIG_DIR);
+            
+            if (Files.exists(getConfigPath())) {
+                try (Reader reader = new FileReader(getConfigPath().toFile())) {
+                    T loaded = GSON.fromJson(reader, getConfigClass());
+                    config = (loaded != null) ? loaded : createDefaultConfig();
                 }
             } else {
-                // Create the file if it doesn't exist and set default values
-                if (configFile.createNewFile()) {
-                    // Set sensible defaults
-                    properties.setProperty("language", "sv");
-                    properties.setProperty("offline_event", "false");
-
-                    try (OutputStream output = new FileOutputStream(configFile)) {
-                        properties.store(output, "Application Configuration");
-                    }
-                }
+                config = createDefaultConfig();
             }
-
-            // Ensure language always has a default value, even if config exists but language is missing
-            if (properties.getProperty("language") == null) {
-                properties.setProperty("language", "sv");
-                try (OutputStream output = new FileOutputStream(CONFIG_FILE_PATH)) {
-                    properties.store(output, "Application Configuration");
-                }
-            }
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             Popup.FATAL.showAndWait(
-                    "Configuration Error",
-                    "Failed to open or create the configuration file: " + CONFIG_FILE_PATH);
+                LocalizationManager.tr("error.config_load.title"),
+                LocalizationManager.tr("error.config_load.message", getModeName(), ex.getMessage()));
+            config = createDefaultConfig();
         }
     }
-
-    ConfigurationStore(String key) {
-        this.key = key;
-    }
-    public static void reset() {
-        // retain the language selection
-        String lang = properties.getProperty("language", "sv");
-        properties.clear();
-        // Set sensible defaults after reset
-        properties.setProperty("language", lang);
-        properties.setProperty("offline_event", "false");
-        saveProperties();
-    }
-
-    public String get() {
-        return properties.getProperty(key);
-    }
-
-    public void set(String value) {
-        properties.setProperty(key, value);
-        saveProperties();
-    }
-
-    public boolean getBooleanValueOrDefault(boolean defaultValue) {
-        String value = properties.getProperty(key);
-        if (value == null) {
-            return defaultValue;
-        }
-        return Boolean.parseBoolean(value);
-    }
-
-    public void setBooleanValue(boolean value) {
-        properties.setProperty(key, Boolean.toString(value));
-        saveProperties();
-    }
-
-    private static void saveProperties() {
-        try (OutputStream output = new FileOutputStream(CONFIG_FILE_PATH)) {
-            properties.store(output, "Application Configuration");
-        } catch (IOException ex) {
-            Popup.FATAL.showAndWait("Configuration Error", "Failed to save the configuration file: " + CONFIG_FILE_PATH);
+    
+    /**
+     * Template method: Save configuration to disk.
+     * Common logic with mode-specific variations delegated to abstract methods.
+     */
+    protected final void save() {
+        try {
+            Files.createDirectories(CONFIG_DIR);
+            try (Writer writer = new FileWriter(getConfigPath().toFile())) {
+                GSON.toJson(config, writer);
+            }
+        } catch (Exception ex) {
+            Popup.FATAL.showAndWait(
+                LocalizationManager.tr("error.config_save.title"),
+                LocalizationManager.tr("error.config_save.message", getModeName(), ex.getMessage()));
         }
     }
-
-
 }

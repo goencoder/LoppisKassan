@@ -1,7 +1,7 @@
 package se.goencoder.loppiskassan.rest;
 import se.goencoder.iloppis.api.*;
 import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 
 
 /**
@@ -9,7 +9,7 @@ import se.goencoder.loppiskassan.config.ConfigurationStore;
  * Den har statista metoder för att hämta klienter och injicera autentisering.
  */
 public enum ApiHelper {
-    INSTANCE("127.0.0.1", 8080);
+    INSTANCE;
     private final FixedApiClient apiClient;
     private final SoldItemsServiceApi soldItemsServiceApi;
     private final ApiKeyServiceApi apiKeyServiceApi;
@@ -17,17 +17,24 @@ public enum ApiHelper {
     private final VendorServiceApi vendorServiceApi;
     private final ApprovedMarketServiceApi approvedMarketServiceApi;
 
-    ApiHelper(String host, int port) {
+    ApiHelper() {
         // Use our fixed API client implementation
         this.apiClient = new FixedApiClient();
-        this.apiClient.setBasePath("http://" + host + ":" + port);
+        // Get base URL from configuration (supports env var ILOPPIS_API_URL)
+        String baseUrl = ILoppisConfigurationStore.getApiBaseUrl();
+        this.apiClient.setBasePath(baseUrl);
         this.apiClient.setUserAgent("LoppisKassan/2.0.0");
+        
+        // Configure timeouts: 5 seconds for sold items upload (responsive UX)
+        this.apiClient.setConnectTimeout(5000);
+        this.apiClient.setReadTimeout(5000);
+        this.apiClient.setWriteTimeout(5000);
         
         // Configure the JSON serialization to use pretty printing
         this.apiClient.getJSON().setGson(this.apiClient.getJSON().getGson().newBuilder().setPrettyPrinting().create());
 
-        if (ConfigurationStore.API_KEY_STR.get() != null) {
-            setCurrentApiKey(ConfigurationStore.API_KEY_STR.get());
+        if (ILoppisConfigurationStore.getApiKey() != null) {
+            setCurrentApiKey(ILoppisConfigurationStore.getApiKey());
         }
 
         // Create API instances with our fixed client
@@ -60,6 +67,10 @@ public enum ApiHelper {
 
     public void setCurrentApiKey(String apiKey) {
         this.apiClient.addDefaultHeader("Authorization", "Bearer " + apiKey);
+    }
+
+    public void clearCurrentApiKey() {
+        this.apiClient.addDefaultHeader("Authorization", "");
     }
 
     /**

@@ -15,14 +15,13 @@ public class EventUtils {
                 .orElse(null);
     }
 
-    public static void populateOfflineEvent(V1Event event) {
-        event.setId("offline");
-        event.setName(LocalizationManager.tr("event.offline.name"));
-        event.setDescription(LocalizationManager.tr("event.offline.description"));
+    public static void populateLocalEvent(V1Event event) {
+        event.setId("local");
+        event.setName(LocalizationManager.tr("event.local.name"));
+        event.setDescription(LocalizationManager.tr("event.local.description"));
         event.setAddressCity(LocalizationManager.tr("event.no_city"));
         event.setAddressStreet(LocalizationManager.tr("event.no_street"));
         event.setStartTime(OffsetDateTime.now());
         event.setEndTime(null);
     }
 }
-

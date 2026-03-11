@@ -1,6 +1,6 @@
 package se.goencoder.loppiskassan.ui;
 
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
@@ -42,6 +42,7 @@ public class UserInterface extends JFrame implements LocalizationAware {
 
     public UserInterface() {
         setLayout(new BorderLayout());
+        setAppIcon();
         tabPane = new JTabbedPane();
         initializeTabs();
         LocalizationManager.addListener(this::reloadTexts);
@@ -53,7 +54,7 @@ public class UserInterface extends JFrame implements LocalizationAware {
             if (selectedTab != SELECTABLE_TABS.DISCOVERY) {
                 // If we are attempting to select a tab other than
                 // The one selecting which loppis to manage, we need to check if a loppis has been selected or not.
-                if (ConfigurationStore.EVENT_ID_STR.get() == null) {
+                if (AppModeManager.getEventId() == null) {
                     tabPane.setSelectedIndex(SELECTABLE_TABS.DISCOVERY.getIndex());
                     Popup.ERROR.showAndWait(
                             LocalizationManager.tr("error.no_event_selected.title"),
@@ -73,9 +74,17 @@ public class UserInterface extends JFrame implements LocalizationAware {
     }
     static JButton createButton(String text, int width, int height) {
         JButton button = new JButton(text);
-        button.setPreferredSize(new Dimension(width, height)); // Set the preferred size
-        // You could also set the font here if needed
-        // button.setFont(new Font("Arial", Font.BOLD, 14));
+        button.setPreferredSize(new Dimension(width, height));
+        // Apply AppButton styling for consistent appearance
+        AppButton.Size size = height >= 50 ? AppButton.Size.XLARGE :
+                             height >= 44 ? AppButton.Size.LARGE :
+                             height >= 36 ? AppButton.Size.MEDIUM :
+                                          AppButton.Size.SMALL;
+        AppButton.applyStyle(button, AppButton.Variant.SECONDARY, size);
+        // Override height from size preset to use explicit width/height
+        button.setPreferredSize(new Dimension(width, height));
+        button.setMinimumSize(new Dimension(width, height));
+        button.setMaximumSize(new Dimension(width, height));
         return button;
     }
 
@@ -113,10 +122,36 @@ public class UserInterface extends JFrame implements LocalizationAware {
         super.removeNotify();
     }
 
+    private void setAppIcon() {
+        // Reuse the icon already loaded in Main (for dock icon), or load fresh
+        var iconImage = se.goencoder.loppiskassan.Main.getAppIconImage();
+        if (iconImage == null) {
+            try {
+                var iconUrl = getClass().getClassLoader().getResource("images/iloppis-icon.png");
+                if (iconUrl != null) {
+                    iconImage = javax.imageio.ImageIO.read(iconUrl);
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to load app icon: " + e.getMessage());
+            }
+        }
+        if (iconImage != null) {
+            setIconImage(iconImage);
+        }
+    }
+
     private void initializeTabs() {
-        DiscoveryTabPanel discoveryTabPanel = new DiscoveryTabPanel();
-        tabPane.addTab("", null, discoveryTabPanel, "");
-        selectabableTabs.add(discoveryTabPanel);
+        JPanel discoveryPanel;
+        if (AppModeManager.isLocalMode()) {
+            LocalDiscoveryTabPanel localPanel = new LocalDiscoveryTabPanel();
+            discoveryPanel = localPanel;
+            selectabableTabs.add(localPanel);
+        } else {
+            DiscoveryTabPanel onlinePanel = new DiscoveryTabPanel();
+            discoveryPanel = onlinePanel;
+            selectabableTabs.add(onlinePanel);
+        }
+        tabPane.addTab("", null, discoveryPanel, "");
 
         CashierTabPanel cashierTabPanel = new CashierTabPanel(CashierTabController.getInstance());
         tabPane.addTab("", null, cashierTabPanel, "");

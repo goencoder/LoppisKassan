@@ -1,8 +1,11 @@
 package se.goencoder.loppiskassan.rest;
 
 import java.util.Collections;
+import java.util.logging.Logger;
 import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
+import okhttp3.logging.HttpLoggingInterceptor;
 import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.iloppis.invoker.ApiException;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +17,22 @@ import java.nio.charset.StandardCharsets;
  */
 public class FixedApiClient extends ApiClient {
 
+    private static final Logger log = Logger.getLogger(FixedApiClient.class.getName());
     private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json");
+
+    public FixedApiClient() {
+        super();
+        // Add HTTP logging interceptor (BASIC level to avoid logging sensitive payloads)
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(message -> 
+            log.info("[HTTP] " + message)
+        );
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
+        
+        OkHttpClient client = getHttpClient().newBuilder()
+            .addInterceptor(loggingInterceptor)
+            .build();
+        setHttpClient(client);
+    }
 
     /**
      * Override the serialize method to ensure content type is never null
@@ -30,6 +48,9 @@ public class FixedApiClient extends ApiClient {
         try {
             // Serialize the object to JSON using the same JSON serializer as the parent
             String json = getJSON().serialize(obj);
+            
+            // DEBUG: Log the serialized JSON
+            log.info("[API-REQ-BODY] " + json);
 
             // Create the RequestBody with the correct parameter order for OkHttp 3.x
             MediaType mediaType = MediaType.get(contentType);
@@ -63,5 +84,11 @@ public class FixedApiClient extends ApiClient {
             // Using more meaningful error code (500) and empty map instead of null for headers
             throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 500, Collections.emptyMap());
         }
+    }
+
+    @Override
+    public <T> T handleResponse(okhttp3.Response response, java.lang.reflect.Type returnType) throws ApiException {
+        AuthErrorHandler.handleAuthStatus(response.code());
+        return super.handleResponse(response, returnType);
     }
 }

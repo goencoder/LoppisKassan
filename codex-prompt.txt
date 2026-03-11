@@ -1,0 +1,24 @@
+Project: iLoppis Cash Register desktop app
+Language: Java 21, Swing UI
+Build: Maven (classpath only, no JPMS)
+Constraints:
+- Must compile with `mvn verify`.
+- No new external dependencies unless explicitly requested.
+- All UI code in `se.goencoder.loppiskassan.ui`.
+- Include full import statements (FQCNs).
+- High-DPI friendly rendering (use RenderingHints).
+- Use `LocalizationManager.tr("key")` for text, never hardcode.
+- Persist settings via `ConfigurationStore` (`UI_LANGUAGE_STR` is the single source of truth).
+- Cashier keystroke flow must remain:
+  1. Cursor starts in seller number field.
+  2. Tab/Enter → price field.
+  3. Enter → commit prices + reset fields.
+  4. Cursor back to seller number field.
+- Never run or package GUI in CI (Codex runs headless).
+
+Deliverables:
+1. Exact diffs with file paths under `src/main/java` or `src/main/resources`.
+2. Full `import` statements.
+3. Assume Maven project structure.
+
+Task:

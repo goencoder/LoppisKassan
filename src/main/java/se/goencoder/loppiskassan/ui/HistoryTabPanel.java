@@ -6,7 +6,8 @@ import se.goencoder.loppiskassan.controller.HistoryControllerInterface;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.util.SwedishDateFormatter;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -17,6 +18,7 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -45,8 +47,17 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     private JLabel itemsCountLabel, totalSumLabel;
     private JLabel paidFilterLabel, sellerFilterLabel, paymentFilterLabel;
 
+    // Seller summary card
+    private CardLayout summaryCardLayout;
+    private JPanel summaryCardPanel;
+    private JPanel sellerSummaryPanel;
+    private JLabel sellerSummaryTitle;
+    private JLabel sellerItemsLabel;
+    private JLabel sellerTotalLabel;
+
     private int itemsCount = 0;
     private int totalSum = 0;
+    private Integer filteredSeller = null;
 
     // Table filtering/sorting
     private TableRowSorter<DefaultTableModel> sorter;
@@ -60,18 +71,28 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     public HistoryTabPanel() {
         // Use BorderLayout for organizing the main sections
         setLayout(new BorderLayout());
+        setBackground(AppColors.WHITE);
         LocalizationManager.addListener(this::reloadTexts);
 
         // Create and add the top panel with filters and management buttons
         JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setBackground(AppColors.WHITE);
+        topPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, AppColors.BORDER),
+            BorderFactory.createEmptyBorder(12, 16, 12, 16)
+        ));
         topPanel.add(initializeFilterPanel(), BorderLayout.CENTER); // Filters
         topPanel.add(initializeManagementButtons(), BorderLayout.EAST); // Management buttons
         add(topPanel, BorderLayout.NORTH);
 
         // Create and add the center panel with the history table and summary
         JPanel tablePanel = new JPanel(new BorderLayout());
+        tablePanel.setBackground(AppColors.WHITE);
         tablePanel.add(initializeSummaryPanel(), BorderLayout.NORTH); // Summary above table
-        tablePanel.add(new JScrollPane(initializeTable()), BorderLayout.CENTER); // Table
+        JScrollPane tableScroll = new JScrollPane(initializeTable());
+        tableScroll.getViewport().setBackground(AppColors.WHITE);
+        tableScroll.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 1, AppColors.BORDER));
+        tablePanel.add(tableScroll, BorderLayout.CENTER); // Table
         add(tablePanel, BorderLayout.CENTER);
 
         // Create and add the bottom panel with action buttons
@@ -102,8 +123,8 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         historyTable = new JTable(model) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
-        historyTable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-        historyTable.setRowHeight(28);
+        historyTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        historyTable.setRowHeight(26);
         historyTable.putClientProperty("Table.alternateRowColor", Boolean.TRUE);
 
         // Right-align price column; center the date-time column for readability
@@ -113,6 +134,12 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
         historyTable.getColumnModel().getColumn(2).setCellRenderer(center);
+
+        // Set sensible column widths to reduce crowding and let the table fill the viewport
+        int[] widths = {70, 90, 200, 80, 120};
+        for (int i = 0; i < widths.length; i++) {
+            historyTable.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+        }
 
         // Sorter (also used for the Search filter)
         sorter = new TableRowSorter<>(model);
@@ -128,6 +155,8 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
      */
     private JPanel initializeFilterPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 16));
         Insets insets = new Insets(6, 16, 6, 16);
 
         GridBagConstraints lbl = new GridBagConstraints();
@@ -212,17 +241,68 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     }
 
     /**
-     * Creates the summary panel to display total items and total price.
+     * Creates the summary panel with CardLayout to switch between simple and detailed views.
      *
      * @return The summary panel.
      */
     private JPanel initializeSummaryPanel() {
-        JPanel summaryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        summaryCardLayout = new CardLayout();
+        summaryCardPanel = new JPanel(summaryCardLayout);
+        summaryCardPanel.setBackground(AppColors.WHITE);
+        summaryCardPanel.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+
+        // Simple summary (shown for "Alla")
+        JPanel simpleSummary = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 8));
+        simpleSummary.setOpaque(false);
         itemsCountLabel = new JLabel();
         totalSumLabel = new JLabel();
-        summaryPanel.add(itemsCountLabel);
-        summaryPanel.add(totalSumLabel);
-        return summaryPanel;
+        simpleSummary.add(itemsCountLabel);
+        simpleSummary.add(totalSumLabel);
+
+        // Detailed seller summary (shown when specific seller selected)
+        sellerSummaryPanel = createSellerSummaryPanel();
+
+        summaryCardPanel.add(simpleSummary, "simple");
+        summaryCardPanel.add(sellerSummaryPanel, "seller");
+
+        return summaryCardPanel;
+    }
+
+    /**
+    * Creates detailed seller summary panel (per seller totals only).
+     *
+     * @return The seller summary panel.
+     */
+    private JPanel createSellerSummaryPanel() {
+        JPanel panel = new JPanel();
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(AppColors.BORDER, 2, true),
+            BorderFactory.createEmptyBorder(12, 16, 12, 16)
+        ));
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(AppColors.SURFACE);
+
+        // Title
+        sellerSummaryTitle = new JLabel();
+        sellerSummaryTitle.setFont(sellerSummaryTitle.getFont().deriveFont(Font.BOLD, 14f));
+        sellerSummaryTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(sellerSummaryTitle);
+        panel.add(Box.createVerticalStrut(8));
+
+        // Stats grid (count + total)
+        JPanel statsGrid = new JPanel(new GridLayout(1, 2, 24, 4));
+        statsGrid.setOpaque(false);
+        statsGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        sellerItemsLabel = new JLabel();
+        sellerTotalLabel = new JLabel();
+
+        statsGrid.add(sellerItemsLabel);
+        statsGrid.add(sellerTotalLabel);
+
+        panel.add(statsGrid);
+
+        return panel;
     }
 
     /**
@@ -233,6 +313,7 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     private JPanel initializeManagementButtons() {
         JPanel managementButtonsPanel = new JPanel();
         managementButtonsPanel.setLayout(new BoxLayout(managementButtonsPanel, BoxLayout.PAGE_AXIS));
+        managementButtonsPanel.setBackground(AppColors.WHITE);
 
         Dimension buttonSize = new Dimension(150, 50);
 
@@ -251,8 +332,14 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         archiveFilteredButton.addActionListener(e -> controller.buttonAction(BUTTON_ARCHIVE));
         importDataButton.addActionListener(e -> controller.buttonAction(BUTTON_IMPORT));
 
+            // Initial visibility: mode-aware controls
+            boolean isLocal = AppModeManager.isLocalMode();
+            importDataButton.setVisible(!isLocal);
+            archiveFilteredButton.setVisible(isLocal);
+
         // Wrap the panel for better layout
         JPanel wrapperPanel = new JPanel(new BorderLayout());
+        wrapperPanel.setBackground(AppColors.WHITE);
         wrapperPanel.add(managementButtonsPanel, BorderLayout.NORTH);
 
         return wrapperPanel;
@@ -265,11 +352,17 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
      */
     private JPanel initializeActionButtons() {
         JPanel actionButtonsPanel = new JPanel(new BorderLayout());
+        actionButtonsPanel.setBackground(AppColors.WHITE);
+        actionButtonsPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.BORDER));
         JPanel innerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        innerPanel.setOpaque(false);
 
         // Initialize buttons
         payoutButton = createButton("", 150, 50);
         toClipboardButton = createButton("", 150, 50);
+
+        boolean isLocal = AppModeManager.isLocalMode();
+        payoutButton.setVisible(isLocal);
 
         // Add buttons to the inner panel
         innerPanel.add(payoutButton);
@@ -280,7 +373,10 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         toClipboardButton.addActionListener(e -> controller.buttonAction(BUTTON_COPY_TO_CLIPBOARD));
 
         actionButtonsPanel.add(innerPanel, BorderLayout.CENTER);
-        actionButtonsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        actionButtonsPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.BORDER),
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
 
         return actionButtonsPanel;
     }
@@ -293,6 +389,8 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
      */
     private JPanel createFlowRightPanel(JButton button) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panel.setOpaque(false);
+        panel.setBackground(AppColors.WHITE);
         panel.add(button);
         return panel;
     }
@@ -353,24 +451,28 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
 
         // Buttons
         eraseAllDataButton.setText(LocalizationManager.tr(BUTTON_ERASE));
-        archiveFilteredButton.setText(LocalizationManager.tr("button.archive_filtered"));
+        archiveFilteredButton.setText(LocalizationManager.tr("button.archive_paid"));
         // Ensure the right-hand top button reflects current mode after language switch
-        boolean isOffline = ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false);
-        if (isOffline) {
-            importDataButton.setText(LocalizationManager.tr(BUTTON_IMPORT)); // e.g., "Import register"
+        boolean isLocal = AppModeManager.isLocalMode();
+        if (isLocal) {
+            // Local mode: hide the update button entirely (no web sync available)
+            importDataButton.setVisible(false);
         } else {
-            // Online: show "Update from Web". If the key is ever missing, fall back gracefully.
+            // Online mode: show "Update from Web" button
+            importDataButton.setVisible(true);
             String online = LocalizationManager.tr("history.update_from_web");
             // Many LocalizationManager implementations return the key itself when missing.
             if (online == null || online.startsWith("history.")) {
                 online = LocalizationManager.tr(BUTTON_IMPORT); // fallback to a valid, localized label
             }
             importDataButton.setText(online);
+            // Visual: treat "Update from Web" as primary action
+            importDataButton.putClientProperty("JButton.buttonType", "default");
         }
-        // Visual: treat "Update from Web" as primary action
-        importDataButton.putClientProperty("JButton.buttonType", "default");
+        archiveFilteredButton.setVisible(isLocal);
 
         payoutButton.setText(LocalizationManager.tr(BUTTON_PAY_OUT));
+        payoutButton.setVisible(isLocal);
         toClipboardButton.setText(LocalizationManager.tr(BUTTON_COPY_TO_CLIPBOARD));
 
         // Summary labels
@@ -407,10 +509,15 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         if (items != null && !items.isEmpty()) {
             // Add data in batches to improve performance
             for (V1SoldItem item : items) {
+                // Format sold time using Swedish date formatter
+                LocalDateTime soldTime = item.getSoldTime();
+                String formattedTime = soldTime != null ? 
+                    SwedishDateFormatter.formatDateWithTime(soldTime) : "";
+                
                 model.addRow(new Object[]{
                         item.getSeller(),
                         item.getPrice() + " " + LocalizationManager.tr("currency.sek"),
-                        item.getSoldTime().toString(),
+                        formattedTime,
                         item.isCollectedBySeller() ? LocalizationManager.tr("common.yes") : LocalizationManager.tr("common.no"),
                         LocalizationManager.tr(item.getPaymentMethod() == V1PaymentMethod.Kontant ?
                                 "payment.cash" : "payment.swish")
@@ -428,6 +535,9 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         // Parse as double first to handle decimal numbers, then convert to int
         totalSum = (int) Double.parseDouble(sum);
         totalSumLabel.setText(LocalizationManager.tr("history.total_sum", totalSum));
+        
+        // Update seller summary if specific seller selected
+        updateSellerSummary();
     }
 
     @Override
@@ -435,6 +545,38 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         // Parse as double first to handle decimal numbers, then convert to int
         itemsCount = (int) Double.parseDouble(noItems);
         itemsCountLabel.setText(LocalizationManager.tr("history.items_count", itemsCount));
+        
+        // Update seller summary if specific seller selected
+        updateSellerSummary();
+    }
+
+    /**
+     * Update detailed seller summary panel and switch card layout based on filter selection.
+     */
+    private void updateSellerSummary() {
+        String sellerFilter = getSellerFilter();
+        
+        if (sellerFilter == null) {
+            // Show simple summary
+            summaryCardLayout.show(summaryCardPanel, "simple");
+            filteredSeller = null;
+        } else {
+            // Show detailed seller summary
+            try {
+                filteredSeller = Integer.parseInt(sellerFilter);
+                
+                // Update labels (per-seller totals only; no provision calculation here)
+                sellerSummaryTitle.setText("Sammanfattning för säljare " + filteredSeller);
+                sellerItemsLabel.setText("Sålda varor: " + itemsCount);
+                sellerTotalLabel.setText("Totalt: " + totalSum + " kr");
+                
+                summaryCardLayout.show(summaryCardPanel, "seller");
+            } catch (NumberFormatException e) {
+                // Invalid seller number, show simple summary
+                summaryCardLayout.show(summaryCardPanel, "simple");
+                filteredSeller = null;
+            }
+        }
     }
 
     @Override
@@ -479,9 +621,15 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
         switch (buttonName) {
             case BUTTON_ERASE -> eraseAllDataButton.setEnabled(enable);
             case BUTTON_IMPORT -> importDataButton.setEnabled(enable);
-            case BUTTON_PAY_OUT -> payoutButton.setEnabled(enable);
+            case BUTTON_PAY_OUT -> {
+                payoutButton.setEnabled(enable);
+                payoutButton.setVisible(AppModeManager.isLocalMode());
+            }
             case BUTTON_COPY_TO_CLIPBOARD -> toClipboardButton.setEnabled(enable);
-            case BUTTON_ARCHIVE -> archiveFilteredButton.setEnabled(enable);
+            case BUTTON_ARCHIVE -> {
+                archiveFilteredButton.setEnabled(enable);
+                archiveFilteredButton.setVisible(AppModeManager.isLocalMode());
+            }
             default -> System.err.println("Unknown button name: " + buttonName);
         }
     }
@@ -489,6 +637,16 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
     @Override
     public void setImportButtonText(String text) {
         importDataButton.setText(text);
+    }
+
+    @Override
+    public void setImportButtonVisible(boolean visible) {
+        importDataButton.setVisible(visible);
+    }
+
+    @Override
+    public boolean isImportButtonVisible() {
+        return importDataButton.isVisible();
     }
 
     @Override
@@ -524,5 +682,23 @@ public class HistoryTabPanel extends JPanel implements HistoryPanelInterface, Lo
             searchField.setPreferredSize(filterFieldSize);
             searchField.setMinimumSize(filterFieldSize);
         }
+    }
+
+    @Override
+    public java.io.File[] selectFilesForImport(java.io.File initialDir) {
+        JFileChooser fileChooser = new JFileChooser(initialDir);
+        fileChooser.setDialogTitle(LocalizationManager.tr("history.open_other_register"));
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                LocalizationManager.tr("history.jsonl_files"), "jsonl"));
+        fileChooser.setMultiSelectionEnabled(true);
+
+        int result = fileChooser.showOpenDialog(this);
+        return result == JFileChooser.APPROVE_OPTION ? fileChooser.getSelectedFiles() : null;
+    }
+
+    @Override
+    public void copyToClipboard(String text) {
+        java.awt.datatransfer.Clipboard clipboard = java.awt.Toolkit.getDefaultToolkit().getSystemClipboard();
+        clipboard.setContents(new java.awt.datatransfer.StringSelection(text), null);
     }
 }

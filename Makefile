@@ -40,8 +40,44 @@ endif
 
 install-client: proxy
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
-	  -Dfile=lib/openapi-java-client-0.0.5.jar \
-	  -DpomFile=lib/openapi-java-client-0.0.5.pom
+	  -Dfile=lib/openapi-java-client-0.0.6.jar \
+	  -DpomFile=lib/openapi-java-client-0.0.6.pom
 
 build-codex: install-client ## Build for Codex (no jpackage)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package
+
+load-test: install-client ## Run manual load test (ENV=path/to/env)
+ifeq ($(strip $(ENV)),)
+	$(error ENV file path required, e.g. make load-test ENV=./load-test-local.env)
+endif
+	set -a; source $(ENV); set +a; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
+	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.LoadTestRunner \
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+
+setup-test: install-client ## Run market setup (creates market, event, vendors) (ENV=path/to/env)
+ifeq ($(strip $(ENV)),)
+	$(error ENV file path required, e.g. make setup-test ENV=./load-test-setup.env)
+endif
+	set -a; source $(ENV); set +a; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
+	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.SetupRunner \
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+
+## Network chaos testing
+toxiproxy-up: ## Start toxiproxy container
+	docker-compose -f docker-compose.toxiproxy.yml up -d
+	@sleep 2
+	@./scripts/toxiproxy-setup.sh
+
+toxiproxy-down: ## Stop toxiproxy container
+	docker-compose -f docker-compose.toxiproxy.yml down
+
+toxiproxy-scenario: ## Run network scenario (SCENARIO=slow-3g|unstable|high-latency|packet-loss|timeout|clear|list)
+ifeq ($(strip $(SCENARIO)),)
+	@./scripts/toxiproxy-scenarios.sh
+else
+	@./scripts/toxiproxy-scenarios.sh $(SCENARIO)
+endif

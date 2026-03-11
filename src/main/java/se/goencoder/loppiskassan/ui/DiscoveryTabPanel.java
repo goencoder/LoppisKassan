@@ -2,14 +2,13 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.iloppis.model.V1Event;
 import se.goencoder.iloppis.model.V1RevenueSplit;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.controller.DiscoveryControllerInterface;
 import se.goencoder.loppiskassan.controller.DiscoveryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
-import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -18,6 +17,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Discovery tab for <b>iLoppis</b> (online) mode.
+ * Shows only online events fetched from the iLoppis backend.
+ * No local events, no export/import — those live in {@link LocalDiscoveryTabPanel}.
+ */
 public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface, LocalizationAware {
 
     private final DiscoveryControllerInterface controller;
@@ -30,8 +34,11 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JLabel dateFromLabel;
     private JTextField dateFromField;
     private JButton discoverButton;
-    private JTable eventsTable;
-    private DefaultTableModel eventsTableModel;
+
+    // Online events table
+    private JTable onlineEventsTable;
+    private DefaultTableModel onlineEventsTableModel;
+
     private CardLayout detailCardLayout;
     private JPanel detailCardPanel;
     private JLabel noSelectionLabel;
@@ -41,18 +48,21 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JTextField marketOwnerSplitField;
     private JTextField vendorSplitField;
     private JTextField platformSplitField;
-    private JLabel cashierCodeLabel;
-    private JTextField cashierCodeField;
+    private JPanel credentialsPanel;
+    private JLabel credentialsLabel;
+    private JLabel credentialsStatusLabel;
+    private JButton forgetCashierCodeButton;
     private JButton getTokenButton;
 
-    private TitledBorder discoveryDetailsBorder;
-    private TitledBorder discoveryRevenueSplitBorder;
+    private JLabel discoveryDetailsHeaderLabel;
+    private JLabel discoveryRevenueSplitHeaderLabel;
     private JLabel discoveryEventNameStaticLabel;
     private JLabel discoveryEventDescStaticLabel;
     private JLabel discoveryEventAddressStaticLabel;
     private JLabel discoveryMarketOwnerStaticLabel;
     private JLabel discoveryVendorStaticLabel;
     private JLabel discoveryPlatformStaticLabel;
+    private boolean cachedCredentials = false;
 
     // Components for active event mode
     private JLabel activeEventNameLabel;
@@ -63,9 +73,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JLabel vendorSplitLabel;
     private JLabel platformSplitLabel;
 
-    private TitledBorder selectedEventBorder;
-    private TitledBorder detailsBorder;
-    private TitledBorder revenueSplitBorder;
+    private JLabel selectedEventHeaderLabel;
+    private JLabel detailsHeaderLabel;
+    private JLabel revenueSplitHeaderLabel;
     private JLabel eventNameStaticLabel;
     private JLabel eventDescStaticLabel;
     private JLabel eventAddressStaticLabel;
@@ -77,114 +87,103 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         controller = DiscoveryTabController.getInstance();
         controller.registerView(this);
 
-        // Set up the main layout and root card panel
         setLayout(new BorderLayout());
         rootCardLayout = new CardLayout();
         rootCardPanel = new JPanel(rootCardLayout);
         add(rootCardPanel, BorderLayout.CENTER);
 
-        // Initialize the two main panels
         JPanel discoveryModePanel = buildDiscoveryModePanel();
         JPanel activeEventPanel = buildActiveEventPanel();
 
         rootCardPanel.add(discoveryModePanel, "discoveryMode");
         rootCardPanel.add(activeEventPanel, "activeEvent");
 
-        // Load initial state based on stored configuration
         initializeState();
-
         reloadTexts();
     }
 
-    /**
-     * Initializes the UI state by checking for a saved event ID in the configuration.
-     * If no event ID is saved, defaults to discovery mode.
-     */
     private void initializeState() {
-        String savedEventId = ConfigurationStore.EVENT_ID_STR.get();
+        String savedEventId = AppModeManager.getEventId();
         if (savedEventId == null || savedEventId.isEmpty()) {
             rootCardLayout.show(rootCardPanel, "discoveryMode");
         }
         controller.initUIState();
     }
 
-    /**
-     * Builds the panel for "discovery mode," where users can browse and select events.
-     */
+    // ── Discovery mode panel ──
+
     private JPanel buildDiscoveryModePanel() {
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(AppColors.WHITE);
 
-        // Top panel with date from field and discovery button
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        // Header: date picker + fetch button
+        JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        headerPanel.setBackground(AppColors.WHITE);
         dateFromLabel = new JLabel();
-        topPanel.add(dateFromLabel);
+        headerPanel.add(dateFromLabel);
         dateFromField = new JTextField(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), 10);
-        topPanel.add(dateFromField);
-
+        headerPanel.add(dateFromField);
         discoverButton = new JButton();
-        topPanel.add(discoverButton);
-        panel.add(topPanel, BorderLayout.NORTH);
+        AppButton.applyStyle(discoverButton, AppButton.Variant.SECONDARY, AppButton.Size.MEDIUM);
+        headerPanel.add(discoverButton);
+        panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Split pane with event table on top and detail card below
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        splitPane.setResizeWeight(0.5);
+        // Online events table
+        onlineEventsTable = createOnlineEventsTable();
+        JScrollPane scrollPane = new JScrollPane(onlineEventsTable);
+        scrollPane.setPreferredSize(new Dimension(600, 200));
+        scrollPane.getViewport().setBackground(AppColors.WHITE);
 
-        eventsTable = createEventsTable();
-        splitPane.setTopComponent(new JScrollPane(eventsTable));
-
+        // Detail card below table
         detailCardPanel = createDetailCardPanel();
-        splitPane.setBottomComponent(detailCardPanel);
-
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, scrollPane, detailCardPanel);
+        splitPane.setResizeWeight(0.45);
         panel.add(splitPane, BorderLayout.CENTER);
 
-        // Bottom panel with open register button
+        // Bottom: Open Register button
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottomPanel.setBackground(AppColors.WHITE);
         getTokenButton = new JButton();
+        AppButton.applyStyle(getTokenButton, AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         bottomPanel.add(getTokenButton);
         panel.add(bottomPanel, BorderLayout.SOUTH);
 
-        // V1Event listeners for buttons
+        // Listeners
         discoverButton.addActionListener(e -> controller.discoverEvents(dateFromField.getText().trim()));
         getTokenButton.addActionListener(e -> {
-            int rowIndex = getSelectedTableRow();
-            String eventId = getEventIdForRow(rowIndex);
-            String cashierCode = getCashierCode();
-            if (eventId == null || eventId.isEmpty()) {
-                controller.openRegister(eventId, cashierCode);
-                return;
-            }
-            boolean isOffline = "offline".equalsIgnoreCase(eventId);
-            if (!isOffline && cashierCode.isEmpty()) {
-                Popup.ERROR.showAndWait(
-                        LocalizationManager.tr("error.title"),
-                        LocalizationManager.tr("error.cashier_code_required"));
-                return;
-            }
-            controller.openRegister(eventId, cashierCode);
+            int rowIndex = onlineEventsTable.getSelectedRow();
+            String eventId = rowIndex >= 0
+                    ? (String) onlineEventsTableModel.getValueAt(rowIndex, 0) : null;
+            controller.openRegister(eventId);
         });
 
         return panel;
     }
 
-    /**
-     * Creates the JTable for displaying events and sets up its selection listener.
-     */
-    private JTable createEventsTable() {
-        eventsTableModel = new DefaultTableModel(new Object[][]{}, new String[]{"", "", "", "", ""}) {
+    private JTable createOnlineEventsTable() {
+        String[] columnNames = {
+            LocalizationManager.tr("discovery.table.id_hidden"),
+            LocalizationManager.tr("discovery.table.event"),
+            LocalizationManager.tr("discovery.table.city"),
+            LocalizationManager.tr("discovery.table.opens"),
+            LocalizationManager.tr("discovery.table.closes")
+        };
+
+        onlineEventsTableModel = new DefaultTableModel(new Object[][]{}, columnNames) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        JTable table = new JTable(eventsTableModel);
-        table.removeColumn(table.getColumnModel().getColumn(0)); // Hide the ID column
+        JTable table = new JTable(onlineEventsTableModel);
+        table.removeColumn(table.getColumnModel().getColumn(0)); // Hide ID column
 
-        // Selection listener to update the detail view when an event is selected
         table.getSelectionModel().addListSelectionListener((ListSelectionEvent e) -> {
             if (!e.getValueIsAdjusting()) {
-                int rowIndex = getSelectedTableRow();
+                int rowIndex = table.getSelectedRow();
                 if (rowIndex >= 0) {
-                    controller.eventSelected(getEventIdForRow(rowIndex));
+                    String eventId = (String) onlineEventsTableModel.getValueAt(rowIndex, 0);
+                    controller.eventSelected(eventId);
                 }
             }
         });
@@ -192,12 +191,12 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         return table;
     }
 
-    /**
-     * Creates the detail card panel with two cards: "no selection" and the event detail form.
-     */
+    // ── Detail card ──
+
     private JPanel createDetailCardPanel() {
         detailCardLayout = new CardLayout();
         JPanel panel = new JPanel(detailCardLayout);
+        panel.setBackground(AppColors.WHITE);
 
         noSelectionLabel = new JLabel("", SwingConstants.CENTER);
         panel.add(noSelectionLabel, "noSelection");
@@ -208,67 +207,64 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         return panel;
     }
 
-    /**
-     * Builds the form for displaying and editing event details in discovery mode.
-     */
     private JPanel buildDiscoveryDetailForm() {
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(AppColors.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5,5);
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
 
-        // V1Event details (left)
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 0.5;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.6; gbc.weighty = 1.0;
         panel.add(buildEventDetailsPanel(), gbc);
 
-        // Revenue split details (right)
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 0.4;
         panel.add(buildRevenueSplitPanel(), gbc);
 
-        // Cashier code input (bottom)
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.gridwidth = 2;
-        gbc.weightx = 1.0;
-        panel.add(buildCashierCodePanel(), gbc);
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 2; gbc.weightx = 1.0;
+        gbc.weighty = 0; gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(buildCredentialsPanel(), gbc);
 
         return panel;
     }
 
     private JPanel buildEventDetailsPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        TitledBorder detailsBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(detailsBorder);
-        this.discoveryDetailsBorder = detailsBorder;
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
+        discoveryDetailsHeaderLabel = new JLabel();
         GridBagConstraints gbc = createDefaultGbc();
 
-        // Name field
-        gbc.gridx = 0;
-        gbc.gridy = 0;
+        Color fieldBg = AppColors.FIELD_BG;
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
         discoveryEventNameStaticLabel = new JLabel();
         panel.add(discoveryEventNameStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         eventNameField = new JTextField(20);
+        eventNameField.setEditable(false);
+        eventNameField.setBackground(fieldBg);
         panel.add(eventNameField, gbc);
 
-        // Description field
-        gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
         discoveryEventDescStaticLabel = new JLabel();
         panel.add(discoveryEventDescStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         eventDescriptionField = new JTextArea(3, 20);
-        panel.add(new JScrollPane(eventDescriptionField), gbc);
+        eventDescriptionField.setEditable(false);
+        eventDescriptionField.setBackground(fieldBg);
+        JScrollPane descScroll = new JScrollPane(eventDescriptionField);
+        descScroll.getViewport().setBackground(fieldBg);
+        panel.add(descScroll, gbc);
 
-        // Address field
-        gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
         discoveryEventAddressStaticLabel = new JLabel();
         panel.add(discoveryEventAddressStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         eventAddressField = new JTextField(20);
+        eventAddressField.setEditable(false);
+        eventAddressField.setBackground(fieldBg);
         panel.add(eventAddressField, gbc);
 
         return panel;
@@ -276,162 +272,235 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     private JPanel buildRevenueSplitPanel() {
         JPanel panel = new JPanel(new GridBagLayout());
-        TitledBorder revenueBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(revenueBorder);
-        this.discoveryRevenueSplitBorder = revenueBorder;
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+        discoveryRevenueSplitHeaderLabel = new JLabel();
         GridBagConstraints gbc = createDefaultGbc();
 
-        // V1Market Owner Split
-        gbc.gridx = 0;
-        gbc.gridy = 0;
+        Color fieldBg = AppColors.FIELD_BG;
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
         discoveryMarketOwnerStaticLabel = new JLabel();
         panel.add(discoveryMarketOwnerStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         marketOwnerSplitField = new JTextField(5);
-        TextFilters.install(marketOwnerSplitField, new TextFilters.DigitsOnlyFilter(3));
+        marketOwnerSplitField.setEditable(false);
+        marketOwnerSplitField.setBackground(fieldBg);
         panel.add(marketOwnerSplitField, gbc);
 
-        // V1Vendor Split
-        gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
         discoveryVendorStaticLabel = new JLabel();
         panel.add(discoveryVendorStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         vendorSplitField = new JTextField(5);
-        TextFilters.install(vendorSplitField, new TextFilters.DigitsOnlyFilter(3));
+        vendorSplitField.setEditable(false);
+        vendorSplitField.setBackground(fieldBg);
         panel.add(vendorSplitField, gbc);
 
-        // Platform Split
-        gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
         discoveryPlatformStaticLabel = new JLabel();
         panel.add(discoveryPlatformStaticLabel, gbc);
-        gbc.gridx = 1;
+        gbc.gridx = 1; gbc.weightx = 1.0;
         platformSplitField = new JTextField(5);
-        TextFilters.install(platformSplitField, new TextFilters.DigitsOnlyFilter(3));
+        platformSplitField.setEditable(false);
+        platformSplitField.setBackground(fieldBg);
         panel.add(platformSplitField, gbc);
 
         return panel;
     }
 
-    private JPanel buildCashierCodePanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        cashierCodeLabel = new JLabel();
-        cashierCodeField = new JTextField(8);
-        // Accept codes like "B6I-DKU": A–Z, 0–9 and '-' (auto uppercased), length capped generously
-        TextFilters.install(cashierCodeField, new TextFilters.AlnumDashUpperFilter(16));
-        panel.add(cashierCodeLabel);
-        panel.add(cashierCodeField);
+    private JPanel buildCredentialsPanel() {
+        JPanel panel = new JPanel(new BorderLayout(12, 0));
+        panel.setBackground(AppColors.FIELD_BG);
+        panel.setBorder(new RoundedBorder(AppColors.BORDER, 1, 8, new Insets(8, 12, 8, 12)));
+
+        JPanel left = new JPanel();
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        left.setOpaque(false);
+
+        credentialsLabel = new JLabel();
+        credentialsLabel.setFont(credentialsLabel.getFont().deriveFont(Font.BOLD, 12f));
+        credentialsLabel.setForeground(AppColors.TEXT_SECONDARY);
+
+        credentialsStatusLabel = new JLabel();
+        credentialsStatusLabel.setFont(credentialsStatusLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        credentialsStatusLabel.setForeground(AppColors.TEXT_MUTED);
+
+        left.add(credentialsLabel);
+        left.add(Box.createVerticalStrut(2));
+        left.add(credentialsStatusLabel);
+
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        right.setOpaque(false);
+        forgetCashierCodeButton = new JButton();
+        AppButton.applyStyle(forgetCashierCodeButton, AppButton.Variant.GHOST, AppButton.Size.SMALL);
+        forgetCashierCodeButton.setVisible(false);
+        forgetCashierCodeButton.addActionListener(e -> {
+            int rowIndex = onlineEventsTable.getSelectedRow();
+            String eventId = rowIndex >= 0
+                    ? (String) onlineEventsTableModel.getValueAt(rowIndex, 0) : null;
+            controller.forgetCashierCode(eventId);
+        });
+        right.add(forgetCashierCodeButton);
+
+        panel.add(left, BorderLayout.CENTER);
+        panel.add(right, BorderLayout.EAST);
+        credentialsPanel = panel;
         return panel;
     }
 
-    /**
-     * Builds the panel for "active event" mode, which displays read-only event details.
-     */
+    // ── Active event panel ──
+
     private JPanel buildActiveEventPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        selectedEventBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(selectedEventBorder);
+        JPanel outerPanel = new JPanel(new GridBagLayout());
+        outerPanel.setBackground(AppColors.WHITE);
 
-        GridBagConstraints gbc = createDefaultGbc();
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(40, 60, 40, 60));
 
-        // V1Event Details Section
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        panel.add(createEventDetailsPanel(), gbc);
+        selectedEventHeaderLabel = new JLabel();
+        selectedEventHeaderLabel.setFont(selectedEventHeaderLabel.getFont().deriveFont(Font.BOLD, 20f));
+        selectedEventHeaderLabel.setForeground(AppColors.TEXT_PRIMARY);
+        selectedEventHeaderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(selectedEventHeaderLabel);
+        panel.add(Box.createVerticalStrut(32));
 
-        // Revenue Split Section
-        gbc.gridy = 1;
-        panel.add(createRevenueSplitPanel(), gbc);
+        JPanel detailsSection = createEventDetailsPanel();
+        detailsSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(detailsSection);
+        panel.add(Box.createVerticalStrut(28));
 
-        // Change V1Event Button
-        gbc.gridy = 2;
-        panel.add(createChangeEventButton(), gbc);
+        JPanel splitSection = createRevenueSplitPanel();
+        splitSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(splitSection);
+        panel.add(Box.createVerticalStrut(32));
 
-        return panel;
+        JPanel buttonsSection = createChangeEventButton();
+        buttonsSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(buttonsSection);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.CENTER;
+        outerPanel.add(panel, gbc);
+
+        return outerPanel;
     }
 
     private JPanel createEventDetailsPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        TitledBorder detailsBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(detailsBorder);
-        this.detailsBorder = detailsBorder;
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(AppColors.WHITE);
+
+        detailsHeaderLabel = new JLabel();
+        detailsHeaderLabel.setFont(detailsHeaderLabel.getFont().deriveFont(Font.BOLD, 14f));
+        detailsHeaderLabel.setForeground(AppColors.TEXT_SECONDARY);
+        detailsHeaderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(detailsHeaderLabel);
+        panel.add(Box.createVerticalStrut(4));
+
+        JSeparator sep = new JSeparator();
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        sep.setForeground(AppColors.BORDER);
+        panel.add(sep);
+        panel.add(Box.createVerticalStrut(12));
+
+        JPanel fieldsPanel = new JPanel(new GridBagLayout());
+        fieldsPanel.setBackground(AppColors.WHITE);
+        fieldsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         GridBagConstraints gbc = createDefaultGbc();
 
-        // V1Event Name
-        gbc.gridx = 0;
-        gbc.gridy = 0;
+        gbc.gridx = 0; gbc.gridy = 0;
         eventNameStaticLabel = new JLabel();
-        panel.add(eventNameStaticLabel, gbc);
+        eventNameStaticLabel.setFont(eventNameStaticLabel.getFont().deriveFont(Font.BOLD));
+        fieldsPanel.add(eventNameStaticLabel, gbc);
         gbc.gridx = 1;
-        activeEventNameLabel = new JLabel("???");
-        panel.add(activeEventNameLabel, gbc);
+        activeEventNameLabel = new JLabel();
+        fieldsPanel.add(activeEventNameLabel, gbc);
 
-        // V1Event Description
-        gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridx = 0; gbc.gridy = 1;
         eventDescStaticLabel = new JLabel();
-        panel.add(eventDescStaticLabel, gbc);
+        eventDescStaticLabel.setFont(eventDescStaticLabel.getFont().deriveFont(Font.BOLD));
+        fieldsPanel.add(eventDescStaticLabel, gbc);
         gbc.gridx = 1;
-        activeEventDescLabel = new JLabel("???");
-        panel.add(activeEventDescLabel, gbc);
+        activeEventDescLabel = new JLabel();
+        fieldsPanel.add(activeEventDescLabel, gbc);
 
-        // V1Event Address
-        gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 2;
         eventAddressStaticLabel = new JLabel();
-        panel.add(eventAddressStaticLabel, gbc);
+        eventAddressStaticLabel.setFont(eventAddressStaticLabel.getFont().deriveFont(Font.BOLD));
+        fieldsPanel.add(eventAddressStaticLabel, gbc);
         gbc.gridx = 1;
-        activeEventAddressLabel = new JLabel("???");
-        panel.add(activeEventAddressLabel, gbc);
+        activeEventAddressLabel = new JLabel();
+        fieldsPanel.add(activeEventAddressLabel, gbc);
 
+        panel.add(fieldsPanel);
         return panel;
     }
 
     private JPanel createRevenueSplitPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        TitledBorder revenueBorder = BorderFactory.createTitledBorder("");
-        panel.setBorder(revenueBorder);
-        this.revenueSplitBorder = revenueBorder;
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(AppColors.WHITE);
+
+        revenueSplitHeaderLabel = new JLabel();
+        revenueSplitHeaderLabel.setFont(revenueSplitHeaderLabel.getFont().deriveFont(Font.BOLD, 14f));
+        revenueSplitHeaderLabel.setForeground(AppColors.TEXT_SECONDARY);
+        revenueSplitHeaderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(revenueSplitHeaderLabel);
+        panel.add(Box.createVerticalStrut(4));
+
+        JSeparator sep = new JSeparator();
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        sep.setForeground(AppColors.BORDER);
+        panel.add(sep);
+        panel.add(Box.createVerticalStrut(12));
+
+        JPanel fieldsPanel = new JPanel(new GridBagLayout());
+        fieldsPanel.setBackground(AppColors.WHITE);
+        fieldsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         GridBagConstraints gbc = createDefaultGbc();
 
-        // V1Market Owner Split
-        gbc.gridx = 0;
-        gbc.gridy = 0;
+        gbc.gridx = 0; gbc.gridy = 0;
         marketOwnerStaticLabel = new JLabel();
-        panel.add(marketOwnerStaticLabel, gbc);
+        marketOwnerStaticLabel.setFont(marketOwnerStaticLabel.getFont().deriveFont(Font.BOLD));
+        fieldsPanel.add(marketOwnerStaticLabel, gbc);
         gbc.gridx = 1;
-        marketOwnerSplitLabel = new JLabel("???");
-        panel.add(marketOwnerSplitLabel, gbc);
+        marketOwnerSplitLabel = new JLabel();
+        fieldsPanel.add(marketOwnerSplitLabel, gbc);
 
-        // V1Vendor Split
-        gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridx = 0; gbc.gridy = 1;
         vendorStaticLabel = new JLabel();
-        panel.add(vendorStaticLabel, gbc);
+        vendorStaticLabel.setFont(vendorStaticLabel.getFont().deriveFont(Font.BOLD));
+        fieldsPanel.add(vendorStaticLabel, gbc);
         gbc.gridx = 1;
-        vendorSplitLabel = new JLabel("???");
-        panel.add(vendorSplitLabel, gbc);
+        vendorSplitLabel = new JLabel();
+        fieldsPanel.add(vendorSplitLabel, gbc);
 
-        // Platform Split
-        gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridx = 0; gbc.gridy = 2;
         platformStaticLabel = new JLabel();
-        panel.add(platformStaticLabel, gbc);
+        platformStaticLabel.setFont(platformStaticLabel.getFont().deriveFont(Font.BOLD));
+        fieldsPanel.add(platformStaticLabel, gbc);
         gbc.gridx = 1;
-        platformSplitLabel = new JLabel("???");
-        panel.add(platformSplitLabel, gbc);
+        platformSplitLabel = new JLabel();
+        fieldsPanel.add(platformSplitLabel, gbc);
 
+        panel.add(fieldsPanel);
         return panel;
     }
 
     private JPanel createChangeEventButton() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 100));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        panel.setBackground(AppColors.WHITE);
         changeEventButton = new JButton();
+        AppButton.applyStyle(changeEventButton, AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         changeEventButton.addActionListener(e -> controller.changeEventRequested());
         panel.add(changeEventButton);
         return panel;
     }
+
+    // ── Helpers ──
 
     private GridBagConstraints createDefaultGbc() {
         GridBagConstraints gbc = new GridBagConstraints();
@@ -440,58 +509,35 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         return gbc;
     }
 
-    private void setEventTexts(TitledBorder detailsBorder, TitledBorder revenueBorder,
-                               JLabel nameLabel, JLabel descLabel, JLabel addressLabel,
-                               JLabel marketOwnerLabel, JLabel vendorLabel, JLabel platformLabel) {
-        detailsBorder.setTitle(LocalizationManager.tr("event.details.title"));
-        revenueBorder.setTitle(LocalizationManager.tr("revenue_split.title"));
-        nameLabel.setText(LocalizationManager.tr("event.name"));
-        descLabel.setText(LocalizationManager.tr("event.description"));
-        addressLabel.setText(LocalizationManager.tr("event.address"));
-        marketOwnerLabel.setText(LocalizationManager.tr("revenue_split.market_owner"));
-        vendorLabel.setText(LocalizationManager.tr("revenue_split.vendor"));
-        platformLabel.setText(LocalizationManager.tr("revenue_split.platform"));
+    private void setEventTexts(JLabel dHeader, JLabel rHeader,
+                               JLabel name, JLabel desc, JLabel addr,
+                               JLabel mOwner, JLabel vendor, JLabel platform) {
+        dHeader.setText(LocalizationManager.tr("event.details.title"));
+        rHeader.setText(LocalizationManager.tr("revenue_split.title"));
+        name.setText(LocalizationManager.tr("event.name"));
+        desc.setText(LocalizationManager.tr("event.description"));
+        addr.setText(LocalizationManager.tr("event.address"));
+        mOwner.setText(LocalizationManager.tr("revenue_split.market_owner"));
+        vendor.setText(LocalizationManager.tr("revenue_split.vendor"));
+        platform.setText(LocalizationManager.tr("revenue_split.platform"));
     }
 
-    // --------------------------------------------------------------------
-    // Implementation of DiscoveryPanelInterface
-    // (some existing methods remain the same as your original code)
-    // --------------------------------------------------------------------
+    // ── DiscoveryPanelInterface ──
 
-    @Override
-    public void showDetailForm(boolean show) {
-        if (show) {
-            detailCardLayout.show(detailCardPanel, "detailForm");
-        } else {
-            detailCardLayout.show(detailCardPanel, "noSelection");
-        }
-    }
-
-
-    private void showCashierCode(boolean show) {
-        cashierCodeLabel.setVisible(show);
-        cashierCodeField.setVisible(show);
-    }
-
-    private DefaultTableModel getEventsTableModel() {
-        return eventsTableModel;
-    }
-
-    // Called once an event is selected
     @Override
     public void clearEventsTable() {
-        DefaultTableModel model = getEventsTableModel();
-        model.setRowCount(0);
-        // Also revert to "noSelection" in the detail area
+        onlineEventsTableModel.setRowCount(0);
         detailCardLayout.show(detailCardPanel, "noSelection");
     }
 
     @Override
     public void populateEventsTable(List<V1Event> events) {
-        DefaultTableModel model = getEventsTableModel();
-        model.setRowCount(0); // Clear first
+        onlineEventsTableModel.setRowCount(0);
         for (V1Event ev : events) {
-            model.addRow(new Object[]{
+            // Skip local events — those belong in LocalDiscoveryTabPanel
+            if (ev.getId() != null && ev.getId().startsWith("local-")) continue;
+
+            onlineEventsTableModel.addRow(new Object[]{
                     ev.getId(),
                     ev.getName(),
                     (ev.getAddressCity() == null ? "" : ev.getAddressCity()),
@@ -501,41 +547,36 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         }
     }
 
-
-    private int getSelectedTableRow() {
-        return eventsTable.getSelectedRow();
-    }
-
-
-    private String getEventIdForRow(int rowIndex) {
-        if (rowIndex < 0) return null;
-        DefaultTableModel model = getEventsTableModel();
-        return (String) model.getValueAt(rowIndex, 0);
-    }
-
-
-    private String getCashierCode() {
-        return cashierCodeField.getText().trim();
+    @Override
+    public void selectEventById(String eventId) {
+        if (eventId == null || eventId.isBlank()) return;
+        for (int i = 0; i < onlineEventsTableModel.getRowCount(); i++) {
+            if (eventId.equals(onlineEventsTableModel.getValueAt(i, 0))) {
+                onlineEventsTable.setRowSelectionInterval(i, i);
+                onlineEventsTable.scrollRectToVisible(onlineEventsTable.getCellRect(i, 0, true));
+                return;
+            }
+        }
     }
 
     @Override
-    public void setEventName(String name) {
-        eventNameField.setText(name);
+    public void showDetailForm(boolean show) {
+        detailCardLayout.show(detailCardPanel, show ? "detailForm" : "noSelection");
     }
 
-    @Override
-    public void setEventDescription(String description) {
-        eventDescriptionField.setText(description != null ? description : "");
-    }
+    @Override public void setEventName(String name) { eventNameField.setText(name); }
+    @Override public void setEventDescription(String desc) { eventDescriptionField.setText(desc != null ? desc : ""); }
+    @Override public void setEventAddress(String addr) { eventAddressField.setText(addr); }
 
     @Override
-    public void setEventAddress(String address) {
-        eventAddressField.setText(address);
-    }
-
-    @Override
-    public void setOfflineMode(boolean offline) {
-        showCashierCode(!offline);
+    public void setLocalMode(boolean local) {
+        // In iLoppis mode the fields are always read-only; credentials panel is online-only
+        if (credentialsPanel != null) {
+            credentialsPanel.setVisible(!local);
+        }
+        eventNameField.setEditable(false);
+        eventDescriptionField.setEditable(false);
+        eventAddressField.setEditable(false);
     }
 
     @Override
@@ -552,50 +593,56 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         platformSplitField.setText(String.format(Locale.US, "%.0f", platform));
     }
 
+    @Override public void setCashierButtonEnabled(boolean enabled) { getTokenButton.setEnabled(enabled); }
 
-    @Override
-    public void setCashierButtonEnabled(boolean enabled) {
-        getTokenButton.setEnabled(enabled);
-    }
-
-    @Override
-    public void clearCashierCodeField() {
-        cashierCodeField.setText("******");
-    }
-
-    // The new methods for toggling between discovery vs. active event
     @Override
     public void setRegisterOpened(boolean opened) {
-        if (opened) {
-            rootCardLayout.show(rootCardPanel, "activeEvent");
-        } else {
-            rootCardLayout.show(rootCardPanel, "discoveryMode");
-        }
+        rootCardLayout.show(rootCardPanel, opened ? "activeEvent" : "discoveryMode");
     }
 
     @Override
     public void showActiveEventInfo(V1Event event, V1RevenueSplit split) {
-        // Update V1Event Details
+        if (event == null) return;
         activeEventNameLabel.setText(event.getName());
         activeEventDescLabel.setText(event.getDescription());
         activeEventAddressLabel.setText(event.getAddressStreet() + ", " + event.getAddressCity());
-        marketOwnerSplitLabel.setText(String.format(Locale.US, "%.0f", split.getMarketOwnerPercentage()));
-        vendorSplitLabel.setText(String.format(Locale.US, "%.0f", split.getVendorPercentage()));
-        platformSplitLabel.setText(String.format(Locale.US, "%.0f", split.getPlatformProviderPercentage()));
-        // Switch to Active V1Event Panel
+
+        float market = 0f;
+        float vendor = 0f;
+        float platform = 0f;
+        if (split != null) {
+            market = split.getMarketOwnerPercentage() == null ? 0f : split.getMarketOwnerPercentage();
+            vendor = split.getVendorPercentage() == null ? 0f : split.getVendorPercentage();
+            platform = split.getPlatformProviderPercentage() == null ? 0f : split.getPlatformProviderPercentage();
+        }
+
+        marketOwnerSplitLabel.setText(String.format(Locale.US, "%.0f", market));
+        vendorSplitLabel.setText(String.format(Locale.US, "%.0f", vendor));
+        platformSplitLabel.setText(String.format(Locale.US, "%.0f", platform));
+
         rootCardLayout.show(rootCardPanel, "activeEvent");
     }
 
     @Override
-    public void setChangeEventButtonVisible(boolean visible) {
-        changeEventButton.setVisible(visible);
-    }
-
+    public void setChangeEventButtonVisible(boolean visible) { changeEventButton.setVisible(visible); }
 
     @Override
-    public void selected() {
-        controller.initUIState();
+    public void setCachedCredentialsStatus(boolean cached) {
+        cachedCredentials = cached;
+        if (credentialsStatusLabel == null) {
+            return;
+        }
+        credentialsStatusLabel.setText(cached
+                ? LocalizationManager.tr("cashier_code.status.saved")
+                : LocalizationManager.tr("cashier_code.status.missing"));
+        credentialsStatusLabel.setForeground(cached ? AppColors.SUCCESS : AppColors.TEXT_MUTED);
+        if (forgetCashierCodeButton != null) {
+            forgetCashierCodeButton.setVisible(cached);
+        }
     }
+
+    @Override
+    public void selected() { controller.initUIState(); }
 
     @Override
     public void addNotify() {
@@ -611,50 +658,66 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
     @Override
     public void reloadTexts() {
-        // Discovery mode top panel
         dateFromLabel.setText(LocalizationManager.tr("discovery.date_from"));
         discoverButton.setText(LocalizationManager.tr("discovery.fetch_events"));
         getTokenButton.setText(LocalizationManager.tr("discovery.open_register"));
 
-        // Table headers
-        eventsTableModel.setColumnIdentifiers(new String[]{
+        // Online table headers
+        onlineEventsTableModel.setColumnIdentifiers(new String[]{
                 LocalizationManager.tr("discovery.table.id_hidden"),
                 LocalizationManager.tr("discovery.table.event"),
                 LocalizationManager.tr("discovery.table.city"),
                 LocalizationManager.tr("discovery.table.opens"),
                 LocalizationManager.tr("discovery.table.closes")
         });
-        eventsTable.removeColumn(eventsTable.getColumnModel().getColumn(0));
+        onlineEventsTable.removeColumn(onlineEventsTable.getColumnModel().getColumn(0));
 
-        // No selection label
         noSelectionLabel.setText(LocalizationManager.tr("discovery.no_selection"));
 
         // Discovery detail form
-        setEventTexts(discoveryDetailsBorder, discoveryRevenueSplitBorder,
+        setEventTexts(discoveryDetailsHeaderLabel, discoveryRevenueSplitHeaderLabel,
                 discoveryEventNameStaticLabel, discoveryEventDescStaticLabel,
                 discoveryEventAddressStaticLabel, discoveryMarketOwnerStaticLabel,
                 discoveryVendorStaticLabel, discoveryPlatformStaticLabel);
 
+        if (credentialsLabel != null) {
+            credentialsLabel.setText(LocalizationManager.tr("cashier_code.label"));
+        }
+        if (forgetCashierCodeButton != null) {
+            forgetCashierCodeButton.setText(LocalizationManager.tr("cashier_code.forget"));
+        }
+        setCachedCredentialsStatus(cachedCredentials);
+
         // Active event panel
-        selectedEventBorder.setTitle(LocalizationManager.tr("discovery.selected_event.title"));
-        setEventTexts(detailsBorder, revenueSplitBorder,
+        selectedEventHeaderLabel.setText(LocalizationManager.tr("discovery.selected_event.title"));
+        setEventTexts(detailsHeaderLabel, revenueSplitHeaderLabel,
                 eventNameStaticLabel, eventDescStaticLabel, eventAddressStaticLabel,
                 marketOwnerStaticLabel, vendorStaticLabel, platformStaticLabel);
 
-        cashierCodeLabel.setText(LocalizationManager.tr("cashier.code"));
         changeEventButton.setText(LocalizationManager.tr("button.change_event"));
-
-        // Offline event refresh
-        if (ConfigurationStore.OFFLINE_EVENT_BOOL.getBooleanValueOrDefault(false)) {
-            activeEventNameLabel.setText(LocalizationManager.tr("event.offline.name"));
-            activeEventDescLabel.setText(LocalizationManager.tr("event.offline.description"));
-            activeEventAddressLabel.setText(
-                    LocalizationManager.tr("event.no_street") + ", " +
-                            LocalizationManager.tr("event.no_city"));
-        }
 
         revalidate();
         repaint();
+    }
+
+    @Override
+    public se.goencoder.loppiskassan.model.BulkUploadResult showBulkUploadDialog(se.goencoder.loppiskassan.storage.LocalEvent localEvent) {
+        // Find the Frame parent for the dialog
+        Frame parentFrame = null;
+        for (Frame frame : Frame.getFrames()) {
+            if (frame.isDisplayable() && frame.getName().equals("MainFrame")) {
+                parentFrame = frame;
+                break;
+            }
+        }
+        if (parentFrame == null && Frame.getFrames().length > 0) {
+            parentFrame = Frame.getFrames()[0];
+        }
+
+        // Show upload dialog
+        se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog dialog = 
+            new se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog(parentFrame, localEvent);
+        return dialog.showDialog();
     }
 
 }

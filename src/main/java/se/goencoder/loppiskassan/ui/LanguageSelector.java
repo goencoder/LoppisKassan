@@ -44,6 +44,9 @@ public final class LanguageSelector extends JPanel {
         trigger.setMargin(UiKnobs.LANG_BUTTON_MARGIN);
         trigger.setFont(UiKnobs.LANG_FONT);
         trigger.setHorizontalAlignment(SwingConstants.LEFT);
+        trigger.setBorder(new RoundedBorder(AppColors.BORDER, 1, 6, UiKnobs.LANG_BUTTON_MARGIN));
+        trigger.setBackground(AppColors.WHITE);
+        trigger.setOpaque(true);
 
         // Slightly rounded button on most LAFs
         Dimension pref = new Dimension(UiKnobs.LANG_BUTTON_MIN_W, UiKnobs.LANG_BUTTON_HEIGHT);

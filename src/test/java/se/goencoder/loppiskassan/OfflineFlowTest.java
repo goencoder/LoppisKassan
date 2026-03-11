@@ -1,12 +1,15 @@
 package se.goencoder.loppiskassan;
 
 import org.junit.jupiter.api.Test;
-import se.goencoder.loppiskassan.config.ConfigurationStore;
+import se.goencoder.loppiskassan.config.AppMode;
+import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.LocalConfigurationStore;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
-import se.goencoder.loppiskassan.records.FileHelper;
-import se.goencoder.loppiskassan.records.FormatHelper;
+import se.goencoder.loppiskassan.storage.JsonlHelper;
+import se.goencoder.loppiskassan.storage.LocalEventPaths;
+import se.goencoder.loppiskassan.storage.LocalEventRepository;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
@@ -32,6 +35,7 @@ public class OfflineFlowTest {
         @Override public void setChange(int amount) {}
         @Override public Map<Integer, Integer[]> getAndClearSellerPrices() { return Map.of(); }
         @Override public void clearView() {}
+        @Override public void showCheckoutSuccess(V1PaymentMethod paymentMethod, int totalAmount) {}
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
     }
@@ -48,18 +52,24 @@ public class OfflineFlowTest {
         @Override public String getPaidFilter() { return paidFilter; }
         @Override public void updateSellerDropdown(Set<String> sellers) {}
         @Override public void enableButton(String buttonName, boolean enable) {}
+        boolean importButtonVisible = true;
         @Override public void setImportButtonText(String text) {}
+        @Override public void setImportButtonVisible(boolean visible) { importButtonVisible = visible; }
+        @Override public boolean isImportButtonVisible() { return importButtonVisible; }
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
+        @Override public java.io.File[] selectFilesForImport(java.io.File initialDir) { return null; }
+        @Override public void copyToClipboard(String text) {}
     }
 
     @Test
-    void offlineCheckoutAndPayoutFlow() throws Exception {
+    void localCheckoutAndPayoutFlow() throws Exception {
         Path tempDir = Files.createTempDirectory("loppiskassan-test");
-        System.setProperty("user.dir", tempDir.toString());
+        System.setProperty("user.home", tempDir.toString());
 
-        FileHelper.createDirectories();
-        ConfigurationStore.OFFLINE_EVENT_BOOL.setBooleanValue(true);
+        LocalEventRepository.ensureEventStorage("local-test");
+        AppModeManager.setMode(AppMode.LOCAL);
+        LocalConfigurationStore.setEventId("local-test");
         LocalizationManager.initialize();
 
         DummyCashierPanel cashierView = new DummyCashierPanel();
@@ -74,8 +84,7 @@ public class OfflineFlowTest {
             cashier.checkout(pm);
         }
 
-        String csv = FileHelper.readFromFile(FileHelper.LOPPISKASSAN_CSV);
-        List<V1SoldItem> items = FormatHelper.toItems(csv, true);
+        List<V1SoldItem> items = JsonlHelper.readItems(LocalEventPaths.getPendingItemsPath("local-test"));
         assertEquals(100, items.size());
 
         HistoryTabController history = HistoryTabController.getInstance();
@@ -93,8 +102,7 @@ public class OfflineFlowTest {
         historyView.paidFilter = "false";
         history.buttonAction(BUTTON_PAY_OUT);
 
-        String csvAfter = FileHelper.readFromFile(FileHelper.LOPPISKASSAN_CSV);
-        List<V1SoldItem> updated = FormatHelper.toItems(csvAfter, true);
+        List<V1SoldItem> updated = JsonlHelper.readItems(LocalEventPaths.getPendingItemsPath("local-test"));
 
         long seller1SwishPaid = updated.stream()
                 .filter(i -> i.getSeller() == 1 && i.getPaymentMethod() == V1PaymentMethod.Swish && i.isCollectedBySeller())
@@ -112,5 +120,35 @@ public class OfflineFlowTest {
                 .filter(i -> i.getSeller() != 1 && i.getSeller() != 2 && i.isCollectedBySeller())
                 .count();
         assertEquals(0, otherPaid);
+    }
+
+    @Test
+    void importButtonIsHiddenForLocalEvents() throws Exception {
+        Path tempDir = Files.createTempDirectory("loppiskassan-test-btn");
+        System.setProperty("user.home", tempDir.toString());
+
+        LocalEventRepository.ensureEventStorage("local-test");
+        AppModeManager.setMode(AppMode.LOCAL);
+        LocalConfigurationStore.setEventId("local-test");
+        LocalizationManager.initialize();
+
+        DummyHistoryPanel historyView = new DummyHistoryPanel();
+        // Button starts visible by default
+        assertEquals(true, historyView.isImportButtonVisible(),
+                "Import button should start visible before controller initializes");
+
+        HistoryTabController history = HistoryTabController.getInstance();
+        history.registerView(historyView);
+        history.loadHistory();
+
+        // After controller init in local mode, button must be hidden
+        assertEquals(false, historyView.isImportButtonVisible(),
+                "Import/update button must be hidden for local events");
+
+        // Also verify it stays hidden after filter changes
+        historyView.sellerFilter = "1";
+        history.filterUpdated();
+        assertEquals(false, historyView.isImportButtonVisible(),
+                "Import/update button must stay hidden after filter change in local mode");
     }
 }

@@ -8,7 +8,7 @@ import se.goencoder.loppiskassan.ui.HistoryPanelInterface;
  * Mode behavior:
  * <ul>
  *   <li><b>Online:</b> may load/refresh from the backend and support server-side filtering.</li>
- *   <li><b>Offline:</b> loads from local session data or cached storage only.</li>
+ *   <li><b>Local:</b> loads from local session data or cached storage only.</li>
  * </ul>
  */
 public interface HistoryControllerInterface {
@@ -21,7 +21,7 @@ public interface HistoryControllerInterface {
 
     /**
      * Load or refresh the current history data set, obeying active filters.
-     * Online mode may call the backend; offline mode should read local data.
+     * Online mode may call the backend; local mode should read local data.
      */
     void loadHistory();
 
