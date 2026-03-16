@@ -36,12 +36,18 @@ else
 	@echo "Skipping proxy configuration for local environment"
 endif
 
+help: ## Show this help message
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+ci: build-codex ## Run CI pipeline (build + test + verify)
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) test
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) verify
 
 install-client: proxy
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
-	  -Dfile=lib/openapi-java-client-0.0.6.jar \
-	  -DpomFile=lib/openapi-java-client-0.0.6.pom
+	  -Dfile=lib/openapi-java-client-0.0.7.jar \
+	  -DpomFile=lib/openapi-java-client-0.0.7.pom
 
 build-codex: install-client ## Build for Codex (no jpackage)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package

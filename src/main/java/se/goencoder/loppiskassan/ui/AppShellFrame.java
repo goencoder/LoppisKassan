@@ -121,8 +121,12 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         // Kassavy
         cashierView = new CashierTabPanel(CashierTabController.getInstance());
         
-        // Historikvy
-        historyView = new HistoryTabPanel();
+        // Historikvy / Live stats
+        if (AppModeManager.isLocalMode()) {
+            historyView = new HistoryTabPanel();
+        } else {
+            historyView = new LiveStatsPanel();
+        }
         
         // Export/Import-vy (endast lokal kassa)
         if (AppModeManager.isLocalMode()) {
@@ -139,6 +143,15 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
      * Navigerar till angiven vy.
      */
     void navigateTo(NavigationTarget target) {
+        if (currentView == cashierView) {
+            if (CashierTabController.getInstance() instanceof CashierTabController tabController) {
+                tabController.onCashierViewHidden();
+            }
+        }
+        if (currentView instanceof LiveStatsPanel liveStats) {
+            liveStats.deselected();
+        }
+
         // Validera att evenemang är valt (utom för discovery)
         if (target != NavigationTarget.DISCOVERY && AppModeManager.getEventId() == null) {
             Popup.ERROR.showAndWait(

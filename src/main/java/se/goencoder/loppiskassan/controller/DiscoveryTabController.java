@@ -123,18 +123,23 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 request.setPagination(pagination);
 
                 V1FilterEventsResponse response = eventApi.eventServiceFilterEvents(request);
-                List<V1Event> discovered = response.getEvents();
-                newEventList.addAll(Objects.requireNonNull(discovered));
                 
-                // Refresh existing caches with fresh data
-                se.goencoder.loppiskassan.storage.OnlineEventCache.refreshCaches(discovered);
+                if (response != null) {
+                    List<V1Event> discovered = response.getEvents();
+                    if (discovered != null && !discovered.isEmpty()) {
+                        newEventList.addAll(discovered);
+                        se.goencoder.loppiskassan.storage.OnlineEventCache.refreshCaches(discovered);
+                    }
+                }
                 
             } catch (ApiException ex) {
+                log.warning("API error fetching events: " + ex.getMessage());
                 // API error despite connectivity check - fall back to cache
                 loadCachedOnlineEvents(newEventList);
                 state.setOfflineMode(true);
                 // Don't show error dialog - just silently use cache
             } catch (Exception ex) {
+                log.severe("Unexpected exception in loadAllEvents: " + ex.getMessage());
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
             }
         } else {
@@ -276,7 +281,17 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
         state.setSelectedEvent(selectedEvent);
 
         view.setEventName(selectedEvent.getName());
-        view.setEventDescription(selectedEvent.getDescription());
+        boolean isMd = Boolean.TRUE.equals(selectedEvent.getDescriptionIsMarkdown());
+        view.setEventDescription(selectedEvent.getDescription(), isMd);
+
+        // Show event image if available
+        String imageUrl = null;
+        if (selectedEvent.getEventImage() != null
+                && Boolean.TRUE.equals(selectedEvent.getEventImage().getHasImage())) {
+            imageUrl = selectedEvent.getEventImage().getImageUrl();
+        }
+        view.setEventImage(imageUrl);
+
         String address = selectedEvent.getAddressStreet() + ", " + selectedEvent.getAddressCity();
         view.setEventAddress(address.replaceFirst("^,\\s*", ""));
 

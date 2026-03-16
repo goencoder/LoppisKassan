@@ -17,8 +17,9 @@
 - Always ask the user when information is missing or uncertain; never introduce defaults, fallbacks, or inferred values that could be wrong. If data is absent or unclear, fail fast and surface the ambiguity instead of guessing.
 
 ## Dependencies
-- Install local API client from `lib/openapi-java-client-0.0.4.jar` using the sidecar POM:
+- Install local API client from `lib/openapi-java-client-0.0.6.jar` using the sidecar POM:
   `make install-client`
+- **Version update:** Makefile declares `VERSION := 0.0.5` (line 10) but `install-client` target installs `0.0.6` (lines 43-44). The POM correctly references `0.0.6`. This is a known inconsistency—always use the version in `pom.xml` and `install-client` as source of truth.
 
 ## Architecture
 This is a Java Swing desktop application for managing a flea market cash register system.
@@ -71,11 +72,77 @@ This is a Java Swing desktop application for managing a flea market cash registe
   - Seller validation is enforced via API.
   - Sales upload to API (with local fallback on network errors).
   - Export/Import and Archive are hidden.
+  - **Offline resilience:** `OnlineEventCache` stores event metadata + API credentials for offline start; `BackgroundSyncManager` retries failed uploads every 30 seconds.
+
+## Network Resilience & Persistence
+- **Strategy:** Local-first with background upload. `IloppisCashierStrategy` calls `BackgroundSyncManager.enqueueItems()`, which writes items to `pending_items.jsonl` immediately (blocking on disk write), then triggers background upload worker.
+- **Background sync:** `BackgroundSyncManager` runs on a single-threaded executor. Sales are queued in-memory, flushed to disk via `flushQueueToDisk()`, then uploaded every 30 seconds (`SYNC_INTERVAL_MS`). On successful upload, items are marked `uploaded=true`.
+- **JSONL format:** Each line in `pending_items.jsonl` is a JSON object (via `JsonlHelper`). Fields: `itemId`, `purchaseId`, `seller`, `price`, `paymentMethod`, `soldTime`, `paidOutTime`, `uploaded`. Items with `uploaded=false` are retried on next sync cycle.
+- **Duplicate prevention:** Client generates ULIDs for `itemId` and `purchaseId`; backend deduplicates via unique index on `(event_id, item_id)`, returning `DUPLICATE_RECEIPT` error code for idempotent retries.
+- **Rejected items:** API rejections (e.g., `INVALID_SELLER`) are logged to `rejected_items.jsonl` via `RejectedItemsHelper` and can be edited/retried via UI dialogs (`RejectedItemEditDialog`).
+- **Connectivity checks:** `ConnectivityChecker` probes API health with lightweight requests; status reflected in UI via `AppShellStatusbar`.
+- **Single-writer guarantee:** All file I/O and API uploads run on the sync thread to prevent race conditions. The UI never writes to `pending_items.jsonl` directly.
+- **Chaos testing:** Use `make toxiproxy-up` and `make toxiproxy-scenario SCENARIO=<name>` (e.g., `slow-3g`, `unstable`, `timeout`) to simulate network conditions. See `docs/technical/NETWORK_CHAOS.md` and `docs/technical/PERSISTENCE_STRATEGY_COMPARISON.md` for details.
+
+## API Client & Authentication (CRITICAL)
+
+### Architecture: OkHttp Interceptor Pattern
+Authentication is handled **implicitly** via an OkHttp `Interceptor` — **no code should manually set Authorization headers**.
+
+- **`AuthInterceptor`** (package-private, `rest/AuthInterceptor.java`): Reads `ApiHelper.INSTANCE.getCurrentApiKey()` at request time and injects `Authorization: Bearer <key>`. Skips if key is null/blank or if the request already has an Authorization header.
+- **`FixedApiClient`** adds `AuthInterceptor` (and `HttpLoggingInterceptor`) to the shared OkHttpClient chain in its constructor.
+- **`ApiHelper`** holds the single source of truth: `volatile String currentApiKey`. Simple `setCurrentApiKey()` / `clearCurrentApiKey()` / `getCurrentApiKey()` — no header manipulation at all.
+
+### Flow
+1. User enters cashier code → `AuthErrorHandler` calls `ApiHelper.INSTANCE.setCurrentApiKey(key)`.
+2. Any subsequent API call (service API or raw OkHttp) → `AuthInterceptor` reads the volatile field and injects the header.
+3. On 401 → `AuthErrorHandler` calls `clearCurrentApiKey()`, prompts re-auth, then `setCurrentApiKey(newKey)`.
+
+### Rules
+- **All API calls in production code MUST use `ApiHelper.INSTANCE`** — never create standalone `FixedApiClient` or `ApiClient` instances.
+- **Never manually set `Authorization` headers** — the interceptor handles this.
+- `ILoppisConfigurationStore.getApiKey()` is only for **persistence** (disk cache). Never read it as the source of truth for the current API key at call time.
+- For raw OkHttp requests (e.g., heartbeats), use `ApiHelper.INSTANCE.getHttpClient()` and `ApiHelper.INSTANCE.getBasePath()` — the shared client already has the interceptor installed.
+
+### Available Service APIs
+Obtain API instances via `ApiHelper.INSTANCE`:
+- `getSoldItemsServiceApi()` — sales CRUD
+- `getApiKeyServiceApi()` — code exchange
+- `getEventServiceApi()` — event metadata
+- `getVendorServiceApi()` — vendor lookup
+- `getApprovedMarketServiceApi()` — market data
+- `getStatsServiceApi()` — live stats
+
+### Exception: Test Tooling
+`LoadTestRunner` and `SetupRunner` (under `src/test/`) create their own clients — this is acceptable since they run standalone with explicit credentials.
+
+```java
+// ✅ CORRECT — use service API (auth injected automatically)
+StatsServiceApi stats = ApiHelper.INSTANCE.getStatsServiceApi();
+stats.statsServiceGetEventLiveOpsStats(eventId);
+
+// ✅ CORRECT — raw OkHttp with shared client (interceptor injects auth)
+OkHttpClient client = ApiHelper.INSTANCE.getHttpClient();
+Request request = new Request.Builder().url(ApiHelper.INSTANCE.getBasePath() + "/v1/...").build();
+client.newCall(request).execute();
+
+// ❌ WRONG — manually setting auth header (interceptor already does this)
+request.addHeader("Authorization", "Bearer " + apiKey);
+
+// ❌ WRONG — standalone client bypasses interceptor and loses auth after re-auth
+FixedApiClient client = new FixedApiClient();
+client.addDefaultHeader("Authorization", "Bearer " + ILoppisConfigurationStore.getApiKey());
+```
 
 ## Configuration
-- Persist UI language and other settings using `ConfigurationStore`.
-- Use: `ConfigurationStore.UI_LANGUAGE_STR.getOrDefault("sv")` as the single source of truth.
-- Always update both memory and `config.properties` on change.
+- **Three-tier configuration system:**
+  - `GlobalConfigurationStore`: Application-wide settings (UI language, window size) persisted across mode switches. Stored in `~/.loppiskassan/config/global.json`.
+  - `LocalConfigurationStore`: Local mode settings (event ID). Stored in `~/.loppiskassan/config/local-mode.json`.
+  - `ILoppisConfigurationStore`: iLoppis mode settings (event ID, API key, API base URL, cached sellers/revenue split). Stored in `~/.loppiskassan/config/iloppis-mode.json`.
+- **Usage:** `AppModeManager.getEventId()` / `setEventId()` delegates to the correct store based on current mode.
+- Use: `GlobalConfigurationStore.getLanguage()` as the single source of truth for UI language (defaults to `"sv"`).
+- Always update both memory and disk on change via store's `set*()` methods.
+- **API URL selection (staging vs production):** `ILoppisConfigurationStore.getApiBaseUrl()` checks (in order): 1) `ILOPPIS_API_URL` env var, 2) `apiBaseUrl` field in `iloppis-mode.json`, 3) defaults to `https://iloppis-staging.fly.dev`. Set env var for quick switching: `ILOPPIS_API_URL=https://iloppis.fly.dev java -jar ...`
 
 ## Internationalization
 

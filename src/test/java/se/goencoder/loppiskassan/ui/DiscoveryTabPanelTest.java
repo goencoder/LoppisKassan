@@ -4,12 +4,15 @@ import org.junit.jupiter.api.Test;
 import se.goencoder.iloppis.model.V1Event;
 import se.goencoder.iloppis.model.V1RevenueSplit;
 
+import javax.swing.JComponent;
+import javax.swing.JEditorPane;
 import javax.swing.SwingUtilities;
 import javax.swing.JLabel;
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DiscoveryTabPanelTest {
 
@@ -27,7 +30,7 @@ class DiscoveryTabPanelTest {
         SwingUtilities.invokeAndWait(() -> panel.showActiveEventInfo(event, null));
 
         assertEquals("Testevent", labelText(panel, "activeEventNameLabel"));
-        assertEquals("Desc", labelText(panel, "activeEventDescLabel"));
+        assertTrue(editorPaneText(panel, "activeEventDescPane").contains("Desc"));
         assertEquals("Street 1, City", labelText(panel, "activeEventAddressLabel"));
         assertEquals("0", labelText(panel, "marketOwnerSplitLabel"));
         assertEquals("0", labelText(panel, "vendorSplitLabel"));
@@ -67,5 +70,12 @@ class DiscoveryTabPanelTest {
         field.setAccessible(true);
         JLabel label = (JLabel) field.get(panel);
         return label.getText();
+    }
+
+    private String editorPaneText(DiscoveryTabPanel panel, String fieldName) throws Exception {
+        Field field = DiscoveryTabPanel.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        JEditorPane pane = (JEditorPane) field.get(panel);
+        return pane.getText();
     }
 }

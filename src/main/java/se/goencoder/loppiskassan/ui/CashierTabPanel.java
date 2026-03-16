@@ -441,11 +441,17 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     @Override
     public void selected() {
         // Called when tab becomes active - focus seller field
+        if (controller instanceof se.goencoder.loppiskassan.controller.CashierTabController tabController) {
+            tabController.onCashierViewSelected();
+        }
         SwingUtilities.invokeLater(this::setFocusToSellerField);
     }
 
     @Override
     public void removeNotify() {
+        if (controller instanceof se.goencoder.loppiskassan.controller.CashierTabController tabController) {
+            tabController.onCashierViewHidden();
+        }
         LocalizationManager.removeListener(this::reloadTexts);
         super.removeNotify();
     }

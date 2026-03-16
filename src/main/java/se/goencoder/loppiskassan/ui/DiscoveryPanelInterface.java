@@ -38,6 +38,23 @@ public interface DiscoveryPanelInterface extends SelectabableTab {
     void setEventDescription(String description);
 
     /**
+     * Set the selected event description with markdown awareness.
+     * @param description   the description text (markdown or plain)
+     * @param isMarkdown    whether the description is markdown
+     */
+    default void setEventDescription(String description, boolean isMarkdown) {
+        setEventDescription(description);
+    }
+
+    /**
+     * Set the event image URL to display. Implementations load and display the image asynchronously.
+     * @param imageUrl  the URL of the event image, or {@code null} to hide
+     */
+    default void setEventImage(String imageUrl) {
+        // no-op by default (local events have no image)
+    }
+
+    /**
      * Set the selected event address (single-line display string).
      * @param address formatted address
      */

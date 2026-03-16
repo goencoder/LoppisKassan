@@ -78,4 +78,17 @@ public final class AppColors {
 
     /** Preview background. */
     public static final Color PREVIEW_BG = new Color(0xF5F5F5);
+
+    // ── Cashier State (Live Stats) ──
+    /** Cashier open — active and ready. */
+    public static final Color STATE_OPEN = new Color(0x2E7D32);
+    public static final Color STATE_OPEN_BG = new Color(0xE8F5E9);
+
+    /** Cashier processing — handling a sale. */
+    public static final Color STATE_PROCESSING = new Color(0xF57F17);
+    public static final Color STATE_PROCESSING_BG = new Color(0xFFF8E1);
+
+    /** Cashier stalled — no activity for a while. */
+    public static final Color STATE_STALLED = new Color(0xE65100);
+    public static final Color STATE_STALLED_BG = new Color(0xFBE9E7);
 }

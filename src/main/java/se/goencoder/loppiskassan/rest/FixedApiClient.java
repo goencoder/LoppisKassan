@@ -1,5 +1,6 @@
 package se.goencoder.loppiskassan.rest;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.logging.Logger;
 import okhttp3.MediaType;
@@ -8,12 +9,16 @@ import okhttp3.RequestBody;
 import okhttp3.logging.HttpLoggingInterceptor;
 import se.goencoder.iloppis.invoker.ApiClient;
 import se.goencoder.iloppis.invoker.ApiException;
-import java.nio.charset.StandardCharsets;
 
 /**
  * A fixed version of ApiClient that properly handles serialization with content types.
  * This overrides the problematic serialize() method that was causing the
  * "Content type null is not supported" error in iloppis-client 0.0.4.
+ *
+ * Authentication is handled implicitly via an OkHttp interceptor that reads
+ * the current API key from {@link ApiHelper#getCurrentApiKey()} at request time.
+ * This means all requests through the shared client automatically use the latest
+ * API key without any header manipulation.
  */
 public class FixedApiClient extends ApiClient {
 
@@ -22,14 +27,15 @@ public class FixedApiClient extends ApiClient {
 
     public FixedApiClient() {
         super();
-        // Add HTTP logging interceptor (BASIC level to avoid logging sensitive payloads)
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(message -> 
-            log.info("[HTTP] " + message)
+
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(message ->
+                log.info("[HTTP] " + message)
         );
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
         
         OkHttpClient client = getHttpClient().newBuilder()
             .addInterceptor(loggingInterceptor)
+            .addInterceptor(new AuthInterceptor())
             .build();
         setHttpClient(client);
     }
@@ -40,19 +46,13 @@ public class FixedApiClient extends ApiClient {
      */
     @Override
     public RequestBody serialize(Object obj, String contentType) throws ApiException {
-        // If contentType is null or empty, use application/json
         if (contentType == null || contentType.isEmpty()) {
             contentType = "application/json";
         }
 
         try {
-            // Serialize the object to JSON using the same JSON serializer as the parent
             String json = getJSON().serialize(obj);
-            
-            // DEBUG: Log the serialized JSON
             log.info("[API-REQ-BODY] " + json);
-
-            // Create the RequestBody with the correct parameter order for OkHttp 3.x
             MediaType mediaType = MediaType.get(contentType);
             return RequestBody.create(mediaType, json.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
@@ -66,24 +66,10 @@ public class FixedApiClient extends ApiClient {
     @Override
     public String selectHeaderContentType(String[] contentTypes) {
         String selectedContentType = super.selectHeaderContentType(contentTypes);
-        // If nothing was selected, default to application/json
         if (selectedContentType == null || selectedContentType.isEmpty()) {
             return "application/json";
         }
         return selectedContentType;
-    }
-
-    /**
-     * Helper method to directly create a JSON request body
-     */
-    public RequestBody createJsonRequestBody(Object obj) throws ApiException {
-        try {
-            String json = getJSON().serialize(obj);
-            return RequestBody.create(JSON_MEDIA_TYPE, json.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            // Using more meaningful error code (500) and empty map instead of null for headers
-            throw new ApiException("Failed to serialize object to JSON: " + e.getMessage(), e, 500, Collections.emptyMap());
-        }
     }
 
     @Override
