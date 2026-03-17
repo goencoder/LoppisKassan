@@ -36,7 +36,8 @@ public class SoldItemUtils {
         V1PaymentMethod paymentMethod = switch (apiSoldItem.getPaymentMethod()) {
             case se.goencoder.iloppis.model.V1PaymentMethod.KONTANT -> V1PaymentMethod.Kontant;
             case se.goencoder.iloppis.model.V1PaymentMethod.SWISH -> V1PaymentMethod.Swish;
-            case se.goencoder.iloppis.model.V1PaymentMethod.PAYMENT_METHOD_UNSPECIFIED -> V1PaymentMethod.Kontant;
+            case se.goencoder.iloppis.model.V1PaymentMethod.PAYMENT_METHOD_UNSPECIFIED ->
+                    throw new IllegalArgumentException("Unsupported payment method: " + apiSoldItem.getPaymentMethod());
         };
         LocalDateTime collectedTime = null;
         if (apiSoldItem.getCollectedTime() != null) {

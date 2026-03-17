@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 /**
  * Proactive connectivity check for iLoppis backend.
  * Uses the shared ApiHelper OkHttpClient (with short timeouts) to verify reachability.
+ * Any HTTP response, including non-2xx responses, counts as reachable.
  */
 public class ConnectivityChecker {
 
@@ -21,7 +22,8 @@ public class ConnectivityChecker {
 
     /**
      * Check if the backend is reachable.
-     * Makes a lightweight HEAD request and treats any HTTP response as reachability.
+     * Makes a lightweight HEAD request and treats any HTTP response as reachability,
+     * including 404/405 responses from servers that do not support HEAD on the base path.
      * Uses the shared ApiHelper client (with tighter timeouts for health checks).
      *
      * @return true if server responds within timeout

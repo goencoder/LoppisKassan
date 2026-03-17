@@ -30,11 +30,7 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     private static final NumberFormat SEK_FORMAT = NumberFormat.getIntegerInstance(new Locale("sv", "SE"));
     private final LocalizationManager.LanguageChangeListener languageChangeListener = this::reloadTexts;
 
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "live-stats-poller");
-        t.setDaemon(true);
-        return t;
-    });
+    private ScheduledExecutorService scheduler;
     private ScheduledFuture<?> pollFuture;
 
     // KPI value labels
@@ -163,6 +159,7 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
 
     private void startPolling() {
         stopPolling();
+        ensureScheduler();
         // Fetch immediately, then every 10s
         pollFuture = scheduler.scheduleAtFixedRate(this::fetchAndUpdate, 0, POLL_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
@@ -172,6 +169,25 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
             pollFuture.cancel(false);
             pollFuture = null;
         }
+    }
+
+    private void ensureScheduler() {
+        if (scheduler != null && !scheduler.isShutdown()) {
+            return;
+        }
+        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "live-stats-poller");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    private void shutdownScheduler() {
+        if (scheduler == null) {
+            return;
+        }
+        scheduler.shutdownNow();
+        scheduler = null;
     }
 
     private void fetchAndUpdate() {
@@ -341,6 +357,7 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     public void removeNotify() {
         LocalizationManager.removeListener(languageChangeListener);
         stopPolling();
+        shutdownScheduler();
         super.removeNotify();
     }
 }

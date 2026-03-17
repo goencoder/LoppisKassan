@@ -19,6 +19,7 @@ import java.awt.*;
  */
 public class AppShellFrame extends JFrame implements LocalizationAware {
     
+    private final LocalizationManager.LanguageChangeListener languageChangeListener = this::reloadTexts;
     private final AppShellTopbar topbar;
     private final AppShellSidebar sidebar;
     private final AppShellStatusbar statusbar;
@@ -78,7 +79,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
         
         // Registrera för språkändringar
-        LocalizationManager.addListener(this::reloadTexts);
+        LocalizationManager.addListener(languageChangeListener);
         
         setTitle(LocalizationManager.tr("frame.title"));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -143,12 +144,6 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
      * Navigerar till angiven vy.
      */
     void navigateTo(NavigationTarget target) {
-        if (currentView == cashierView) {
-            var cashierController = CashierTabController.getInstance();
-            if (cashierController instanceof CashierTabController tabController) {
-                tabController.onCashierViewHidden();
-            }
-        }
         if (currentView instanceof LiveStatsPanel liveStats) {
             liveStats.deselected();
         }
@@ -253,7 +248,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     
     @Override
     public void removeNotify() {
-        LocalizationManager.removeListener(this::reloadTexts);
+        LocalizationManager.removeListener(languageChangeListener);
         super.removeNotify();
     }
     
