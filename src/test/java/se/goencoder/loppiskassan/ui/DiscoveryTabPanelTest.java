@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import se.goencoder.iloppis.model.V1Event;
 import se.goencoder.iloppis.model.V1RevenueSplit;
 
-import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.SwingUtilities;
 import javax.swing.JLabel;

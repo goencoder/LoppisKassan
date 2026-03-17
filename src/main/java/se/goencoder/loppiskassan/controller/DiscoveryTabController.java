@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static se.goencoder.loppiskassan.config.GlobalConfigurationStore.*;
@@ -133,13 +134,13 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
                 }
                 
             } catch (ApiException ex) {
-                log.warning("API error fetching events: " + ex.getMessage());
+                log.log(Level.WARNING, "API error fetching events", ex);
                 // API error despite connectivity check - fall back to cache
                 loadCachedOnlineEvents(newEventList);
                 state.setOfflineMode(true);
                 // Don't show error dialog - just silently use cache
             } catch (Exception ex) {
-                log.severe("Unexpected exception in loadAllEvents: " + ex.getMessage());
+                log.log(Level.SEVERE, "Unexpected exception in loadAllEvents", ex);
                 Popup.ERROR.showAndWait(LocalizationManager.tr("error.generic.title"), ex.getMessage());
             }
         } else {
