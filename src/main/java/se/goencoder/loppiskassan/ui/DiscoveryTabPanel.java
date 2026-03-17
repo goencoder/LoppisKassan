@@ -36,6 +36,7 @@ import java.util.logging.Logger;
  * No local events, no export/import — those live in {@link LocalDiscoveryTabPanel}.
  */
 public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface, LocalizationAware {
+    private static final Logger LOGGER = Logger.getLogger(DiscoveryTabPanel.class.getName());
     private static final int IMAGE_CONNECT_TIMEOUT_MS = 5000;
     private static final int IMAGE_READ_TIMEOUT_MS = 5000;
     private static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -834,8 +835,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
                     Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
                     return new ImageIcon(scaled);
                 } catch (Exception e) {
-                    Logger.getLogger(DiscoveryTabPanel.class.getName())
-                            .log(Level.WARNING, "Failed to load event image: " + e.getMessage());
+                    LOGGER.log(Level.WARNING, "Failed to load event image", e);
                     return null;
                 }
             }
