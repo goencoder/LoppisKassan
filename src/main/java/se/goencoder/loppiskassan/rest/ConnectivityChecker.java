@@ -42,9 +42,9 @@ public class ConnectivityChecker {
                     .build();
 
             try (Response response = client.newCall(request).execute()) {
-                boolean online = response.isSuccessful();
-                lastKnownOnline = online;
-                return online;
+                // Any HTTP response (even 404/405) means the server is reachable
+                lastKnownOnline = true;
+                return true;
             }
 
         } catch (Exception e) {

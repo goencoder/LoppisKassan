@@ -257,6 +257,7 @@ public class CashierTabController implements CashierControllerInterface {
         items.clear();
         view.clearView();
         state.reset();  // Reset state to initial values
+        heartbeatPendingPurchasesCount = 0;
 
         String eventId = AppModeManager.getEventId();
         // 4) Ensure background sync is running (non-local mode)

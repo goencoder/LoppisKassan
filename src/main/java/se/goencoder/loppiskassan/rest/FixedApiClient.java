@@ -52,7 +52,6 @@ public class FixedApiClient extends ApiClient {
 
         try {
             String json = getJSON().serialize(obj);
-            log.info("[API-REQ-BODY] " + json);
             MediaType mediaType = MediaType.get(contentType);
             return RequestBody.create(mediaType, json.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {

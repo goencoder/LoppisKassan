@@ -227,7 +227,7 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
         // Status line
         if (resp.getGeneratedAt() != null) {
             statusLabel.setText(LocalizationManager.tr("livestats.updated",
-                    resp.getGeneratedAt().toString().substring(11, 19)));
+                    resp.getGeneratedAt().toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))));
         }
     }
 
@@ -331,7 +331,14 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     }
 
     @Override
+    public void addNotify() {
+        super.addNotify();
+        LocalizationManager.addListener(this::reloadTexts);
+    }
+
+    @Override
     public void removeNotify() {
+        LocalizationManager.removeListener(this::reloadTexts);
         stopPolling();
         super.removeNotify();
     }

@@ -795,6 +795,20 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             target.setVisible(false);
             return;
         }
+        // Only allow http/https schemes to prevent file: reads and SSRF
+        try {
+            java.net.URI uri = new java.net.URI(imageUrl);
+            String scheme = uri.getScheme();
+            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                target.setIcon(null);
+                target.setVisible(false);
+                return;
+            }
+        } catch (Exception e) {
+            target.setIcon(null);
+            target.setVisible(false);
+            return;
+        }
         // Show a placeholder while loading
         target.setIcon(null);
         target.setVisible(false);

@@ -11,7 +11,9 @@ import org.commonmark.renderer.html.HtmlRenderer;
 public final class MarkdownRenderer {
 
     private static final Parser PARSER = Parser.builder().build();
-    private static final HtmlRenderer RENDERER = HtmlRenderer.builder().build();
+    private static final HtmlRenderer RENDERER = HtmlRenderer.builder()
+            .escapeHtml(true)
+            .build();
 
     private MarkdownRenderer() {}
 

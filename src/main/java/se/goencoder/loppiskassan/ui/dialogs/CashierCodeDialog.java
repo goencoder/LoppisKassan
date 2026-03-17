@@ -239,6 +239,10 @@ public class CashierCodeDialog extends JDialog {
             String clip = (String) Toolkit.getDefaultToolkit().getSystemClipboard()
                     .getData(DataFlavor.stringFlavor);
             if (clip == null) return;
+            // Clear all fields first to avoid stale characters from a previous longer code
+            for (int i = 0; i < TOTAL_CHARS; i++) {
+                charFields[i].setText("");
+            }
             // Strip dashes and spaces, uppercase
             String clean = clip.replaceAll("[\\s-]", "").toUpperCase();
             for (int i = 0; i < Math.min(clean.length(), TOTAL_CHARS); i++) {
