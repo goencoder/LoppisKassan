@@ -21,7 +21,7 @@ public class ConnectivityChecker {
 
     /**
      * Check if the backend is reachable.
-     * Makes a lightweight HEAD request and checks for a 2xx response.
+     * Makes a lightweight HEAD request and treats any HTTP response as reachability.
      * Uses the shared ApiHelper client (with tighter timeouts for health checks).
      *
      * @return true if server responds within timeout

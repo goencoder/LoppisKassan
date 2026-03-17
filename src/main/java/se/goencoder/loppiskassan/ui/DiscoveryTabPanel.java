@@ -13,7 +13,11 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.URL;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -28,6 +32,9 @@ import java.util.logging.Logger;
  * No local events, no export/import — those live in {@link LocalDiscoveryTabPanel}.
  */
 public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface, LocalizationAware {
+    private static final int IMAGE_CONNECT_TIMEOUT_MS = 5000;
+    private static final int IMAGE_READ_TIMEOUT_MS = 5000;
+    private static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
     private final DiscoveryControllerInterface controller;
 
@@ -795,11 +802,9 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             target.setVisible(false);
             return;
         }
-        // Only allow http/https schemes to prevent file: reads and SSRF
         try {
-            java.net.URI uri = new java.net.URI(imageUrl);
-            String scheme = uri.getScheme();
-            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+            URI uri = new URI(imageUrl);
+            if (!isSafeRemoteImageUri(uri)) {
                 target.setIcon(null);
                 target.setVisible(false);
                 return;
@@ -817,7 +822,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             @Override
             protected ImageIcon doInBackground() {
                 try {
-                    BufferedImage img = ImageIO.read(new URI(imageUrl).toURL());
+                    BufferedImage img = readRemoteImage(new URI(imageUrl));
                     if (img == null) return null;
                     int w = img.getWidth();
                     int h = img.getHeight();
@@ -851,6 +856,61 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
                 }
             }
         }.execute();
+    }
+
+    private static boolean isSafeRemoteImageUri(URI uri) {
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        if (scheme == null || host == null || host.isBlank()) {
+            return false;
+        }
+        if (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https")) {
+            return false;
+        }
+
+        try {
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            if (addresses.length == 0) {
+                return false;
+            }
+            for (InetAddress address : addresses) {
+                if (address.isAnyLocalAddress()
+                        || address.isLoopbackAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isSiteLocalAddress()
+                        || address.isMulticastAddress()) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static BufferedImage readRemoteImage(URI uri) throws Exception {
+        URL url = uri.toURL();
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setInstanceFollowRedirects(false);
+        connection.setConnectTimeout(IMAGE_CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(IMAGE_READ_TIMEOUT_MS);
+        connection.setRequestProperty("User-Agent", "LoppisKassan/2.0");
+
+        int status = connection.getResponseCode();
+        if (status < 200 || status >= 300) {
+            return null;
+        }
+
+        int contentLength = connection.getContentLength();
+        if (contentLength > MAX_IMAGE_BYTES) {
+            return null;
+        }
+
+        try (InputStream stream = connection.getInputStream()) {
+            return ImageIO.read(stream);
+        } finally {
+            connection.disconnect();
+        }
     }
 
 }

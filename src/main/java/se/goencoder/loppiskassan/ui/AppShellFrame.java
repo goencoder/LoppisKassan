@@ -144,7 +144,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
      */
     void navigateTo(NavigationTarget target) {
         if (currentView == cashierView) {
-            if (CashierTabController.getInstance() instanceof CashierTabController tabController) {
+            var cashierController = CashierTabController.getInstance();
+            if (cashierController instanceof CashierTabController tabController) {
                 tabController.onCashierViewHidden();
             }
         }

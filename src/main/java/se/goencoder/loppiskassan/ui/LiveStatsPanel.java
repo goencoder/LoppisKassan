@@ -28,6 +28,7 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     private static final Logger log = Logger.getLogger(LiveStatsPanel.class.getName());
     private static final long POLL_INTERVAL_MS = 10_000;
     private static final NumberFormat SEK_FORMAT = NumberFormat.getIntegerInstance(new Locale("sv", "SE"));
+    private final LocalizationManager.LanguageChangeListener languageChangeListener = this::reloadTexts;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "live-stats-poller");
@@ -333,12 +334,12 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     @Override
     public void addNotify() {
         super.addNotify();
-        LocalizationManager.addListener(this::reloadTexts);
+        LocalizationManager.addListener(languageChangeListener);
     }
 
     @Override
     public void removeNotify() {
-        LocalizationManager.removeListener(this::reloadTexts);
+        LocalizationManager.removeListener(languageChangeListener);
         stopPolling();
         super.removeNotify();
     }
