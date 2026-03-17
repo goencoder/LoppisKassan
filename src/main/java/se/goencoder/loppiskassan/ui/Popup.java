@@ -8,6 +8,7 @@ import java.io.StringWriter;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Logger;
+import java.awt.GraphicsEnvironment;
 import java.awt.Dimension;
 
 import org.json.JSONObject;
@@ -108,6 +109,14 @@ public enum Popup {
 
         final String msg = Objects.requireNonNullElse(message, "");
         final String det = details;
+        if (GraphicsEnvironment.isHeadless()) {
+            logMessage(title, msg);
+            if (this == FATAL) {
+                System.exit(-1);
+            }
+            return;
+        }
+
         EDT.run(() -> {
             if (det != null && !det.isBlank()) {
                 Object[] options = {LocalizationManager.tr("popup.ok"), LocalizationManager.tr("popup.details")};
@@ -127,6 +136,10 @@ public enum Popup {
             }
         });
 
+        logMessage(title, msg);
+    }
+
+    private void logMessage(String title, String msg) {
         if (this == INFORMATION) {
             logger.info(title + ": " + msg);
         } else if (this == ERROR) {
@@ -146,6 +159,10 @@ public enum Popup {
      * @return            true if the user clicks "Confirm", false otherwise.
      */
     public boolean showConfirmDialog(String title, String message) {
+        if (GraphicsEnvironment.isHeadless()) {
+            logger.warning(title + ": " + message + " [headless confirm defaulted to cancel]");
+            return false;
+        }
         // Customize button texts as needed
         Object[] options = {LocalizationManager.tr("popup.confirm"), LocalizationManager.tr("popup.cancel")};
         int result = JOptionPane.showOptionDialog(null, message, title,
