@@ -13,6 +13,9 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
@@ -22,6 +25,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import javax.imageio.ImageIO;
 import java.util.logging.Logger;
@@ -35,8 +39,10 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private static final int IMAGE_CONNECT_TIMEOUT_MS = 5000;
     private static final int IMAGE_READ_TIMEOUT_MS = 5000;
     private static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    private static final String IMAGE_REQUEST_ID_PROPERTY = "discovery.imageRequestId";
 
     private final DiscoveryControllerInterface controller;
+    private final AtomicLong imageRequestSequence = new AtomicLong();
 
     // CardLayout to switch between "discovery mode" and "active event" views.
     private final CardLayout rootCardLayout;
@@ -802,27 +808,22 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             target.setVisible(false);
             return;
         }
-        try {
-            URI uri = new URI(imageUrl);
-            if (!isSafeRemoteImageUri(uri)) {
-                target.setIcon(null);
-                target.setVisible(false);
-                return;
-            }
-        } catch (Exception e) {
-            target.setIcon(null);
-            target.setVisible(false);
-            return;
-        }
         // Show a placeholder while loading
         target.setIcon(null);
         target.setVisible(false);
+        long requestId = imageRequestSequence.incrementAndGet();
+        target.putClientProperty(IMAGE_REQUEST_ID_PROPERTY, requestId);
 
         new SwingWorker<ImageIcon, Void>() {
             @Override
             protected ImageIcon doInBackground() {
                 try {
-                    BufferedImage img = readRemoteImage(new URI(imageUrl));
+                    URI uri = new URI(imageUrl);
+                    if (!isSafeRemoteImageUri(uri)) {
+                        return null;
+                    }
+
+                    BufferedImage img = readRemoteImage(uri);
                     if (img == null) return null;
                     int w = img.getWidth();
                     int h = img.getHeight();
@@ -842,6 +843,11 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
             @Override
             protected void done() {
                 try {
+                    Object latestRequestId = target.getClientProperty(IMAGE_REQUEST_ID_PROPERTY);
+                    if (!(latestRequestId instanceof Long) || ((Long) latestRequestId) != requestId) {
+                        return;
+                    }
+
                     ImageIcon icon = get();
                     if (icon != null) {
                         target.setIcon(icon);
@@ -907,10 +913,33 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         }
 
         try (InputStream stream = connection.getInputStream()) {
-            return ImageIO.read(stream);
+            byte[] imageBytes = readBoundedBytes(stream, MAX_IMAGE_BYTES);
+            if (imageBytes == null) {
+                return null;
+            }
+            try (ByteArrayInputStream imageStream = new ByteArrayInputStream(imageBytes)) {
+                return ImageIO.read(imageStream);
+            }
         } finally {
             connection.disconnect();
         }
+    }
+
+    private static byte[] readBoundedBytes(InputStream stream, int maxBytes) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        int totalBytes = 0;
+        int read;
+
+        while ((read = stream.read(chunk)) != -1) {
+            totalBytes += read;
+            if (totalBytes > maxBytes) {
+                return null;
+            }
+            buffer.write(chunk, 0, read);
+        }
+
+        return buffer.toByteArray();
     }
 
 }
