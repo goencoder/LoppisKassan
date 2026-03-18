@@ -5,8 +5,12 @@ import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 
 
 /**
- * Hjälpklass för att hantera anrop till API:et.
- * Den har statista metoder för att hämta klienter och injicera autentisering.
+ * Singleton shared API client. All production code MUST use this for API calls.
+ *
+ * Authentication is handled implicitly: {@link AuthInterceptor} injects the
+ * Authorization header on every OkHttp request by reading {@link #getCurrentApiKey()}.
+ * Call {@link #setCurrentApiKey(String)} / {@link #clearCurrentApiKey()} to update
+ * credentials — all in-flight and future requests pick up the change immediately.
  */
 public enum ApiHelper {
     INSTANCE;
@@ -16,74 +20,94 @@ public enum ApiHelper {
     private final EventServiceApi eventServiceApi;
     private final VendorServiceApi vendorServiceApi;
     private final ApprovedMarketServiceApi approvedMarketServiceApi;
+    private final StatsServiceApi statsServiceApi;
+
+    /** Current API key — read by {@link AuthInterceptor} at request time. */
+    private volatile String currentApiKey;
 
     ApiHelper() {
-        // Use our fixed API client implementation
         this.apiClient = new FixedApiClient();
-        // Get base URL from configuration (supports env var ILOPPIS_API_URL)
         String baseUrl = ILoppisConfigurationStore.getApiBaseUrl();
         this.apiClient.setBasePath(baseUrl);
         this.apiClient.setUserAgent("LoppisKassan/2.0.0");
-        
-        // Configure timeouts: 5 seconds for sold items upload (responsive UX)
+
         this.apiClient.setConnectTimeout(5000);
         this.apiClient.setReadTimeout(5000);
         this.apiClient.setWriteTimeout(5000);
-        
-        // Configure the JSON serialization to use pretty printing
-        this.apiClient.getJSON().setGson(this.apiClient.getJSON().getGson().newBuilder().setPrettyPrinting().create());
 
-        if (ILoppisConfigurationStore.getApiKey() != null) {
-            setCurrentApiKey(ILoppisConfigurationStore.getApiKey());
-        }
+        this.apiClient.getJSON().setGson(
+                this.apiClient.getJSON().getGson().newBuilder().setPrettyPrinting().create());
 
-        // Create API instances with our fixed client
+        // Seed from persisted key (may be null if not remembered)
+        this.currentApiKey = ILoppisConfigurationStore.getApiKey();
+
         this.soldItemsServiceApi = new SoldItemsServiceApi(apiClient);
         this.apiKeyServiceApi = new ApiKeyServiceApi(apiClient);
         this.eventServiceApi = new EventServiceApi(apiClient);
         this.vendorServiceApi = new VendorServiceApi(apiClient);
         this.approvedMarketServiceApi = new ApprovedMarketServiceApi(apiClient);
+        this.statsServiceApi = new StatsServiceApi(apiClient);
     }
 
+    // ── Service API accessors ──
+
     public SoldItemsServiceApi getSoldItemsServiceApi() {
-        return INSTANCE.soldItemsServiceApi;
+        return soldItemsServiceApi;
     }
 
     public ApiKeyServiceApi getApiKeyServiceApi() {
-        return INSTANCE.apiKeyServiceApi;
+        return apiKeyServiceApi;
     }
 
     public EventServiceApi getEventServiceApi() {
-        return INSTANCE.eventServiceApi;
+        return eventServiceApi;
     }
 
     public VendorServiceApi getVendorServiceApi() {
-        return INSTANCE.vendorServiceApi;
+        return vendorServiceApi;
     }
 
     public ApprovedMarketServiceApi getApprovedMarketServiceApi() {
-        return INSTANCE.approvedMarketServiceApi;
+        return approvedMarketServiceApi;
     }
 
+    public StatsServiceApi getStatsServiceApi() {
+        return statsServiceApi;
+    }
+
+    // ── API key management ──
+
     public void setCurrentApiKey(String apiKey) {
-        this.apiClient.addDefaultHeader("Authorization", "Bearer " + apiKey);
+        this.currentApiKey = apiKey;
     }
 
     public void clearCurrentApiKey() {
-        this.apiClient.addDefaultHeader("Authorization", "");
+        this.currentApiKey = null;
+    }
+
+    public String getCurrentApiKey() {
+        return this.currentApiKey;
     }
 
     /**
-     * Heuristic to detect a network or connectivity type error.
-     * You can expand this logic depending on how your `ApiException` is structured.
+     * Returns the shared OkHttp client (with auth interceptor).
+     * Use for raw HTTP calls (e.g., heartbeats) that don't go through generated APIs.
      */
+    public okhttp3.OkHttpClient getHttpClient() {
+        return this.apiClient.getHttpClient();
+    }
+
+    /** Returns the shared base URL. */
+    public String getBasePath() {
+        return this.apiClient.getBasePath();
+    }
+
+    // ── Utilities ──
+
     public static boolean isLikelyNetworkError(Throwable e) {
         if (e instanceof ApiException apiEx) {
-            // code=0 often indicates a connection failure or unknown host
             return apiEx.getCode() == 0;
         }
-        // Could be UnknownHostException, SocketTimeoutException, etc.
-        // For brevity, treat everything else as a potential network error.
         return true;
     }
 }

@@ -10,6 +10,7 @@ import se.goencoder.loppiskassan.service.CashierStrategy;
 import se.goencoder.loppiskassan.service.LocalCashierStrategy;
 import se.goencoder.loppiskassan.service.IloppisCashierStrategy;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
+import se.goencoder.loppiskassan.service.CashierHeartbeatService;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
@@ -20,17 +21,32 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class CashierTabController implements CashierControllerInterface {
 
     private static final CashierTabController instance = new CashierTabController();
     private static final Logger log = Logger.getLogger(CashierTabController.class.getName());
+    private static final long HEARTBEAT_INTERVAL_MS = 15_000;
+    private static final String HEARTBEAT_STATE_IDLE = "CASHIER_CLIENT_STATE_IDLE";
+    private static final String HEARTBEAT_STATE_ACTIVE = "CASHIER_CLIENT_STATE_ACTIVE_TRANSACTION";
+    private static final String HEARTBEAT_STATE_SUBMITTING = "CASHIER_CLIENT_STATE_SUBMITTING";
+    private static final String HEARTBEAT_CLIENT_TYPE_JAVA = "CASHIER_CLIENT_TYPE_JAVA";
 
     private final List<V1SoldItem> items = new ArrayList<>();
     private final CashierState state = new CashierState();
+    private final CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
     private CashierPanelInterface view;
     private CashierStrategy cashierStrategy;
+    private ScheduledExecutorService heartbeatExecutor;
+    private ScheduledFuture<?> heartbeatTask;
+    private volatile boolean heartbeatSubmitting;
+    private volatile int heartbeatPendingPurchasesCount;
+    private volatile String heartbeatDisplayName = "";
 
     private CashierTabController() {}
 
@@ -73,6 +89,39 @@ public class CashierTabController implements CashierControllerInterface {
     @Override
     public void registerView(CashierPanelInterface view) {
         this.view = view;
+    }
+
+    /**
+     * Called when cashier view becomes active to begin periodic presence updates.
+     */
+    public synchronized void onCashierViewSelected() {
+        if (AppModeManager.isLocalMode()) {
+            stopHeartbeat();
+            return;
+        }
+        if (heartbeatExecutor == null || heartbeatExecutor.isShutdown()) {
+            heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread thread = new Thread(r, "CashierHeartbeat");
+                thread.setDaemon(true);
+                return thread;
+            });
+        }
+        sendHeartbeatNow();
+        if (heartbeatTask == null || heartbeatTask.isCancelled() || heartbeatTask.isDone()) {
+            heartbeatTask = heartbeatExecutor.scheduleWithFixedDelay(
+                    this::sendHeartbeatSafely,
+                    HEARTBEAT_INTERVAL_MS,
+                    HEARTBEAT_INTERVAL_MS,
+                    TimeUnit.MILLISECONDS
+            );
+        }
+    }
+
+    /**
+     * Called when cashier view is hidden to avoid stale heartbeats.
+     */
+    public synchronized void onCashierViewHidden() {
+        stopHeartbeat();
     }
 
     @Override
@@ -160,6 +209,8 @@ public class CashierTabController implements CashierControllerInterface {
         // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
         String purchaseId = UlidGenerator.generate();
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
+        heartbeatSubmitting = true;
+        sendHeartbeatNow();
         
         // Calculate total before clearing
         int totalAmount = getSum();
@@ -177,6 +228,9 @@ public class CashierTabController implements CashierControllerInterface {
                         LocalizationManager.tr("error.save_file"),
                         e.getMessage()
                 );
+            } finally {
+                heartbeatSubmitting = false;
+                sendHeartbeatNow();
             }
         } else {
             // iLoppis mode: local-first, enqueue for background sync
@@ -188,6 +242,9 @@ public class CashierTabController implements CashierControllerInterface {
                         LocalizationManager.tr("error.upload_web"),
                         e.getMessage()
                 );
+            } finally {
+                heartbeatSubmitting = false;
+                sendHeartbeatNow();
             }
         }
     }
@@ -200,6 +257,7 @@ public class CashierTabController implements CashierControllerInterface {
         items.clear();
         view.clearView();
         state.reset();  // Reset state to initial values
+        heartbeatPendingPurchasesCount = 0;
 
         String eventId = AppModeManager.getEventId();
         // 4) Ensure background sync is running (non-local mode)
@@ -213,6 +271,9 @@ public class CashierTabController implements CashierControllerInterface {
         items.clear();
         view.clearView();
         state.reset();  // Reset state to initial values
+        heartbeatSubmitting = false;
+        heartbeatPendingPurchasesCount = 0;
+        sendHeartbeatNow();
     }
 
     // --- Recalculate totals ---
@@ -254,6 +315,7 @@ public class CashierTabController implements CashierControllerInterface {
         
         // Format strings will be set by the view based on current locale
         // For now, we just update the raw numbers
+        heartbeatPendingPurchasesCount = items.isEmpty() ? 0 : 1;
     }
 
     // --- Helpers ---
@@ -263,6 +325,60 @@ public class CashierTabController implements CashierControllerInterface {
             item.setSoldTime(now);
             item.setPaymentMethod(paymentMethod);
             item.setPurchaseId(purchaseId);
+        }
+    }
+
+    private void sendHeartbeatSafely() {
+        try {
+            sendHeartbeat();
+        } catch (Exception e) {
+            log.fine("cashier heartbeat failed: " + e.getMessage());
+        }
+    }
+
+    private void sendHeartbeatNow() {
+        if (AppModeManager.isLocalMode()) {
+            return;
+        }
+        ScheduledExecutorService executor = heartbeatExecutor;
+        if (executor == null || executor.isShutdown()) {
+            sendHeartbeatSafely();
+            return;
+        }
+        executor.submit(this::sendHeartbeatSafely);
+    }
+
+    private void sendHeartbeat() throws Exception {
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+
+        String clientState = heartbeatSubmitting
+                ? HEARTBEAT_STATE_SUBMITTING
+                : (heartbeatPendingPurchasesCount > 0 ? HEARTBEAT_STATE_ACTIVE : HEARTBEAT_STATE_IDLE);
+
+        CashierHeartbeatService.HeartbeatResult result = heartbeatService.sendHeartbeat(
+                eventId,
+                clientState,
+                heartbeatPendingPurchasesCount,
+                HEARTBEAT_CLIENT_TYPE_JAVA,
+                heartbeatDisplayName
+        );
+
+        if (result != null && result.displayName() != null) {
+            heartbeatDisplayName = result.displayName();
+        }
+    }
+
+    private synchronized void stopHeartbeat() {
+        if (heartbeatTask != null) {
+            heartbeatTask.cancel(true);
+            heartbeatTask = null;
+        }
+        if (heartbeatExecutor != null) {
+            heartbeatExecutor.shutdownNow();
+            heartbeatExecutor = null;
         }
     }
 

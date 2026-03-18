@@ -1,60 +1,56 @@
 package se.goencoder.loppiskassan.rest;
 
-import se.goencoder.iloppis.invoker.ApiException;
-import se.goencoder.iloppis.model.V1FilterEventsRequest;
-import se.goencoder.iloppis.model.V1Pagination;
-import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Proactive connectivity check for iLoppis backend.
- * Uses a lightweight API request with short timeout.
+ * Uses the shared ApiHelper OkHttpClient (with short timeouts) to verify reachability.
+ * Any HTTP response, including non-2xx responses, counts as reachable.
  */
 public class ConnectivityChecker {
 
+    private static final Logger log = Logger.getLogger(ConnectivityChecker.class.getName());
+
     // Timeout: 2 seconds balances responsiveness with reliability
-    // - Short enough for good UX (user doesn't wait long)
-    // - Long enough to avoid false negatives on slow networks
-    // - Typical API response time is <500ms, so 2s provides adequate margin
-    private static final int CHECK_TIMEOUT_MS = 2000; // 2 seconds
+    private static final int CHECK_TIMEOUT_MS = 2000;
     private static volatile boolean lastKnownOnline = false;
 
     /**
      * Check if the backend is reachable.
-     * Makes a lightweight HTTP request with 2s timeout.
-     * Updates lastKnownOnline state.
+     * Makes a lightweight HEAD request and treats any HTTP response as reachability,
+     * including 404/405 responses from servers that do not support HEAD on the base path.
+     * Uses the shared ApiHelper client (with tighter timeouts for health checks).
      *
      * @return true if server responds within timeout
      */
     public static boolean isOnline() {
         try {
-            // Create a temporary API client with short timeout
-            FixedApiClient testClient = new FixedApiClient();
-            String baseUrl = ILoppisConfigurationStore.getApiBaseUrl();
-            testClient.setBasePath(baseUrl);
-            testClient.setConnectTimeout(CHECK_TIMEOUT_MS);
-            testClient.setReadTimeout(CHECK_TIMEOUT_MS);
-            testClient.setWriteTimeout(CHECK_TIMEOUT_MS);
+            String baseUrl = ApiHelper.INSTANCE.getBasePath();
+            // Derive a short-timeout client from the shared one (inherits interceptors)
+            OkHttpClient client = ApiHelper.INSTANCE.getHttpClient().newBuilder()
+                    .connectTimeout(CHECK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .readTimeout(CHECK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .writeTimeout(CHECK_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .build();
 
-            // Try a simple API call - list events with minimal page size
-            se.goencoder.iloppis.api.EventServiceApi eventApi = new se.goencoder.iloppis.api.EventServiceApi(testClient);
-            
-            // Create a minimal request
-            V1FilterEventsRequest request = new V1FilterEventsRequest();
-            V1Pagination pagination = new V1Pagination();
-            pagination.setPageSize(1);
-            request.setPagination(pagination);
-            
-            eventApi.eventServiceFilterEvents(request);
+            Request request = new Request.Builder()
+                    .url(baseUrl)
+                    .head()
+                    .build();
 
-            lastKnownOnline = true;
-            return true;
+            try (Response response = client.newCall(request).execute()) {
+                // Any HTTP response (even 404/405) means the server is reachable
+                lastKnownOnline = true;
+                return true;
+            }
 
-        } catch (ApiException e) {
-            // Any API error (timeout, connection refused, etc) means we're offline
-            lastKnownOnline = false;
-            return false;
         } catch (Exception e) {
-            // Catch any other unexpected errors
+            log.fine("Connectivity check failed: " + e.getMessage());
             lastKnownOnline = false;
             return false;
         }

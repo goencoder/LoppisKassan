@@ -6,3 +6,4 @@ logs/
 .DS_Store
 dependency-check-report
 config.properties
+.cp.txt

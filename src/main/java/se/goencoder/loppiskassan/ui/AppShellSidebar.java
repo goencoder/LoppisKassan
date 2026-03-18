@@ -47,8 +47,9 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
         add(cashierButton);
         add(Box.createVerticalStrut(4));
         
-        // Historik (alltid synlig)
-        historyButton = createNavigationButton("sidebar.history", AppShellFrame.NavigationTarget.HISTORY);
+        // Historik (lokal) / Live (iLoppis)
+        String historyKey = AppModeManager.isLocalMode() ? "sidebar.history" : "sidebar.live";
+        historyButton = createNavigationButton(historyKey, AppShellFrame.NavigationTarget.HISTORY);
         buttons.add(historyButton);
         add(historyButton);
         add(Box.createVerticalStrut(4));
@@ -106,7 +107,8 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
     public void reloadTexts() {
         if (eventButton != null) eventButton.setText(LocalizationManager.tr("sidebar.event"));
         if (cashierButton != null) cashierButton.setText(LocalizationManager.tr("sidebar.cashier"));
-        if (historyButton != null) historyButton.setText(LocalizationManager.tr("sidebar.history"));
+        if (historyButton != null) historyButton.setText(LocalizationManager.tr(
+                AppModeManager.isLocalMode() ? "sidebar.history" : "sidebar.live"));
         if (exportButton != null) exportButton.setText(LocalizationManager.tr("sidebar.export"));
         if (archiveButton != null) archiveButton.setText(LocalizationManager.tr("sidebar.archive"));
     }

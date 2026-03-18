@@ -86,7 +86,7 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
         // Fall back to configured value or default
         return INSTANCE.config.apiBaseUrl != null && !INSTANCE.config.apiBaseUrl.isBlank() 
             ? INSTANCE.config.apiBaseUrl 
-            : "http://127.0.0.1:8080";
+            : "https://iloppis-staging.fly.dev";
     }
     
     public static void setApiBaseUrl(String apiBaseUrl) {

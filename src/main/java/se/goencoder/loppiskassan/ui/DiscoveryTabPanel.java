@@ -12,10 +12,23 @@ import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URL;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import javax.imageio.ImageIO;
+import java.util.logging.Logger;
 
 /**
  * Discovery tab for <b>iLoppis</b> (online) mode.
@@ -23,8 +36,14 @@ import java.util.Locale;
  * No local events, no export/import — those live in {@link LocalDiscoveryTabPanel}.
  */
 public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface, LocalizationAware {
+    private static final Logger LOGGER = Logger.getLogger(DiscoveryTabPanel.class.getName());
+    private static final int IMAGE_CONNECT_TIMEOUT_MS = 5000;
+    private static final int IMAGE_READ_TIMEOUT_MS = 5000;
+    private static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+    private static final String IMAGE_REQUEST_ID_PROPERTY = "discovery.imageRequestId";
 
     private final DiscoveryControllerInterface controller;
+    private final AtomicLong imageRequestSequence = new AtomicLong();
 
     // CardLayout to switch between "discovery mode" and "active event" views.
     private final CardLayout rootCardLayout;
@@ -43,7 +62,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JPanel detailCardPanel;
     private JLabel noSelectionLabel;
     private JTextField eventNameField;
-    private JTextArea eventDescriptionField;
+    private JEditorPane eventDescriptionField;
     private JTextField eventAddressField;
     private JTextField marketOwnerSplitField;
     private JTextField vendorSplitField;
@@ -64,9 +83,13 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     private JLabel discoveryPlatformStaticLabel;
     private boolean cachedCredentials = false;
 
+    // Image label for discovery mode
+    private JLabel discoveryImageLabel;
+
     // Components for active event mode
     private JLabel activeEventNameLabel;
-    private JLabel activeEventDescLabel;
+    private JEditorPane activeEventDescPane;
+    private JLabel activeEventImageLabel;
     private JLabel activeEventAddressLabel;
     private JButton changeEventButton;
     private JLabel marketOwnerSplitLabel;
@@ -238,7 +261,19 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
 
         Color fieldBg = AppColors.FIELD_BG;
 
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        // Event image (spans full width, hidden by default)
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        discoveryImageLabel = new JLabel();
+        discoveryImageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        discoveryImageLabel.setVisible(false);
+        discoveryImageLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+        panel.add(discoveryImageLabel, gbc);
+
+        gbc.gridwidth = 1;
+        gbc.fill = GridBagConstraints.BOTH;
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
         discoveryEventNameStaticLabel = new JLabel();
         panel.add(discoveryEventNameStaticLabel, gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
@@ -247,18 +282,20 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         eventNameField.setBackground(fieldBg);
         panel.add(eventNameField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
         discoveryEventDescStaticLabel = new JLabel();
         panel.add(discoveryEventDescStaticLabel, gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
-        eventDescriptionField = new JTextArea(3, 20);
+        eventDescriptionField = new JEditorPane();
+        eventDescriptionField.setContentType("text/html");
         eventDescriptionField.setEditable(false);
         eventDescriptionField.setBackground(fieldBg);
         JScrollPane descScroll = new JScrollPane(eventDescriptionField);
+        descScroll.setPreferredSize(new Dimension(20, 80));
         descScroll.getViewport().setBackground(fieldBg);
         panel.add(descScroll, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0;
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0;
         discoveryEventAddressStaticLabel = new JLabel();
         panel.add(discoveryEventAddressStaticLabel, gbc);
         gbc.gridx = 1; gbc.weightx = 1.0;
@@ -352,46 +389,54 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     // ── Active event panel ──
 
     private JPanel buildActiveEventPanel() {
-        JPanel outerPanel = new JPanel(new GridBagLayout());
-        outerPanel.setBackground(AppColors.WHITE);
-
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(AppColors.WHITE);
-        panel.setBorder(BorderFactory.createEmptyBorder(40, 60, 40, 60));
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
 
         selectedEventHeaderLabel = new JLabel();
         selectedEventHeaderLabel.setFont(selectedEventHeaderLabel.getFont().deriveFont(Font.BOLD, 20f));
         selectedEventHeaderLabel.setForeground(AppColors.TEXT_PRIMARY);
         selectedEventHeaderLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(selectedEventHeaderLabel);
-        panel.add(Box.createVerticalStrut(32));
+        panel.add(Box.createVerticalStrut(16));
 
         JPanel detailsSection = createEventDetailsPanel();
         detailsSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(detailsSection);
-        panel.add(Box.createVerticalStrut(28));
+        panel.add(Box.createVerticalStrut(16));
 
         JPanel splitSection = createRevenueSplitPanel();
         splitSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(splitSection);
-        panel.add(Box.createVerticalStrut(32));
+        panel.add(Box.createVerticalStrut(16));
 
         JPanel buttonsSection = createChangeEventButton();
         buttonsSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(buttonsSection);
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.anchor = GridBagConstraints.CENTER;
-        outerPanel.add(panel, gbc);
+        JScrollPane scrollPane = new JScrollPane(panel);
+        scrollPane.setBorder(null);
+        scrollPane.getViewport().setBackground(AppColors.WHITE);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
-        return outerPanel;
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.add(scrollPane, BorderLayout.CENTER);
+        return wrapper;
     }
 
     private JPanel createEventDetailsPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(AppColors.WHITE);
+
+        // Event image (hidden by default)
+        activeEventImageLabel = new JLabel();
+        activeEventImageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        activeEventImageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        activeEventImageLabel.setVisible(false);
+        activeEventImageLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
+        panel.add(activeEventImageLabel);
 
         detailsHeaderLabel = new JLabel();
         detailsHeaderLabel.setFont(detailsHeaderLabel.getFont().deriveFont(Font.BOLD, 14f));
@@ -420,12 +465,23 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         fieldsPanel.add(activeEventNameLabel, gbc);
 
         gbc.gridx = 0; gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
         eventDescStaticLabel = new JLabel();
         eventDescStaticLabel.setFont(eventDescStaticLabel.getFont().deriveFont(Font.BOLD));
         fieldsPanel.add(eventDescStaticLabel, gbc);
         gbc.gridx = 1;
-        activeEventDescLabel = new JLabel();
-        fieldsPanel.add(activeEventDescLabel, gbc);
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 1.0;
+        activeEventDescPane = new JEditorPane();
+        activeEventDescPane.setContentType("text/html");
+        activeEventDescPane.setEditable(false);
+        activeEventDescPane.setBackground(AppColors.WHITE);
+        activeEventDescPane.setBorder(null);
+        fieldsPanel.add(activeEventDescPane, gbc);
+
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weightx = 0;
 
         gbc.gridx = 0; gbc.gridy = 2;
         eventAddressStaticLabel = new JLabel();
@@ -534,11 +590,13 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     public void populateEventsTable(List<V1Event> events) {
         onlineEventsTableModel.setRowCount(0);
         for (V1Event ev : events) {
+            String id = ev.getId();
             // Skip local events — those belong in LocalDiscoveryTabPanel
-            if (ev.getId() != null && ev.getId().startsWith("local-")) continue;
-
+            if (id != null && id.startsWith("local-")) {
+                continue;
+            }
             onlineEventsTableModel.addRow(new Object[]{
-                    ev.getId(),
+                    id,
                     ev.getName(),
                     (ev.getAddressCity() == null ? "" : ev.getAddressCity()),
                     ev.getStartTime(),
@@ -565,8 +623,18 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     }
 
     @Override public void setEventName(String name) { eventNameField.setText(name); }
-    @Override public void setEventDescription(String desc) { eventDescriptionField.setText(desc != null ? desc : ""); }
+    @Override public void setEventDescription(String desc) { setEventDescription(desc, false); }
+    @Override
+    public void setEventDescription(String desc, boolean isMarkdown) {
+        eventDescriptionField.setText(MarkdownRenderer.toHtml(desc, isMarkdown));
+        eventDescriptionField.setCaretPosition(0);
+    }
     @Override public void setEventAddress(String addr) { eventAddressField.setText(addr); }
+
+    @Override
+    public void setEventImage(String imageUrl) {
+        loadImageAsync(imageUrl, discoveryImageLabel, 300);
+    }
 
     @Override
     public void setLocalMode(boolean local) {
@@ -604,8 +672,19 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
     public void showActiveEventInfo(V1Event event, V1RevenueSplit split) {
         if (event == null) return;
         activeEventNameLabel.setText(event.getName());
-        activeEventDescLabel.setText(event.getDescription());
+
+        boolean isMd = Boolean.TRUE.equals(event.getDescriptionIsMarkdown());
+        activeEventDescPane.setText(MarkdownRenderer.toHtml(event.getDescription(), isMd));
+        activeEventDescPane.setCaretPosition(0);
+
         activeEventAddressLabel.setText(event.getAddressStreet() + ", " + event.getAddressCity());
+
+        // Show event image if available
+        String imgUrl = null;
+        if (event.getEventImage() != null && Boolean.TRUE.equals(event.getEventImage().getHasImage())) {
+            imgUrl = event.getEventImage().getImageUrl();
+        }
+        loadImageAsync(imgUrl, activeEventImageLabel, 400);
 
         float market = 0f;
         float vendor = 0f;
@@ -718,6 +797,149 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog dialog = 
             new se.goencoder.loppiskassan.ui.dialogs.BulkUploadDialog(parentFrame, localEvent);
         return dialog.showDialog();
+    }
+
+    /**
+     * Load an image from URL in a background thread and display it scaled in a JLabel.
+     * Pass {@code null} to hide the label.
+     */
+    private void loadImageAsync(String imageUrl, JLabel target, int maxWidth) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            target.setIcon(null);
+            target.setVisible(false);
+            return;
+        }
+        // Show a placeholder while loading
+        target.setIcon(null);
+        target.setVisible(false);
+        long requestId = imageRequestSequence.incrementAndGet();
+        target.putClientProperty(IMAGE_REQUEST_ID_PROPERTY, requestId);
+
+        new SwingWorker<ImageIcon, Void>() {
+            @Override
+            protected ImageIcon doInBackground() {
+                try {
+                    URI uri = new URI(imageUrl);
+                    if (!isSafeRemoteImageUri(uri)) {
+                        return null;
+                    }
+
+                    BufferedImage img = readRemoteImage(uri);
+                    if (img == null) return null;
+                    int w = img.getWidth();
+                    int h = img.getHeight();
+                    if (w > maxWidth) {
+                        h = (int) ((double) h / w * maxWidth);
+                        w = maxWidth;
+                    }
+                    Image scaled = img.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+                    return new ImageIcon(scaled);
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Failed to load event image", e);
+                    return null;
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Object latestRequestId = target.getClientProperty(IMAGE_REQUEST_ID_PROPERTY);
+                    if (!(latestRequestId instanceof Long) || ((Long) latestRequestId) != requestId) {
+                        return;
+                    }
+
+                    ImageIcon icon = get();
+                    if (icon != null) {
+                        target.setIcon(icon);
+                        target.setVisible(true);
+                    } else {
+                        target.setVisible(false);
+                    }
+                    revalidate();
+                    repaint();
+                } catch (Exception ignored) {
+                    target.setVisible(false);
+                }
+            }
+        }.execute();
+    }
+
+    private static boolean isSafeRemoteImageUri(URI uri) {
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        if (scheme == null || host == null || host.isBlank()) {
+            return false;
+        }
+        if (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https")) {
+            return false;
+        }
+
+        try {
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            if (addresses.length == 0) {
+                return false;
+            }
+            for (InetAddress address : addresses) {
+                if (address.isAnyLocalAddress()
+                        || address.isLoopbackAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isSiteLocalAddress()
+                        || address.isMulticastAddress()) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static BufferedImage readRemoteImage(URI uri) throws Exception {
+        URL url = uri.toURL();
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setInstanceFollowRedirects(false);
+        connection.setConnectTimeout(IMAGE_CONNECT_TIMEOUT_MS);
+        connection.setReadTimeout(IMAGE_READ_TIMEOUT_MS);
+        connection.setRequestProperty("User-Agent", "LoppisKassan/2.0");
+
+        int status = connection.getResponseCode();
+        if (status < 200 || status >= 300) {
+            return null;
+        }
+
+        int contentLength = connection.getContentLength();
+        if (contentLength > MAX_IMAGE_BYTES) {
+            return null;
+        }
+
+        try (InputStream stream = connection.getInputStream()) {
+            byte[] imageBytes = readBoundedBytes(stream, MAX_IMAGE_BYTES);
+            if (imageBytes == null) {
+                return null;
+            }
+            try (ByteArrayInputStream imageStream = new ByteArrayInputStream(imageBytes)) {
+                return ImageIO.read(imageStream);
+            }
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private static byte[] readBoundedBytes(InputStream stream, int maxBytes) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[8192];
+        int totalBytes = 0;
+        int read;
+
+        while ((read = stream.read(chunk)) != -1) {
+            totalBytes += read;
+            if (totalBytes > maxBytes) {
+                return null;
+            }
+            buffer.write(chunk, 0, read);
+        }
+
+        return buffer.toByteArray();
     }
 
 }

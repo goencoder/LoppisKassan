@@ -19,6 +19,7 @@ import java.awt.*;
  */
 public class AppShellFrame extends JFrame implements LocalizationAware {
     
+    private final LocalizationManager.LanguageChangeListener languageChangeListener = this::reloadTexts;
     private final AppShellTopbar topbar;
     private final AppShellSidebar sidebar;
     private final AppShellStatusbar statusbar;
@@ -78,7 +79,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
         
         // Registrera för språkändringar
-        LocalizationManager.addListener(this::reloadTexts);
+        LocalizationManager.addListener(languageChangeListener);
         
         setTitle(LocalizationManager.tr("frame.title"));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -121,8 +122,12 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         // Kassavy
         cashierView = new CashierTabPanel(CashierTabController.getInstance());
         
-        // Historikvy
-        historyView = new HistoryTabPanel();
+        // Historikvy / Live stats
+        if (AppModeManager.isLocalMode()) {
+            historyView = new HistoryTabPanel();
+        } else {
+            historyView = new LiveStatsPanel();
+        }
         
         // Export/Import-vy (endast lokal kassa)
         if (AppModeManager.isLocalMode()) {
@@ -139,6 +144,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
      * Navigerar till angiven vy.
      */
     void navigateTo(NavigationTarget target) {
+        if (currentView instanceof LiveStatsPanel liveStats) {
+            liveStats.deselected();
+        }
+
         // Validera att evenemang är valt (utom för discovery)
         if (target != NavigationTarget.DISCOVERY && AppModeManager.getEventId() == null) {
             Popup.ERROR.showAndWait(
@@ -239,7 +248,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     
     @Override
     public void removeNotify() {
-        LocalizationManager.removeListener(this::reloadTexts);
+        LocalizationManager.removeListener(languageChangeListener);
         super.removeNotify();
     }
     

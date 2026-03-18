@@ -1,6 +1,5 @@
 package se.goencoder.loppiskassan.records;
 
-import org.jetbrains.annotations.NotNull;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -89,7 +88,6 @@ public class FormatHelper {
         return items;
     }
 
-    @NotNull
     private static V1SoldItem getSoldItem(String[] columns, LocalDateTime dateTime, V1PaymentMethod pm) {
         boolean uploaded = false;
         if (columns.length > 7) {
