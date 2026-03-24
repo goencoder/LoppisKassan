@@ -101,6 +101,8 @@ public class BackgroundSyncManager {
         return instance;
     }
 
+    private volatile boolean shutdownHookRegistered = false;
+
     /**
      * Start background sync for the given event.
      * Creates a single-threaded executor that owns all file I/O + upload.
@@ -120,6 +122,8 @@ public class BackgroundSyncManager {
 
         this.activeEventId = eventId;
         this.isRunning = true;
+
+        registerShutdownHook();
 
         syncExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
             Thread thread = new Thread(runnable, "BackgroundSync-" + eventId);
@@ -156,6 +160,7 @@ public class BackgroundSyncManager {
 
     /**
      * Stop background sync and clear state.
+     * Flushes any queued items to disk before shutting down.
      */
     public synchronized void stop() {
         if (periodicTask != null) {
@@ -163,11 +168,60 @@ public class BackgroundSyncManager {
             periodicTask = null;
         }
         if (syncExecutor != null) {
+            // Flush pending queue to disk before stopping
+            String eid = activeEventId;
+            if (eid != null && !pendingQueue.isEmpty()) {
+                try {
+                    syncExecutor.submit(() -> {
+                        try {
+                            flushQueueToDisk(eid);
+                        } catch (IOException e) {
+                            log.severe("Shutdown flush failed: " + e.getMessage());
+                        }
+                    }).get(5, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    log.warning("Could not flush queue on stop: " + e.getMessage());
+                }
+            }
             syncExecutor.shutdownNow();
             syncExecutor = null;
         }
         isRunning = false;
         activeEventId = null;
+    }
+
+    /**
+     * Register a JVM shutdown hook that flushes pending items to disk.
+     * Ensures no data is lost when the application is closed.
+     */
+    private void registerShutdownHook() {
+        if (shutdownHookRegistered) {
+            return;
+        }
+        shutdownHookRegistered = true;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("Shutdown hook: flushing pending items to disk...");
+            String eid = activeEventId;
+            if (eid == null) return;
+            // Drain the in-memory queue directly to disk (we're shutting down,
+            // the sync executor may already be gone)
+            List<V1SoldItem> drained = new ArrayList<>();
+            List<V1SoldItem> batch;
+            while ((batch = pendingQueue.poll()) != null) {
+                drained.addAll(batch);
+            }
+            if (!drained.isEmpty()) {
+                try {
+                    PendingItemsStore store = new PendingItemsStore(eid);
+                    store.appendItems(drained);
+                    log.info("Shutdown hook: flushed " + drained.size() + " items to disk.");
+                } catch (IOException e) {
+                    log.severe("Shutdown hook: FAILED to flush items: " + e.getMessage());
+                }
+            } else {
+                log.info("Shutdown hook: no pending items in memory queue.");
+            }
+        }, "BackgroundSync-ShutdownHook"));
     }
 
     /**

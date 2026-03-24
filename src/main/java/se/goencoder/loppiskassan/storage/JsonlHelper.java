@@ -6,9 +6,11 @@ import se.goencoder.loppiskassan.V1SoldItem;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -41,6 +43,7 @@ public final class JsonlHelper {
                 writer.newLine();
             }
         }
+        fsync(path);
     }
 
     public static List<V1SoldItem> readItems(Path path) throws IOException {
@@ -61,19 +64,31 @@ public final class JsonlHelper {
         if (path.getParent() != null) {
             Files.createDirectories(path.getParent());
         }
+        // Write to temp file, fsync, then atomic move — prevents truncation on crash
+        Path tempPath = path.resolveSibling(path.getFileName() + ".tmp");
         try (BufferedWriter writer = Files.newBufferedWriter(
-                path,
+                tempPath,
                 StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.WRITE)) {
-            if (items == null || items.isEmpty()) {
-                return;
+            if (items != null) {
+                for (V1SoldItem item : items) {
+                    writer.write(toJsonLine(item));
+                    writer.newLine();
+                }
             }
-            for (V1SoldItem item : items) {
-                writer.write(toJsonLine(item));
-                writer.newLine();
-            }
+        }
+        fsync(tempPath);
+        Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    /**
+     * Force data to durable storage via fsync.
+     */
+    private static void fsync(Path path) throws IOException {
+        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.WRITE)) {
+            channel.force(true);
         }
     }
 
