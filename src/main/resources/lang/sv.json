@@ -435,5 +435,12 @@
   "error.persist_failed.message": "Köpet kunde inte sparas lokalt. Kontrollera diskutrymme och filrättigheter.\nDetaljer: {0}",
   "error.background_file_write.title": "Varning: filskrivningsfel i bakgrunden",
   "error.background_file_write.message": "Bakgrundssynk kunde inte skriva till disk. Köp kan riskera att inte sparas.\nKontrollera diskutrymme omedelbart.\nDetaljer: {0}",
-  "rejected.reason_unknown": "Okänd orsak"
+  "rejected.reason_unknown": "Okänd orsak",
+  "bundle.section.title": "Skapa datafil",
+  "bundle.section.description": "Samla ihop all data från denna kassa i en ZIP-fil. Perfekt för insamling efter loppis.",
+  "bundle.button": "\uD83D\uDCE6 Skapa datafil…",
+  "bundle.cashier_name.title": "Kassans smeknamn",
+  "bundle.cashier_name.prompt": "Ange ett smeknamn för denna kassa (t.ex. \"Kassa 1\" eller \"Entrén\").\nDet används i filnamnet så att alla kassor kan identifieras.",
+  "bundle.success.title": "Datafil skapad!",
+  "bundle.success.message": "\uD83D\uDCE6 {0}\n\uD83D\uDCC1 {1}\n\n{2} försäljningar från kassa ''{3}''.\n\nGe filen till arrangören för sammanställning."
 }

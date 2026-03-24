@@ -31,6 +31,7 @@ public class GlobalConfigurationStore {
      */
     private static class GlobalConfig {
         private String language = "sv";
+        private String cashierName;
         
         public GlobalConfig() {}
     }
@@ -82,6 +83,16 @@ public class GlobalConfigurationStore {
     
     public static void setLanguage(String language) {
         config.language = language;
+        save();
+    }
+
+    // Cashier name (nickname for this machine)
+    public static String getCashierName() {
+        return config.cashierName;
+    }
+    
+    public static void setCashierName(String name) {
+        config.cashierName = name;
         save();
     }
     

@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.controller.CsvExportController;
+import se.goencoder.loppiskassan.controller.DataBundleExporter;
 import se.goencoder.loppiskassan.controller.ExportLocalEventController;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
@@ -30,6 +31,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
     
     private JButton exportJsonlButton;
     private JButton exportCsvButton;
+    private JButton bundleButton;
     private JButton importButton;
     
     private JPanel statsPanel;
@@ -90,6 +92,13 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         JPanel exportSection = createExportSection();
         exportSection.setAlignmentX(Component.LEFT_ALIGNMENT);
         card.add(exportSection);
+        
+        card.add(Box.createVerticalStrut(24));
+        
+        // Bundle-sektion ("Skapa datafil")
+        JPanel bundleSection = createBundleSection();
+        bundleSection.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(bundleSection);
         
         card.add(Box.createVerticalStrut(24));
         
@@ -176,6 +185,43 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         return section;
     }
     
+    private JPanel createBundleSection() {
+        JPanel section = new JPanel();
+        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
+        section.setBackground(AppColors.WHITE);
+        section.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
+        
+        JLabel sectionTitle = new JLabel();
+        sectionTitle.setText(LocalizationManager.tr("bundle.section.title"));
+        sectionTitle.setFont(sectionTitle.getFont().deriveFont(Font.BOLD, 14f));
+        sectionTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(sectionTitle);
+        
+        section.add(Box.createVerticalStrut(8));
+        
+        JLabel sectionDesc = new JLabel();
+        sectionDesc.setText(LocalizationManager.tr("bundle.section.description"));
+        sectionDesc.setFont(sectionDesc.getFont().deriveFont(Font.PLAIN, 12f));
+        sectionDesc.setForeground(AppColors.TEXT_MUTED);
+        sectionDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(sectionDesc);
+        
+        section.add(Box.createVerticalStrut(12));
+        
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        buttonsPanel.setBackground(AppColors.WHITE);
+        buttonsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        bundleButton = UserInterface.createButton("", 200, 36);
+        AppButton.applyStyle(bundleButton, AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
+        bundleButton.addActionListener(e -> handleBundle());
+        buttonsPanel.add(bundleButton);
+        
+        section.add(buttonsPanel);
+        
+        return section;
+    }
+    
     private JPanel createImportSection() {
         JPanel section = new JPanel();
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
@@ -240,6 +286,19 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         updateStats();
     }
     
+    private void handleBundle() {
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null) {
+            Popup.ERROR.showAndWait(
+                LocalizationManager.tr("error.no_event_selected.title"),
+                LocalizationManager.tr("error.no_event_selected.message"));
+            return;
+        }
+        
+        DataBundleExporter.exportBundle(eventId, eventNameValue.getText());
+        updateStats();
+    }
+    
     private void handleImport() {
         String eventId = AppModeManager.getEventId();
         if (eventId == null) {
@@ -264,6 +323,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
             salesCountValue.setText("0");
             exportJsonlButton.setEnabled(false);
             exportCsvButton.setEnabled(false);
+            bundleButton.setEnabled(false);
             importButton.setEnabled(false);
             return;
         }
@@ -278,12 +338,14 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
             boolean hasSales = salesCount > 0;
             exportJsonlButton.setEnabled(hasSales);
             exportCsvButton.setEnabled(hasSales);
+            bundleButton.setEnabled(hasSales);
             importButton.setEnabled(true);
         } catch (IOException e) {
             eventNameValue.setText("-");
             salesCountValue.setText("0");
             exportJsonlButton.setEnabled(false);
             exportCsvButton.setEnabled(false);
+            bundleButton.setEnabled(false);
             importButton.setEnabled(false);
         }
     }
@@ -305,6 +367,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         salesCountLabel.setText(LocalizationManager.tr("export_import.sales_count"));
         exportJsonlButton.setText(LocalizationManager.tr("export.button.jsonl"));
         exportCsvButton.setText(LocalizationManager.tr("export.button.csv"));
+        bundleButton.setText(LocalizationManager.tr("bundle.button"));
         importButton.setText(LocalizationManager.tr("import.button"));
         
         updateStats();
