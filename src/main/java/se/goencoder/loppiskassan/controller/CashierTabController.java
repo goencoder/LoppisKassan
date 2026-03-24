@@ -239,8 +239,8 @@ public class CashierTabController implements CashierControllerInterface {
                 finishCheckoutFlow(paymentMethod, totalAmount);
             } catch (Exception e) {
                 Popup.ERROR.showAndWait(
-                        LocalizationManager.tr("error.upload_web"),
-                        e.getMessage()
+                        LocalizationManager.tr("error.persist_failed.title"),
+                        LocalizationManager.tr("error.persist_failed.message", e.getMessage())
                 );
             } finally {
                 heartbeatSubmitting = false;

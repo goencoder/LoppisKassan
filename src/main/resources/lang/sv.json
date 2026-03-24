@@ -430,5 +430,10 @@
   "settings.row.uploaded_items": "Uppladdade poster (flagga i pending)",
   "settings.row.rejected_items": "Avvisade poster",
   "settings.row.sold_items": "Sålda poster",
-  "settings.row.archive_dir": "Arkivkatalog"
+  "settings.row.archive_dir": "Arkivkatalog",
+  "error.persist_failed.title": "Kunde inte spara köpet",
+  "error.persist_failed.message": "Köpet kunde inte sparas lokalt. Kontrollera diskutrymme och filrättigheter.\nDetaljer: {0}",
+  "error.background_file_write.title": "Varning: filskrivningsfel i bakgrunden",
+  "error.background_file_write.message": "Bakgrundssynk kunde inte skriva till disk. Köp kan riskera att inte sparas.\nKontrollera diskutrymme omedelbart.\nDetaljer: {0}",
+  "rejected.reason_unknown": "Okänd orsak"
 }

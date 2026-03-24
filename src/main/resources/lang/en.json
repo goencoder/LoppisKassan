@@ -429,5 +429,10 @@
   "settings.row.uploaded_items": "Uploaded items (flag in pending)",
   "settings.row.rejected_items": "Rejected items",
   "settings.row.sold_items": "Sold items",
-  "settings.row.archive_dir": "Archive directory"
+  "settings.row.archive_dir": "Archive directory",
+  "error.persist_failed.title": "Could not save purchase",
+  "error.persist_failed.message": "The purchase could not be saved locally. Check disk space and file permissions.\nDetails: {0}",
+  "error.background_file_write.title": "Warning: background file write error",
+  "error.background_file_write.message": "Background sync could not write to disk. Purchases may not be saved.\nCheck disk space immediately.\nDetails: {0}",
+  "rejected.reason_unknown": "Unknown reason"
 }

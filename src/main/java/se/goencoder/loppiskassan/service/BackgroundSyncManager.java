@@ -11,6 +11,7 @@ import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.utils.RejectedItemsHelper;
 import se.goencoder.loppiskassan.utils.SoldItemsResponseClassifier;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
+import se.goencoder.loppiskassan.ui.Popup;
 
 import javax.swing.SwingUtilities;
 import java.io.IOException;
@@ -303,6 +304,9 @@ public class BackgroundSyncManager {
     private void syncOnceSafely() {
         try {
             syncOnceInternal();
+        } catch (java.io.IOException e) {
+            log.severe("Background sync: File write error - " + e.getMessage());
+            Popup.error("error.background_file_write", e.getMessage());
         } catch (Exception e) {
             log.warning("Background sync: Unexpected error - " + e.getMessage());
         }
