@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -34,6 +35,7 @@ public class DataBundleExporter {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss");
+    private static final String DEFAULT_CASHIER_SLUG = "kassa";
 
     /**
      * Export a data bundle for the given event.
@@ -200,6 +202,15 @@ public class DataBundleExporter {
     }
 
     static String sanitize(String name) {
-        return name.replaceAll("[^\\w-]", "").toLowerCase(Locale.ROOT);
+        if (name == null || name.isBlank()) {
+            return DEFAULT_CASHIER_SLUG;
+        }
+        String normalized = Normalizer.normalize(name, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        String slug = normalized
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9-]+", "")
+                .replaceAll("^-+|-+$", "");
+        return slug.isEmpty() ? DEFAULT_CASHIER_SLUG : slug;
     }
 }

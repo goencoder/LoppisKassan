@@ -32,6 +32,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -54,6 +55,8 @@ public class BackgroundSyncManager {
 
     private static final Logger log = Logger.getLogger(BackgroundSyncManager.class.getName());
     private static final long SYNC_INTERVAL_MS = 30_000; // 30 seconds
+    private static final long SHUTDOWN_FLUSH_TIMEOUT_SECONDS = 10;
+    private static final long SHUTDOWN_TERMINATION_TIMEOUT_SECONDS = 30;
 
     private static BackgroundSyncManager instance;
 
@@ -481,13 +484,15 @@ public class BackgroundSyncManager {
                 executor.submit(() -> {
                     flushQueueToDisk(eventId);
                     return null;
-                }).get();
+                }).get(SHUTDOWN_FLUSH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             }
         } catch (RejectedExecutionException e) {
             log.warning("Could not schedule final queue flush during shutdown: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warning("Interrupted while waiting for final queue flush.");
+        } catch (TimeoutException e) {
+            log.warning("Timed out waiting for final queue flush during shutdown.");
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
             String message = cause != null ? cause.getMessage() : e.getMessage();
@@ -496,14 +501,16 @@ public class BackgroundSyncManager {
 
         executor.shutdown();
         boolean interrupted = false;
-        while (true) {
-            try {
-                if (executor.awaitTermination(1, TimeUnit.SECONDS)) {
-                    break;
-                }
-            } catch (InterruptedException e) {
-                interrupted = true;
-            }
+        boolean terminated = false;
+        try {
+            terminated = executor.awaitTermination(SHUTDOWN_TERMINATION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            interrupted = true;
+        }
+        if (!terminated) {
+            log.warning("Background sync executor did not terminate within "
+                    + SHUTDOWN_TERMINATION_TIMEOUT_SECONDS + " seconds. Forcing shutdownNow().");
+            executor.shutdownNow();
         }
         if (interrupted) {
             Thread.currentThread().interrupt();

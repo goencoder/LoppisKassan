@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.storage;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 
@@ -15,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JsonlHelperTest {
+
+    @TempDir
+    Path tempDir;
 
     @Test
     void roundTripJsonLine() {
@@ -46,7 +50,6 @@ public class JsonlHelperTest {
 
     @Test
     void appendAndReadItems() throws Exception {
-        Path tempDir = Files.createTempDirectory("jsonl-test");
         Path file = tempDir.resolve("pending_items.jsonl");
 
         V1SoldItem item = new V1SoldItem(
@@ -70,7 +73,6 @@ public class JsonlHelperTest {
 
     @Test
     void writeItemsReplacesTargetAndCleansUpTempFile() throws Exception {
-        Path tempDir = Files.createTempDirectory("jsonl-test");
         Path file = tempDir.resolve("pending_items.jsonl");
         Path tempFile = tempDir.resolve("pending_items.jsonl.tmp");
 
@@ -92,7 +94,6 @@ public class JsonlHelperTest {
 
     @Test
     void writeItemsEmptyListCreatesEmptyFile() throws Exception {
-        Path tempDir = Files.createTempDirectory("jsonl-test");
         Path file = tempDir.resolve("pending_items.jsonl");
 
         // Write some items first
@@ -112,7 +113,6 @@ public class JsonlHelperTest {
 
     @Test
     void appendItemsAppendsAndReadsInOrder() throws Exception {
-        Path tempDir = Files.createTempDirectory("jsonl-test");
         Path file = tempDir.resolve("pending_items.jsonl");
 
         V1SoldItem item1 = new V1SoldItem(

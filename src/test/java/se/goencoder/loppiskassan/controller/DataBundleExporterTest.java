@@ -24,9 +24,11 @@ class DataBundleExporterTest {
     @Test
     void sanitizeRemovesSpecialCharacters() {
         assertEquals("kassa1", DataBundleExporter.sanitize("Kassa 1"));
-        assertEquals("entrn", DataBundleExporter.sanitize("Entrén"));
+        assertEquals("entren", DataBundleExporter.sanitize("Entrén"));
+        assertEquals("a", DataBundleExporter.sanitize("Å"));
         assertEquals("test-name", DataBundleExporter.sanitize("test-name"));
         assertEquals("abc123", DataBundleExporter.sanitize("abc123"));
+        assertEquals("kassa", DataBundleExporter.sanitize("###"));
     }
 
     @Test
