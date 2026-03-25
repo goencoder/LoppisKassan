@@ -33,23 +33,26 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
- * Background service that persists sold items locally and uploads them in the background.
+ * Background service that uploads sold items in the background while keeping the
+ * local pending file as the source of truth.
  * <p>
  * Design goals:
  * <ul>
  *   <li>Local-first: items are always written to disk before any upload attempt.</li>
- *   <li>Single-threaded I/O: all writes/reads to the pending JSONL file and all API uploads
- *       happen on ONE background thread to avoid races and lost updates.</li>
- *   <li>Unified pipeline: the same upload logic (classify + retry + update file) is used
+ *   <li>Short UI blocking: cashier checkout must only wait for local file I/O, never
+ *       for ongoing network uploads.</li>
+ *   <li>Serialized file access: reads/writes to the pending JSONL file are guarded by
+ *       a shared lock to avoid races and lost updates.</li>
+ *   <li>Unified upload pipeline: the same upload logic (classify + retry + update file) is used
  *       regardless of what triggers the sync.</li>
  * </ul>
  *
- * This class owns the "sync thread". Any code path that needs to mutate the pending
- * file MUST go through this class.
+ * This class owns the "sync thread" for uploads and coordinated file updates.
  */
 public class BackgroundSyncManager {
 
@@ -68,6 +71,7 @@ public class BackgroundSyncManager {
     private volatile Thread syncThread;
     private final Queue<List<V1SoldItem>> pendingQueue = new ConcurrentLinkedQueue<>();
     private final AtomicBoolean backgroundFileErrorShown = new AtomicBoolean(false);
+    private final Object pendingFileLock = new Object();
 
     private String activeEventId;
     private boolean isRunning = false;
@@ -205,21 +209,22 @@ public class BackgroundSyncManager {
     }
 
     /**
-     * Enqueue items for local persistence and background upload.
+     * Persist items locally and trigger background upload.
      * The method returns only after items are durably written to pending JSONL.
      *
-     * NOTE: File I/O still runs on the sync thread to preserve single-writer semantics.
+     * Cashier checkout uses this path and must never wait for an unrelated upload
+     * already in progress on the sync thread.
      */
     public void enqueueItems(String eventId, List<V1SoldItem> items) throws IOException {
         if (eventId == null || eventId.isBlank() || items == null || items.isEmpty()) {
             return;
         }
         ensureRunning(eventId);
-        pendingQueue.add(new ArrayList<>(items));
-        runOnSyncThread(() -> {
-            flushQueueToDisk(eventId);
-            return null;
-        });
+        List<V1SoldItem> itemsCopy = new ArrayList<>(items);
+        synchronized (pendingFileLock) {
+            PendingItemsStore store = new PendingItemsStore(eventId);
+            store.appendItems(itemsCopy);
+        }
         notifyPendingCountChanged();
         triggerSyncNow();
     }
@@ -318,8 +323,10 @@ public class BackgroundSyncManager {
         String eventId = activeEventId;
         if (eventId == null) return 0;
         try {
-            PendingItemsStore store = new PendingItemsStore(eventId);
-            return store.readPending().size();
+            synchronized (pendingFileLock) {
+                PendingItemsStore store = new PendingItemsStore(eventId);
+                return store.readPending().size();
+            }
         } catch (IOException e) {
             return 0;
         }
@@ -337,9 +344,16 @@ public class BackgroundSyncManager {
             syncOnceInternal();
             backgroundFileErrorShown.set(false);
         } catch (IOException e) {
-            log.severe("Background sync: Disk I/O error - " + e.getMessage());
+            String eventId = activeEventId;
+            Path pendingPath = eventId == null || eventId.isBlank()
+                    ? null
+                    : LocalEventPaths.getPendingItemsPath(eventId);
+            log.log(Level.SEVERE, "Background sync: Disk I/O error for "
+                    + (pendingPath != null ? pendingPath : "<no pending file>"), e);
             if (backgroundFileErrorShown.compareAndSet(false, true)) {
-                Popup.error("error.background_file_io", e.getMessage());
+                Popup.error("error.background_file_io",
+                        pendingPath != null ? pendingPath.toString() : "<no pending file>",
+                        e.getMessage());
             }
         } catch (Exception e) {
             log.warning("Background sync: Unexpected error - " + e.getMessage());
@@ -364,14 +378,17 @@ public class BackgroundSyncManager {
         flushQueueToDisk(eventId);
 
         Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
-        if (!Files.exists(pendingPath) || Files.size(pendingPath) == 0) {
-            return SyncResult.empty();
-        }
+        List<V1SoldItem> pendingItems;
+        synchronized (pendingFileLock) {
+            if (!Files.exists(pendingPath) || Files.size(pendingPath) == 0) {
+                return SyncResult.empty();
+            }
 
-        PendingItemsStore store = new PendingItemsStore(eventId);
-        List<V1SoldItem> pendingItems = store.readPending();
-        if (pendingItems.isEmpty()) {
-            return SyncResult.empty();
+            PendingItemsStore store = new PendingItemsStore(eventId);
+            pendingItems = store.readPending();
+            if (pendingItems.isEmpty()) {
+                return SyncResult.empty();
+            }
         }
 
         Map<String, List<V1SoldItem>> purchaseGroups = pendingItems.stream()
@@ -415,31 +432,34 @@ public class BackgroundSyncManager {
         }
 
         if (!acceptedIds.isEmpty() || !duplicateIds.isEmpty() || !rejectedItems.isEmpty()) {
-            List<V1SoldItem> allItems = store.readAll();
-            List<V1SoldItem> updatedItems = new ArrayList<>();
-            HashSet<String> rejectedIds = new HashSet<>();
-            for (se.goencoder.iloppis.model.V1RejectedItem rejectedItem : rejectedItems) {
-                if (rejectedItem.getItem() != null && rejectedItem.getItem().getItemId() != null) {
-                    rejectedIds.add(rejectedItem.getItem().getItemId());
+            synchronized (pendingFileLock) {
+                PendingItemsStore store = new PendingItemsStore(eventId);
+                List<V1SoldItem> allItems = store.readAll();
+                List<V1SoldItem> updatedItems = new ArrayList<>();
+                HashSet<String> rejectedIds = new HashSet<>();
+                for (se.goencoder.iloppis.model.V1RejectedItem rejectedItem : rejectedItems) {
+                    if (rejectedItem.getItem() != null && rejectedItem.getItem().getItemId() != null) {
+                        rejectedIds.add(rejectedItem.getItem().getItemId());
+                    }
                 }
-            }
-            HashSet<String> uploadedIds = new HashSet<>(acceptedIds);
-            uploadedIds.addAll(duplicateIds);
+                HashSet<String> uploadedIds = new HashSet<>(acceptedIds);
+                uploadedIds.addAll(duplicateIds);
 
-            for (V1SoldItem allItem : allItems) {
-                if (allItem.getItemId() == null) {
+                for (V1SoldItem allItem : allItems) {
+                    if (allItem.getItemId() == null) {
+                        updatedItems.add(allItem);
+                        continue;
+                    }
+                    if (rejectedIds.contains(allItem.getItemId())) {
+                        continue;
+                    }
+                    if (uploadedIds.contains(allItem.getItemId())) {
+                        allItem.setUploaded(true);
+                    }
                     updatedItems.add(allItem);
-                    continue;
                 }
-                if (rejectedIds.contains(allItem.getItemId())) {
-                    continue;
-                }
-                if (uploadedIds.contains(allItem.getItemId())) {
-                    allItem.setUploaded(true);
-                }
-                updatedItems.add(allItem);
+                store.saveAll(updatedItems);
             }
-            store.saveAll(updatedItems);
         }
 
         notifyPendingCountChanged();
@@ -468,8 +488,10 @@ public class BackgroundSyncManager {
         if (drained.isEmpty()) {
             return;
         }
-        PendingItemsStore store = new PendingItemsStore(eventId);
-        store.appendItems(drained);
+        synchronized (pendingFileLock) {
+            PendingItemsStore store = new PendingItemsStore(eventId);
+            store.appendItems(drained);
+        }
     }
 
     private void shutdownSyncExecutor() {

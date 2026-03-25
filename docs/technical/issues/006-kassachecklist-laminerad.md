@@ -104,17 +104,6 @@ Alla dessa är **normala misstag**. Korrigera och fortsätt.
   4. BYT till annan dator eller pappersläge
 ```
 
-## TYST FEL — Kontrollera detta
-
-Om du registrerar köp men **siffran i gula statusfältet inte ökar**:
-
-```
-  Förväntat:  Registrera köp -> siffran ökar med 1
-  Problem:    Siffran står stilla trots nya köp
-```
-
--> Misstänk filfel. Följ samma åtgärd som ovan (STOPPA kassan).
-
 ## RÖDA PRICKEN — Avvisade poster
 
 ```
@@ -140,8 +129,7 @@ Om du registrerar köp men **siffran i gula statusfältet inte ökar**:
 
 ### Samla INTE in under normal drift
 
-Grönt eller gult i statusfältet = allt är OK.
-Vanliga felmeddelanden (säljnummer/pris/kod) = korrigera och fortsätt.
+Grönt eller gult i statusfältet = fortsätt sälja.
 
 ### Samla in OMEDELBART vid filfel
 
@@ -157,27 +145,20 @@ Om du såg "Fel vid skrivning" / "filrättigheter" / "kataloger":
 ### Samla in EFTER loppisdag (alltid)
 
 ```
-  Från VARJE kassadator, kopiera:
+  Från VARJE kassadator:
 
-  ~/.loppiskassan/events/<eventId>/pending_items.jsonl
-  ~/.loppiskassan/events/<eventId>/rejected_purchases.jsonl
-  ~/.loppiskassan/logs/loppiskassan.log
-  ~/.loppiskassan/config/iloppis-mode.json
-
-  Zip:  kassa-1-20260324-1530.zip
-        kassa-2-20260324-1530.zip
-        ...osv
-
-  Skicka till tekniskt ansvarig.
+  1. Skapa datafil
+  2. Samla in datafilen
+  3. Ge till tekniskt ansvarig
 ```
 
 ## KONTAKTLISTA
 
 | Roll | Namn | Telefon |
 |------|------|---------|
-| Loppisansvarig | _____________ | _____________ |
-| Tekniskt ansvarig | _____________ | _____________ |
-| Backup-kontakt | _____________ | _____________ |
+| Loppisansvarig |  |  |
+| Tekniskt ansvarig |  |  |
+| Backup-kontakt |  |  |
 
 ## SAMMANFATTNING
 
