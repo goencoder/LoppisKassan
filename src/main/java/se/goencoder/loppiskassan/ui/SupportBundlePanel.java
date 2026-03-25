@@ -22,7 +22,7 @@ import java.awt.GridLayout;
 /**
  * Dedicated support page for exporting an iLoppis troubleshooting bundle.
  */
-public class SupportBundlePanel extends JPanel implements LocalizationAware {
+public class SupportBundlePanel extends JPanel implements LocalizationAware, SelectabableTab {
 
     private final LocalizationManager.LanguageChangeListener languageChangeListener = this::reloadTexts;
 
@@ -208,6 +208,15 @@ public class SupportBundlePanel extends JPanel implements LocalizationAware {
         actionHelpArea.setText(LocalizationManager.tr("support_bundle.dialog.tip"));
         sendToLabel.setText(LocalizationManager.tr("support_bundle.send_to"));
         exportButton.setText(LocalizationManager.tr("support_bundle.button"));
+        refreshEventId();
+    }
+
+    @Override
+    public void selected() {
+        refreshEventId();
+    }
+
+    private void refreshEventId() {
         eventIdField.setText(AppModeManager.getEventId() != null ? AppModeManager.getEventId() : "-");
         eventIdField.setCaretPosition(0);
     }
