@@ -8,7 +8,7 @@
 
 ## 1. Grundprincip
 
-**Keep calm, continue punch in purchases.**
+**Keep calm, continue punching in purchases.**
 
 Systemet är byggt local-first: varje köp skrivs till lokal fil (`pending_items.jsonl`) *innan* bakgrundssynk. Så länge appen kan skriva till disk går inga köp förlorade — oavsett nätverksstatus.
 

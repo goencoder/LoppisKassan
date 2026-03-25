@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -141,6 +142,10 @@ public class DataBundleExporter {
     static void createBundle(Path zipPath, String eventId, String eventName,
                              String cashierName, List<V1SoldItem> items,
                              Path rejectedPath) throws IOException {
+        Path parent = zipPath.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
 
         try (ZipOutputStream zos = new ZipOutputStream(
                 Files.newOutputStream(zipPath), StandardCharsets.UTF_8)) {
@@ -163,12 +168,8 @@ public class DataBundleExporter {
 
             addTextEntry(zos, "manifest.json", manifest.toString(2));
 
-            // 2. Pending items — serialize from the in-memory list
-            StringBuilder pendingContent = new StringBuilder();
-            for (V1SoldItem item : items) {
-                pendingContent.append(JsonlHelper.toJsonLine(item)).append('\n');
-            }
-            addTextEntry(zos, "pending_items.jsonl", pendingContent.toString());
+            // 2. Pending items — stream JSONL directly to the zip entry.
+            addPendingItemsEntry(zos, "pending_items.jsonl", items);
 
             // 3. Rejected items (if any)
             if (rejectedPath != null && Files.exists(rejectedPath) && Files.size(rejectedPath) > 0) {
@@ -189,7 +190,16 @@ public class DataBundleExporter {
         zos.closeEntry();
     }
 
+    private static void addPendingItemsEntry(ZipOutputStream zos, String name, List<V1SoldItem> items) throws IOException {
+        zos.putNextEntry(new ZipEntry(name));
+        for (V1SoldItem item : items) {
+            zos.write(JsonlHelper.toJsonLine(item).getBytes(StandardCharsets.UTF_8));
+            zos.write('\n');
+        }
+        zos.closeEntry();
+    }
+
     static String sanitize(String name) {
-        return name.replaceAll("[^\\w-]", "").toLowerCase();
+        return name.replaceAll("[^\\w-]", "").toLowerCase(Locale.ROOT);
     }
 }

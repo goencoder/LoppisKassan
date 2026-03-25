@@ -6,7 +6,6 @@ import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -94,5 +93,19 @@ class DataBundleExporterTest {
         assertTrue(manifestContent.contains("\"format\": \"loppiskassan-bundle-v1\""));
         assertTrue(manifestContent.contains("\"uploadedCount\": 1"));
         assertTrue(manifestContent.contains("\"pendingCount\": 1"));
+    }
+
+    @Test
+    void createBundleCreatesMissingParentDirectories() throws Exception {
+        Path zipPath = tempDir.resolve("nested").resolve("exports").resolve("kassa-test.zip");
+
+        V1SoldItem item = new V1SoldItem("p1", "i1",
+                LocalDateTime.of(2026, 3, 24, 10, 0), 1, 100, null,
+                V1PaymentMethod.Kontant, false);
+
+        DataBundleExporter.createBundle(zipPath, "event-1", "Test Loppis", "Kassa-1",
+                List.of(item), null);
+
+        assertTrue(Files.exists(zipPath));
     }
 }

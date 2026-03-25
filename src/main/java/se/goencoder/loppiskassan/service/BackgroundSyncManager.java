@@ -23,10 +23,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -62,6 +64,7 @@ public class BackgroundSyncManager {
     private ScheduledFuture<?> periodicTask;
     private volatile Thread syncThread;
     private final Queue<List<V1SoldItem>> pendingQueue = new ConcurrentLinkedQueue<>();
+    private final AtomicBoolean backgroundFileErrorShown = new AtomicBoolean(false);
 
     private String activeEventId;
     private boolean isRunning = false;
@@ -168,23 +171,9 @@ public class BackgroundSyncManager {
             periodicTask = null;
         }
         if (syncExecutor != null) {
-            // Flush pending queue to disk before stopping
-            String eid = activeEventId;
-            if (eid != null && !pendingQueue.isEmpty()) {
-                try {
-                    syncExecutor.submit(() -> {
-                        try {
-                            flushQueueToDisk(eid);
-                        } catch (IOException e) {
-                            log.severe("Shutdown flush failed: " + e.getMessage());
-                        }
-                    }).get(5, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    log.warning("Could not flush queue on stop: " + e.getMessage());
-                }
-            }
-            syncExecutor.shutdownNow();
+            shutdownSyncExecutor();
             syncExecutor = null;
+            syncThread = null;
         }
         isRunning = false;
         activeEventId = null;
@@ -201,26 +190,7 @@ public class BackgroundSyncManager {
         shutdownHookRegistered = true;
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             log.info("Shutdown hook: flushing pending items to disk...");
-            String eid = activeEventId;
-            if (eid == null) return;
-            // Drain the in-memory queue directly to disk (we're shutting down,
-            // the sync executor may already be gone)
-            List<V1SoldItem> drained = new ArrayList<>();
-            List<V1SoldItem> batch;
-            while ((batch = pendingQueue.poll()) != null) {
-                drained.addAll(batch);
-            }
-            if (!drained.isEmpty()) {
-                try {
-                    PendingItemsStore store = new PendingItemsStore(eid);
-                    store.appendItems(drained);
-                    log.info("Shutdown hook: flushed " + drained.size() + " items to disk.");
-                } catch (IOException e) {
-                    log.severe("Shutdown hook: FAILED to flush items: " + e.getMessage());
-                }
-            } else {
-                log.info("Shutdown hook: no pending items in memory queue.");
-            }
+            stop();
         }, "BackgroundSync-ShutdownHook"));
     }
 
@@ -306,7 +276,11 @@ public class BackgroundSyncManager {
         if (executor == null) {
             return;
         }
-        executor.submit(this::syncOnceSafely);
+        try {
+            executor.submit(this::syncOnceSafely);
+        } catch (RejectedExecutionException e) {
+            log.fine("Background sync trigger ignored during shutdown.");
+        }
     }
 
     /**
@@ -358,9 +332,12 @@ public class BackgroundSyncManager {
     private void syncOnceSafely() {
         try {
             syncOnceInternal();
+            backgroundFileErrorShown.set(false);
         } catch (java.io.IOException e) {
             log.severe("Background sync: File write error - " + e.getMessage());
-            Popup.error("error.background_file_write", e.getMessage());
+            if (backgroundFileErrorShown.compareAndSet(false, true)) {
+                Popup.error("error.background_file_write", e.getMessage());
+            }
         } catch (Exception e) {
             log.warning("Background sync: Unexpected error - " + e.getMessage());
         }
@@ -492,6 +469,47 @@ public class BackgroundSyncManager {
         store.appendItems(drained);
     }
 
+    private void shutdownSyncExecutor() {
+        ScheduledExecutorService executor = syncExecutor;
+        String eventId = activeEventId;
+        if (executor == null) {
+            return;
+        }
+
+        try {
+            if (eventId != null && !eventId.isBlank()) {
+                executor.submit(() -> {
+                    flushQueueToDisk(eventId);
+                    return null;
+                }).get();
+            }
+        } catch (RejectedExecutionException e) {
+            log.warning("Could not schedule final queue flush during shutdown: " + e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warning("Interrupted while waiting for final queue flush.");
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            String message = cause != null ? cause.getMessage() : e.getMessage();
+            log.severe("Shutdown flush failed: " + message);
+        }
+
+        executor.shutdown();
+        boolean interrupted = false;
+        while (true) {
+            try {
+                if (executor.awaitTermination(1, TimeUnit.SECONDS)) {
+                    break;
+                }
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private <T> T runOnSyncThread(Callable<T> task) throws IOException {
         ScheduledExecutorService executor = syncExecutor;
         if (executor == null) {
@@ -510,6 +528,8 @@ public class BackgroundSyncManager {
         }
         try {
             return executor.submit(task).get();
+        } catch (RejectedExecutionException e) {
+            throw new IOException("Background sync executor is shutting down", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException(e);

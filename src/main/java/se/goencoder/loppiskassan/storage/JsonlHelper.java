@@ -8,6 +8,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -64,23 +65,36 @@ public final class JsonlHelper {
         if (path.getParent() != null) {
             Files.createDirectories(path.getParent());
         }
-        // Write to temp file, fsync, then atomic move — prevents truncation on crash
         Path tempPath = path.resolveSibling(path.getFileName() + ".tmp");
-        try (BufferedWriter writer = Files.newBufferedWriter(
-                tempPath,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE)) {
-            if (items != null) {
-                for (V1SoldItem item : items) {
-                    writer.write(toJsonLine(item));
-                    writer.newLine();
+        boolean moved = false;
+        try {
+            // Write to temp file, fsync, then move into place. This reduces the risk of partial
+            // writes/truncation, but does not by itself guarantee the rename is durable on crash.
+            try (BufferedWriter writer = Files.newBufferedWriter(
+                    tempPath,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE)) {
+                if (items != null) {
+                    for (V1SoldItem item : items) {
+                        writer.write(toJsonLine(item));
+                        writer.newLine();
+                    }
                 }
             }
+            fsync(tempPath);
+            try {
+                Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ex) {
+                Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING);
+            }
+            moved = true;
+        } finally {
+            if (!moved) {
+                Files.deleteIfExists(tempPath);
+            }
         }
-        fsync(tempPath);
-        Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
 
     /**

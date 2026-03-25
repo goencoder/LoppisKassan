@@ -69,7 +69,7 @@ public class JsonlHelperTest {
     }
 
     @Test
-    void writeItemsUsesAtomicMove() throws Exception {
+    void writeItemsReplacesTargetAndCleansUpTempFile() throws Exception {
         Path tempDir = Files.createTempDirectory("jsonl-test");
         Path file = tempDir.resolve("pending_items.jsonl");
         Path tempFile = tempDir.resolve("pending_items.jsonl.tmp");
@@ -111,7 +111,7 @@ public class JsonlHelperTest {
     }
 
     @Test
-    void appendItemsFsyncsToFile() throws Exception {
+    void appendItemsAppendsAndReadsInOrder() throws Exception {
         Path tempDir = Files.createTempDirectory("jsonl-test");
         Path file = tempDir.resolve("pending_items.jsonl");
 
