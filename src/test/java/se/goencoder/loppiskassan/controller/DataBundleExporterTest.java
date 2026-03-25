@@ -141,13 +141,16 @@ class DataBundleExporterTest {
     @Test
     void createBundleCreatesMissingParentDirectories() throws Exception {
         Path zipPath = tempDir.resolve("nested").resolve("exports").resolve("kassa-test.zip");
+        Path eventDir = tempDir.resolve("events").resolve("event-1");
+        Path configDir = tempDir.resolve("config");
+        Path logsDir = tempDir.resolve("logs");
 
-        V1SoldItem item = new V1SoldItem("p1", "i1",
-                LocalDateTime.of(2026, 3, 24, 10, 0), 1, 100, null,
-                V1PaymentMethod.Kontant, false);
+        Files.createDirectories(eventDir);
+        Files.createDirectories(configDir);
+        Files.createDirectories(logsDir);
 
         DataBundleExporter.createBundle(zipPath, "event-1", "Test Loppis", "Kassa-1",
-                List.of(item), null);
+                eventDir, configDir, logsDir);
 
         assertTrue(Files.exists(zipPath));
     }
