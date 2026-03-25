@@ -19,6 +19,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -55,6 +56,23 @@ public final class JsonlHelper {
         try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
             lines.filter(line -> !line.isBlank())
                     .forEach(line -> items.add(fromJsonLine(line)));
+        } catch (RuntimeException ex) {
+            throw new IOException("Failed to parse JSONL file: " + path, ex);
+        }
+        return items;
+    }
+
+    public static List<V1SoldItem> readLastItems(Path path, int maxLines) throws IOException {
+        if (Files.notExists(path) || maxLines <= 0) {
+            return List.of();
+        }
+
+        List<String> lines = readLastNonBlankLines(path, maxLines);
+        List<V1SoldItem> items = new ArrayList<>(lines.size());
+        try {
+            for (String line : lines) {
+                items.add(fromJsonLine(line));
+            }
         } catch (RuntimeException ex) {
             throw new IOException("Failed to parse JSONL file: " + path, ex);
         }
@@ -189,6 +207,49 @@ public final class JsonlHelper {
             return V1PaymentMethod.valueOf(value);
         } catch (IllegalArgumentException ex) {
             return V1PaymentMethod.Kontant;
+        }
+    }
+
+    private static List<String> readLastNonBlankLines(Path path, int maxLines) throws IOException {
+        List<String> lines = new ArrayList<>(maxLines);
+        try (var file = new java.io.RandomAccessFile(path.toFile(), "r")) {
+            long pointer = file.length() - 1;
+            var currentLine = new java.io.ByteArrayOutputStream();
+
+            while (pointer >= 0 && lines.size() < maxLines) {
+                file.seek(pointer);
+                int value = file.read();
+                if (value == '\n') {
+                    addDecodedLine(lines, currentLine);
+                } else if (value != '\r') {
+                    currentLine.write(value);
+                }
+                pointer--;
+            }
+            addDecodedLine(lines, currentLine);
+        }
+        Collections.reverse(lines);
+        return lines;
+    }
+
+    private static void addDecodedLine(List<String> lines, java.io.ByteArrayOutputStream currentLine) {
+        if (currentLine.size() == 0) {
+            return;
+        }
+        byte[] bytes = currentLine.toByteArray();
+        reverse(bytes);
+        String line = new String(bytes, StandardCharsets.UTF_8);
+        if (!line.isBlank()) {
+            lines.add(line);
+        }
+        currentLine.reset();
+    }
+
+    private static void reverse(byte[] bytes) {
+        for (int left = 0, right = bytes.length - 1; left < right; left++, right--) {
+            byte temp = bytes[left];
+            bytes[left] = bytes[right];
+            bytes[right] = temp;
         }
     }
 }

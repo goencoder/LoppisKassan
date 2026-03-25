@@ -134,4 +134,32 @@ public class JsonlHelperTest {
         assertEquals("item-5", loaded.get(0).getItemId());
         assertEquals("item-6", loaded.get(1).getItemId());
     }
+
+    @Test
+    void readLastItemsReturnsTailInOriginalOrder() throws Exception {
+        Path file = tempDir.resolve("pending_items.jsonl");
+
+        V1SoldItem item1 = new V1SoldItem(
+                "purchase-6", "item-7",
+                LocalDateTime.of(2026, 3, 24, 10, 0),
+                2, 50, null, V1PaymentMethod.Kontant, false
+        );
+        V1SoldItem item2 = new V1SoldItem(
+                "purchase-7", "item-8",
+                LocalDateTime.of(2026, 3, 24, 10, 1),
+                3, 75, null, V1PaymentMethod.Kontant, false
+        );
+        V1SoldItem item3 = new V1SoldItem(
+                "purchase-8", "item-9",
+                LocalDateTime.of(2026, 3, 24, 10, 2),
+                4, 90, null, V1PaymentMethod.Kontant, false
+        );
+
+        JsonlHelper.appendItems(file, List.of(item1, item2, item3));
+
+        List<V1SoldItem> tail = JsonlHelper.readLastItems(file, 2);
+        assertEquals(2, tail.size());
+        assertEquals("item-8", tail.get(0).getItemId());
+        assertEquals("item-9", tail.get(1).getItemId());
+    }
 }

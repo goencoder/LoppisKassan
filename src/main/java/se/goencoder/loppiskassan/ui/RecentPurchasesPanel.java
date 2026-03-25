@@ -3,6 +3,7 @@ package se.goencoder.loppiskassan.ui;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
+import se.goencoder.loppiskassan.localization.LocalizationManager.LanguageChangeListener;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
@@ -24,6 +25,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
@@ -34,6 +36,7 @@ import java.util.Locale;
 
 public final class RecentPurchasesPanel extends JPanel implements LocalizationAware, SelectabableTab {
     private static final int MAX_PURCHASES = 10;
+    private static final int MAX_TAIL_LINES = 250;
     private static final String CARD_TABLE = "table";
     private static final String CARD_EMPTY = "empty";
 
@@ -44,11 +47,17 @@ public final class RecentPurchasesPanel extends JPanel implements LocalizationAw
     private final JLabel titleLabel = new JLabel();
     private final JLabel descriptionLabel = new JLabel();
     private final JLabel emptyLabel = new JLabel("", SwingConstants.CENTER);
+    private final LanguageChangeListener languageChangeListener = this::reloadTexts;
+
+    private List<RecentPurchases.PurchaseGroup> latestGroups = List.of();
+    private Path lastLoadedPath;
+    private long lastLoadedSize = -1L;
+    private long lastLoadedModifiedMillis = -1L;
 
     public RecentPurchasesPanel() {
         setLayout(new BorderLayout());
         setBackground(AppColors.WHITE);
-        LocalizationManager.addListener(this::reloadTexts);
+        LocalizationManager.addListener(languageChangeListener);
 
         add(createHeader(), BorderLayout.NORTH);
         add(createBody(), BorderLayout.CENTER);
@@ -139,37 +148,56 @@ public final class RecentPurchasesPanel extends JPanel implements LocalizationAw
                 LocalizationManager.tr("recent.table.seller"),
                 LocalizationManager.tr("recent.table.price"));
         refreshTableColumns();
-        loadPurchases();
+        refreshRowsFromCache();
     }
 
     @Override
     public void removeNotify() {
-        LocalizationManager.removeListener(this::reloadTexts);
+        LocalizationManager.removeListener(languageChangeListener);
         super.removeNotify();
     }
 
     private void loadPurchases() {
         String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
-            tableModel.setRows(List.of());
-            cardLayout.show(bodyPanel, CARD_EMPTY);
+            latestGroups = List.of();
+            lastLoadedPath = null;
+            lastLoadedSize = -1L;
+            lastLoadedModifiedMillis = -1L;
+            refreshRowsFromCache();
             return;
         }
 
         Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
         try {
-            List<V1SoldItem> items = JsonlHelper.readItems(pendingPath);
-            List<RecentPurchases.PurchaseGroup> groups = RecentPurchases.latest(items, MAX_PURCHASES);
-            List<RecentPurchaseRow> rows = buildRows(groups);
-            tableModel.setRows(rows);
-            cardLayout.show(bodyPanel, rows.isEmpty() ? CARD_EMPTY : CARD_TABLE);
+            long fileSize = Files.exists(pendingPath) ? Files.size(pendingPath) : -1L;
+            long modifiedMillis = Files.exists(pendingPath) ? Files.getLastModifiedTime(pendingPath).toMillis() : -1L;
+            if (pendingPath.equals(lastLoadedPath)
+                    && fileSize == lastLoadedSize
+                    && modifiedMillis == lastLoadedModifiedMillis) {
+                refreshRowsFromCache();
+                return;
+            }
+
+            List<V1SoldItem> items = JsonlHelper.readLastItems(pendingPath, MAX_TAIL_LINES);
+            latestGroups = RecentPurchases.latest(items, MAX_PURCHASES);
+            lastLoadedPath = pendingPath;
+            lastLoadedSize = fileSize;
+            lastLoadedModifiedMillis = modifiedMillis;
+            refreshRowsFromCache();
         } catch (Exception e) {
-            tableModel.setRows(List.of());
-            cardLayout.show(bodyPanel, CARD_EMPTY);
+            latestGroups = List.of();
+            refreshRowsFromCache();
             Popup.ERROR.showAndWait(
                     LocalizationManager.tr("error.generic.title"),
                     LocalizationManager.tr("error.read_register_file", pendingPath));
         }
+    }
+
+    private void refreshRowsFromCache() {
+        List<RecentPurchaseRow> rows = buildRows(latestGroups);
+        tableModel.setRows(rows);
+        cardLayout.show(bodyPanel, rows.isEmpty() ? CARD_EMPTY : CARD_TABLE);
     }
 
     private List<RecentPurchaseRow> buildRows(List<RecentPurchases.PurchaseGroup> groups) {
