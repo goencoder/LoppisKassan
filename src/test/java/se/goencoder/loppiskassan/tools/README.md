@@ -181,7 +181,7 @@ EVENT_ID=local-test
 # ... other params
 ```
 
-This writes directly to `data/events/{eventId}/pending_items.jsonl`
+This writes directly to `~/.loppiskassan/events/{eventId}/pending_items.jsonl`
 
 ## Performance
 

@@ -156,7 +156,6 @@ public final class SettingsDialog extends JDialog implements LocalizationAware {
         Path baseDir = AppPaths.getBaseDir();
         Path configDir = AppPaths.getConfigDir();
         Path logsDir = AppPaths.getLogsDir();
-        Path dataDir = AppPaths.getDataDir();
         Path eventsDir = LocalEventPaths.getEventsDir();
         Path eventDir = eventsDir.resolve(eventToken);
 
@@ -171,9 +170,6 @@ public final class SettingsDialog extends JDialog implements LocalizationAware {
         rows.add(new PathRow(LocalizationManager.tr("settings.row.logs_dir"), logsDir.toString()));
         rows.add(new PathRow(LocalizationManager.tr("settings.row.log_file"),
                 logsDir.resolve("loppiskassan.log").toString()));
-        rows.add(new PathRow(LocalizationManager.tr("settings.row.data_dir"), dataDir.toString()));
-        rows.add(new PathRow(LocalizationManager.tr("settings.row.data_csv"),
-                dataDir.resolve("loppiskassan.csv").toString()));
         rows.add(new PathRow(LocalizationManager.tr("settings.row.events_dir"), eventsDir.toString()));
         rows.add(new PathRow(LocalizationManager.tr("settings.row.event_dir"), eventDir.toString()));
         rows.add(new PathRow(LocalizationManager.tr("settings.row.local_metadata"),

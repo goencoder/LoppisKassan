@@ -27,16 +27,11 @@ public final class LocalizationManager {
 
     /**
      * Initialize the localization system. Should be called once at application startup.
-     * Restores the previously saved language preference, defaulting to Swedish (sv).
+     * Starts the application in Swedish regardless of any previously saved language.
      */
     public static void initialize() {
-        // Restore saved language from GlobalConfigurationStore, defaulting to "sv"
-        String savedLanguage = GlobalConfigurationStore.getLanguage();
-        if (savedLanguage == null || savedLanguage.isEmpty()) {
-            savedLanguage = "sv";
-            GlobalConfigurationStore.setLanguage(savedLanguage);
-        }
-        currentStrategy = getOrCreateStrategy(savedLanguage);
+        GlobalConfigurationStore.setLanguage("sv");
+        currentStrategy = getOrCreateStrategy("sv");
     }
 
     /**

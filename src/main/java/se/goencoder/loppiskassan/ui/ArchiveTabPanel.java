@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
+import se.goencoder.loppiskassan.util.ArchiveFileNames;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -153,8 +154,7 @@ public class ArchiveTabPanel extends JPanel implements LocalizationAware, Select
             try (Stream<Path> paths = Files.list(archiveDir)) {
                 paths.filter(path -> {
                     String name = path.getFileName().toString();
-                    return name.startsWith(LocalizationManager.tr("history.archive_prefix")) 
-                           && name.endsWith(".csv");
+                    return ArchiveFileNames.isArchiveFileName(name);
                 })
                 .forEach(path -> {
                     try {

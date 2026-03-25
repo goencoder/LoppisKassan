@@ -24,6 +24,7 @@ import se.goencoder.loppiskassan.utils.FilterUtils.FilterResult;
 import se.goencoder.loppiskassan.utils.SoldItemUtils;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.util.ArchiveFileNames;
 
 import se.goencoder.loppiskassan.service.UIThreadingService;
 import se.goencoder.loppiskassan.service.HistoryOperations;
@@ -505,7 +506,7 @@ public class HistoryTabController implements HistoryControllerInterface {
         }
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yy-MM-dd_HH-mm-ss"));
-        String fileName = LocalizationManager.tr("history.archive_prefix") + timestamp + ".csv";
+        String fileName = ArchiveFileNames.createFileName(timestamp);
 
         try {
             // Create event-specific archive directory if it doesn't exist

@@ -20,7 +20,6 @@ public final class AppPaths {
     private static final String BASE_DIR_NAME = ".loppiskassan";
     private static final String CONFIG_DIR_NAME = "config";
     private static final String LOGS_DIR_NAME = "logs";
-    private static final String DATA_DIR_NAME = "data";
 
     private AppPaths() {}
 
@@ -37,10 +36,6 @@ public final class AppPaths {
         return getBaseDir().resolve(LOGS_DIR_NAME);
     }
 
-    public static Path getDataDir() {
-        return getBaseDir().resolve(DATA_DIR_NAME);
-    }
-
     public static Path getLegacyConfigDir() {
         return Paths.get(CONFIG_DIR_NAME);
     }
@@ -49,18 +44,13 @@ public final class AppPaths {
         return Paths.get(LOGS_DIR_NAME);
     }
 
-    public static Path getLegacyDataDir() {
-        return Paths.get(DATA_DIR_NAME);
-    }
-
     /**
-     * Move legacy config/logs/data directories (relative to old working dir)
+     * Move legacy config/logs directories (relative to old working dir)
      * into the unified ~/.loppiskassan folder when possible.
      */
     public static void migrateLegacyPaths() {
         migrateDirectory(getLegacyConfigDir(), getConfigDir());
         migrateDirectory(getLegacyLogsDir(), getLogsDir());
-        migrateDirectory(getLegacyDataDir(), getDataDir());
     }
 
     private static void migrateDirectory(Path legacyDir, Path targetDir) {

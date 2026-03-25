@@ -21,6 +21,7 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
     
     private NavigationButton eventButton;
     private NavigationButton cashierButton;
+    private NavigationButton recentButton;
     private NavigationButton historyButton;
     private NavigationButton exportButton;
     private NavigationButton supportButton;
@@ -47,6 +48,13 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
         buttons.add(cashierButton);
         add(cashierButton);
         add(Box.createVerticalStrut(4));
+
+        if (!AppModeManager.isLocalMode()) {
+            recentButton = createNavigationButton("sidebar.recent", AppShellFrame.NavigationTarget.RECENT);
+            buttons.add(recentButton);
+            add(recentButton);
+            add(Box.createVerticalStrut(4));
+        }
         
         // Historik (lokal) / Live (iLoppis)
         String historyKey = AppModeManager.isLocalMode() ? "sidebar.history" : "sidebar.live";
@@ -98,6 +106,7 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
         NavigationButton targetButton = switch (target) {
             case DISCOVERY -> eventButton;
             case CASHIER -> cashierButton;
+            case RECENT -> recentButton;
             case HISTORY -> historyButton;
             case EXPORT -> exportButton;
             case SUPPORT -> supportButton;
@@ -113,6 +122,7 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
     public void reloadTexts() {
         if (eventButton != null) eventButton.setText(LocalizationManager.tr("sidebar.event"));
         if (cashierButton != null) cashierButton.setText(LocalizationManager.tr("sidebar.cashier"));
+        if (recentButton != null) recentButton.setText(LocalizationManager.tr("sidebar.recent"));
         if (historyButton != null) historyButton.setText(LocalizationManager.tr(
                 AppModeManager.isLocalMode() ? "sidebar.history" : "sidebar.live"));
         if (exportButton != null) exportButton.setText(LocalizationManager.tr("sidebar.export"));
