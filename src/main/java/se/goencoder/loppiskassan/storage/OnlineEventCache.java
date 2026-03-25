@@ -63,10 +63,7 @@ public class OnlineEventCache {
                     OffsetDateTime.now()
             );
 
-            // Write to cache metadata file
-            Path cachePath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
-            Files.writeString(cachePath, cached.toJsonString(), StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            writeCachedEvent(eventDir, cached);
 
         } catch (IOException e) {
             // Log warning but don't fail - app can continue without cache
@@ -92,20 +89,14 @@ public class OnlineEventCache {
             try (Stream<Path> paths = Files.list(eventsDir)) {
                 paths.filter(Files::isDirectory)
                         .forEach(eventDir -> {
-                            Path cachePath = resolveCachePath(eventDir);
-                            if (Files.exists(cachePath)) {
-                                try {
-                                    String json = Files.readString(cachePath, StandardCharsets.UTF_8);
-                                    CachedOnlineEvent cached = CachedOnlineEvent.fromJsonString(json);
-
-                                    // Filter out expired entries
-                                    if (!cached.isExpired(CACHE_TTL_MS)) {
-                                        result.add(cached);
-                                    }
-                                } catch (IOException e) {
-                                    // Ignore corrupted cache files
-                                    System.err.println("Warning: Failed to load cached event from " + cachePath + ": " + e.getMessage());
+                            try {
+                                CachedOnlineEvent cached = loadCachedEventFromDir(eventDir);
+                                if (cached != null && !cached.isExpired(CACHE_TTL_MS)) {
+                                    result.add(cached);
                                 }
+                            } catch (IOException e) {
+                                Path cachePath = resolveCachePath(eventDir);
+                                System.err.println("Warning: Failed to load cached event from " + cachePath + ": " + e.getMessage());
                             }
                         });
             }
@@ -128,14 +119,7 @@ public class OnlineEventCache {
         }
 
         try {
-            Path cachePath = resolveCachePath(LocalEventPaths.getEventDir(eventId));
-            if (Files.notExists(cachePath)) {
-                return null;
-            }
-
-            String json = Files.readString(cachePath, StandardCharsets.UTF_8);
-            return CachedOnlineEvent.fromJsonString(json);
-
+            return loadCachedEventFromDir(LocalEventPaths.getEventDir(eventId));
         } catch (IOException e) {
             System.err.println("Warning: Failed to load cached event " + eventId + ": " + e.getMessage());
             return null;
@@ -157,6 +141,10 @@ public class OnlineEventCache {
             Path cachePath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
             if (Files.exists(cachePath)) {
                 Files.delete(cachePath);
+            }
+            Path credentialsPath = LocalEventPaths.getIloppisCredentialsPath(eventId);
+            if (Files.exists(credentialsPath)) {
+                Files.delete(credentialsPath);
             }
             Path legacyPath = eventDir.resolve(LEGACY_CACHE_METADATA_FILENAME);
             if (Files.exists(legacyPath)) {
@@ -232,9 +220,7 @@ public class OnlineEventCache {
                     cached.getCachedAt()
             );
 
-            Path cachePath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
-            Files.writeString(cachePath, updated.toJsonString(), StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            writeCachedEvent(eventDir, updated);
 
         } catch (IOException e) {
             System.err.println("Warning: Failed to clear cached credentials for event " + eventId + ": " + e.getMessage());
@@ -280,8 +266,7 @@ public class OnlineEventCache {
                                 OffsetDateTime.now()  // Update cache timestamp
                         );
 
-                        Files.writeString(cachePath, updated.toJsonString(), StandardCharsets.UTF_8,
-                                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                        writeCachedEvent(LocalEventPaths.getEventDir(event.getId()), updated);
                     }
                 } catch (IOException e) {
                     System.err.println("Warning: Failed to refresh cache for event " + event.getId() + ": " + e.getMessage());
@@ -305,5 +290,58 @@ public class OnlineEventCache {
             }
         }
         return newPath;
+    }
+
+    private static CachedOnlineEvent loadCachedEventFromDir(Path eventDir) throws IOException {
+        Path cachePath = resolveCachePath(eventDir);
+        if (Files.notExists(cachePath)) {
+            return null;
+        }
+
+        String json = Files.readString(cachePath, StandardCharsets.UTF_8);
+        CachedOnlineEvent cached = CachedOnlineEvent.fromJsonString(json);
+        String eventId = cached.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            eventId = eventDir.getFileName().toString();
+        }
+
+        String credentialsApiKey = OnlineEventCredentialsStore.getApiKey(eventId);
+        boolean hadLegacyApiKeyInMetadata = cached.hasApiKey();
+        String effectiveApiKey = credentialsApiKey;
+        if ((effectiveApiKey == null || effectiveApiKey.isBlank()) && hadLegacyApiKeyInMetadata) {
+            effectiveApiKey = cached.getApiKey();
+            OnlineEventCredentialsStore.setApiKey(eventId, effectiveApiKey);
+            writeCachedMetadata(eventDir, cached);
+        }
+
+        return withApiKey(cached, effectiveApiKey);
+    }
+
+    private static void writeCachedEvent(Path eventDir, CachedOnlineEvent cached) throws IOException {
+        writeCachedMetadata(eventDir, cached);
+        OnlineEventCredentialsStore.setApiKey(cached.getEventId(), cached.getApiKey());
+    }
+
+    private static void writeCachedMetadata(Path eventDir, CachedOnlineEvent cached) throws IOException {
+        Path cachePath = eventDir.resolve(ILOPPIS_METADATA_FILENAME);
+        Files.writeString(cachePath, cached.toJsonString(), StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    private static CachedOnlineEvent withApiKey(CachedOnlineEvent cached, String apiKey) {
+        return new CachedOnlineEvent(
+                cached.getEventId(),
+                cached.getEventName(),
+                cached.getDescription(),
+                cached.getAddressStreet(),
+                cached.getAddressCity(),
+                cached.getMarketId(),
+                apiKey,
+                cached.getApprovedSellersJson(),
+                cached.getRevenueSplitJson(),
+                cached.getStartTime(),
+                cached.getEndTime(),
+                cached.getCachedAt()
+        );
     }
 }

@@ -3,6 +3,7 @@ package se.goencoder.loppiskassan.controller;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.model.cashier.CashierState;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
@@ -46,7 +47,7 @@ public class CashierTabController implements CashierControllerInterface {
     private ScheduledFuture<?> heartbeatTask;
     private volatile boolean heartbeatSubmitting;
     private volatile int heartbeatPendingPurchasesCount;
-    private volatile String heartbeatDisplayName = "";
+    private volatile String heartbeatDisplayName = readPersistedHeartbeatDisplayName();
 
     private CashierTabController() {}
 
@@ -99,6 +100,7 @@ public class CashierTabController implements CashierControllerInterface {
             stopHeartbeat();
             return;
         }
+        refreshHeartbeatDisplayNameFromConfig();
         if (heartbeatExecutor == null || heartbeatExecutor.isShutdown()) {
             heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread thread = new Thread(r, "CashierHeartbeat");
@@ -239,8 +241,8 @@ public class CashierTabController implements CashierControllerInterface {
                 finishCheckoutFlow(paymentMethod, totalAmount);
             } catch (Exception e) {
                 Popup.ERROR.showAndWait(
-                        LocalizationManager.tr("error.upload_web"),
-                        e.getMessage()
+                        LocalizationManager.tr("error.persist_failed.title"),
+                        LocalizationManager.tr("error.persist_failed.message", e.getMessage())
                 );
             } finally {
                 heartbeatSubmitting = false;
@@ -366,9 +368,7 @@ public class CashierTabController implements CashierControllerInterface {
                 heartbeatDisplayName
         );
 
-        if (result != null && result.displayName() != null) {
-            heartbeatDisplayName = result.displayName();
-        }
+        applyHeartbeatResult(result);
     }
 
     private synchronized void stopHeartbeat() {
@@ -380,6 +380,33 @@ public class CashierTabController implements CashierControllerInterface {
             heartbeatExecutor.shutdownNow();
             heartbeatExecutor = null;
         }
+    }
+
+    static String readPersistedHeartbeatDisplayName() {
+        String storedName = GlobalConfigurationStore.getCashierName();
+        return storedName == null ? "" : storedName;
+    }
+
+    void refreshHeartbeatDisplayNameFromConfig() {
+        heartbeatDisplayName = readPersistedHeartbeatDisplayName();
+    }
+
+    void applyHeartbeatResult(CashierHeartbeatService.HeartbeatResult result) {
+        if (result == null || result.displayName() == null) {
+            return;
+        }
+        String normalized = result.displayName().trim();
+        if (normalized.isEmpty()) {
+            return;
+        }
+        heartbeatDisplayName = normalized;
+        if (!normalized.equals(GlobalConfigurationStore.getCashierName())) {
+            GlobalConfigurationStore.setCashierName(normalized);
+        }
+    }
+
+    String getHeartbeatDisplayName() {
+        return heartbeatDisplayName;
     }
 
 }

@@ -25,10 +25,6 @@ public class LocalEventRepository {
         if (Files.notExists(pendingPath)) {
             Files.createFile(pendingPath);
         }
-        Path soldPath = LocalEventPaths.getSoldItemsPath(eventId);
-        if (Files.notExists(soldPath)) {
-            Files.createFile(soldPath);
-        }
     }
 
     public static LocalEvent create(LocalEvent event) throws IOException {
@@ -45,9 +41,6 @@ public class LocalEventRepository {
 
         Path pendingPath = LocalEventPaths.getPendingItemsPath(event.getEventId());
         Files.createFile(pendingPath);
-
-        Path soldPath = LocalEventPaths.getSoldItemsPath(event.getEventId());
-        Files.createFile(soldPath);
 
         return event;
     }

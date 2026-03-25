@@ -162,6 +162,7 @@ public final class AuthErrorHandler {
         }
 
         ApiHelper.INSTANCE.setCurrentApiKey(response.getApiKey());
+        AppModeManager.setEventId(eventId);
         if (result.isRemember()) {
             ILoppisConfigurationStore.setApiKey(response.getApiKey());
         } else {

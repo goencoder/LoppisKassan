@@ -71,15 +71,12 @@ eventId, itemId, soldTime, seller, price, paidOutTime, paymentMethod, archived
     │   ├── metadata.json
     │   ├── pending_items.jsonl
     │   ├── rejected_purchases.jsonl
-    │   └── sold_items.jsonl
     ├── local-{uuid-1}/                 # Lokalt event 1
     │   ├── metadata.json
-    │   ├── pending_items.jsonl
-    │   └── sold_items.jsonl
+    │   └── pending_items.jsonl
     └── local-{uuid-2}/                 # Lokalt event 2
         ├── metadata.json
-        ├── pending_items.jsonl
-        └── sold_items.jsonl
+        └── pending_items.jsonl
 ```
 
 > **Notera:** `loppiskassan.csv` finns **inte** kvar. All lagring sker i JSONL. Engångsmigration konverterar befintlig CSV-data (se avsnitt 5).

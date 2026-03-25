@@ -109,7 +109,8 @@ public class RejectedItemsHelper {
             String price = "?";
             String payment = "?";
             String reason = rejected.getReason() != null ? rejected.getReason() :
-                           (rejected.getErrorCode() != null ? rejected.getErrorCode().toString() : "Unknown");
+                           (rejected.getErrorCode() != null ? rejected.getErrorCode().toString() :
+                            LocalizationManager.tr("rejected.reason_unknown"));
             
             if (rejected.getItem() != null) {
                 if (rejected.getItem().getSeller() != null) {

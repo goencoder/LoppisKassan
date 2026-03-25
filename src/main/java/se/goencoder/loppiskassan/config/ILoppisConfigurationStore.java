@@ -1,5 +1,7 @@
 package se.goencoder.loppiskassan.config;
 
+import se.goencoder.loppiskassan.storage.OnlineEventCredentialsStore;
+
 import java.nio.file.Path;
 
 /**
@@ -10,7 +12,8 @@ import java.nio.file.Path;
  * Stored in: ~/.loppiskassan/config/iloppis-mode.json
  */
 public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigurationStore.ILoppisConfig> {
-    
+    private static final String STAGING_API_BASE_URL = "https://iloppis-staging.fly.dev";
+    private static final String PRODUCTION_API_BASE_URL = "https://iloppis.se";
     private static final String CONFIG_FILE = "iloppis-mode.json";
     private static final Path CONFIG_PATH = CONFIG_DIR.resolve(CONFIG_FILE);
     
@@ -18,6 +21,7 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
     
     static {
         INSTANCE.load();
+        INSTANCE.migrateLegacyStagingBaseUrl();
     }
     
     private ILoppisConfigurationStore() {}
@@ -47,7 +51,6 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
      */
     static class ILoppisConfig {
         private String eventId;           // UUID from API
-        private String apiKey;            // Authentication key
         private String apiBaseUrl;        // API base URL (e.g., http://127.0.0.1:8080)
         private String approvedSellers;   // JSON array of approved vendor IDs (cached for offline validation)
         private String revenueSplit;      // JSON string of revenue split configuration
@@ -66,13 +69,13 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
         INSTANCE.save();
     }
     
-    // API Key
+    // API Key (per-event, stored in OnlineEventCredentialsStore)
     public static String getApiKey() {
-        return INSTANCE.config.apiKey;
+        return OnlineEventCredentialsStore.getApiKey(getEventId());
     }
-    
+
     public static void setApiKey(String apiKey) {
-        INSTANCE.config.apiKey = apiKey;
+        OnlineEventCredentialsStore.setApiKey(INSTANCE.config.eventId, apiKey);
         INSTANCE.save();
     }
     
@@ -86,7 +89,7 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
         // Fall back to configured value or default
         return INSTANCE.config.apiBaseUrl != null && !INSTANCE.config.apiBaseUrl.isBlank() 
             ? INSTANCE.config.apiBaseUrl 
-            : "https://iloppis-staging.fly.dev";
+            : PRODUCTION_API_BASE_URL;
     }
     
     public static void setApiBaseUrl(String apiBaseUrl) {
@@ -128,8 +131,9 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
      * Check if iLoppis mode is configured
      */
     public static boolean isConfigured() {
-        return INSTANCE.config.eventId != null && !INSTANCE.config.eventId.isEmpty() 
-            && INSTANCE.config.apiKey != null && !INSTANCE.config.apiKey.isEmpty();
+        String apiKey = getApiKey();
+        return INSTANCE.config.eventId != null && !INSTANCE.config.eventId.isEmpty()
+            && apiKey != null && !apiKey.isEmpty();
     }
     
     /**
@@ -139,4 +143,28 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
         INSTANCE.config = new ILoppisConfig();
         INSTANCE.save();
     }
+
+    private void migrateLegacyStagingBaseUrl() {
+        String configured = config.apiBaseUrl;
+        if (configured == null || configured.isBlank()) {
+            return;
+        }
+        if (!normalizeUrl(configured).equals(normalizeUrl(STAGING_API_BASE_URL))) {
+            return;
+        }
+        config.apiBaseUrl = PRODUCTION_API_BASE_URL;
+        save();
+    }
+
+    private static String normalizeUrl(String url) {
+        if (url == null) {
+            return "";
+        }
+        String normalized = url.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
 }

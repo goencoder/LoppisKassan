@@ -30,8 +30,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     private JPanel cashierView;
     private JPanel historyView;
     private JPanel exportView;
+    private JPanel supportView;
     private JPanel archiveView;
     private JPanel discoveryView;
+    private JPanel recentPurchasesView;
     
     public AppShellFrame() {
         setLayout(new BorderLayout());
@@ -121,12 +123,17 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         
         // Kassavy
         cashierView = new CashierTabPanel(CashierTabController.getInstance());
+
+        if (!AppModeManager.isLocalMode()) {
+            recentPurchasesView = new RecentPurchasesPanel();
+        }
         
         // Historikvy / Live stats
         if (AppModeManager.isLocalMode()) {
             historyView = new HistoryTabPanel();
         } else {
             historyView = new LiveStatsPanel();
+            supportView = new SupportBundlePanel();
         }
         
         // Export/Import-vy (endast lokal kassa)
@@ -161,8 +168,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         JPanel targetView = switch (target) {
             case DISCOVERY -> discoveryView;
             case CASHIER -> cashierView;
+            case RECENT -> recentPurchasesView;
             case HISTORY -> historyView;
             case EXPORT -> exportView;
+            case SUPPORT -> supportView;
             case ARCHIVE -> archiveView;
         };
         
@@ -258,8 +267,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     enum NavigationTarget {
         DISCOVERY,
         CASHIER,
+        RECENT,
         HISTORY,
         EXPORT,
+        SUPPORT,
         ARCHIVE
     }
 }

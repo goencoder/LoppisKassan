@@ -6,9 +6,7 @@ import se.goencoder.loppiskassan.controller.ExportLocalEventController;
 import se.goencoder.loppiskassan.controller.HistoryTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
-import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.storage.LocalEventRepository;
-import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.utils.LocalEventUtils;
 
 import javax.swing.*;
@@ -33,6 +31,10 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
     private JButton importButton;
     
     private JPanel statsPanel;
+    private JLabel exportSectionTitleLabel;
+    private JLabel exportSectionDescriptionLabel;
+    private JLabel importSectionTitleLabel;
+    private JLabel importSectionDescriptionLabel;
     
     public ExportImportTabPanel() {
         setLayout(new BorderLayout());
@@ -92,7 +94,7 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         card.add(exportSection);
         
         card.add(Box.createVerticalStrut(24));
-        
+
         // Import-sektion
         JPanel importSection = createImportSection();
         importSection.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -139,20 +141,18 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         section.setBackground(AppColors.WHITE);
         section.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
         
-        JLabel sectionTitle = new JLabel();
-        sectionTitle.setText(LocalizationManager.tr("export.section.title"));
-        sectionTitle.setFont(sectionTitle.getFont().deriveFont(Font.BOLD, 14f));
-        sectionTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(sectionTitle);
+        exportSectionTitleLabel = new JLabel();
+        exportSectionTitleLabel.setFont(exportSectionTitleLabel.getFont().deriveFont(Font.BOLD, 14f));
+        exportSectionTitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(exportSectionTitleLabel);
         
         section.add(Box.createVerticalStrut(8));
         
-        JLabel sectionDesc = new JLabel();
-        sectionDesc.setText(LocalizationManager.tr("export.section.description"));
-        sectionDesc.setFont(sectionDesc.getFont().deriveFont(Font.PLAIN, 12f));
-        sectionDesc.setForeground(AppColors.TEXT_MUTED);
-        sectionDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(sectionDesc);
+        exportSectionDescriptionLabel = new JLabel();
+        exportSectionDescriptionLabel.setFont(exportSectionDescriptionLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        exportSectionDescriptionLabel.setForeground(AppColors.TEXT_MUTED);
+        exportSectionDescriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(exportSectionDescriptionLabel);
         
         section.add(Box.createVerticalStrut(12));
         
@@ -182,20 +182,18 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         section.setBackground(AppColors.WHITE);
         section.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
         
-        JLabel sectionTitle = new JLabel();
-        sectionTitle.setText(LocalizationManager.tr("import.section.title"));
-        sectionTitle.setFont(sectionTitle.getFont().deriveFont(Font.BOLD, 14f));
-        sectionTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(sectionTitle);
+        importSectionTitleLabel = new JLabel();
+        importSectionTitleLabel.setFont(importSectionTitleLabel.getFont().deriveFont(Font.BOLD, 14f));
+        importSectionTitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(importSectionTitleLabel);
         
         section.add(Box.createVerticalStrut(8));
         
-        JLabel sectionDesc = new JLabel();
-        sectionDesc.setText(LocalizationManager.tr("import.section.description"));
-        sectionDesc.setFont(sectionDesc.getFont().deriveFont(Font.PLAIN, 12f));
-        sectionDesc.setForeground(AppColors.TEXT_MUTED);
-        sectionDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(sectionDesc);
+        importSectionDescriptionLabel = new JLabel();
+        importSectionDescriptionLabel.setFont(importSectionDescriptionLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        importSectionDescriptionLabel.setForeground(AppColors.TEXT_MUTED);
+        importSectionDescriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.add(importSectionDescriptionLabel);
         
         section.add(Box.createVerticalStrut(12));
         
@@ -303,6 +301,10 @@ public class ExportImportTabPanel extends JPanel implements LocalizationAware, S
         descriptionLabel.setText(LocalizationManager.tr("export_import.description"));
         eventNameLabel.setText(LocalizationManager.tr("export_import.event_name"));
         salesCountLabel.setText(LocalizationManager.tr("export_import.sales_count"));
+        exportSectionTitleLabel.setText(LocalizationManager.tr("export.section.title"));
+        exportSectionDescriptionLabel.setText(LocalizationManager.tr("export.section.description"));
+        importSectionTitleLabel.setText(LocalizationManager.tr("import.section.title"));
+        importSectionDescriptionLabel.setText(LocalizationManager.tr("import.section.description"));
         exportJsonlButton.setText(LocalizationManager.tr("export.button.jsonl"));
         exportCsvButton.setText(LocalizationManager.tr("export.button.csv"));
         importButton.setText(LocalizationManager.tr("import.button"));

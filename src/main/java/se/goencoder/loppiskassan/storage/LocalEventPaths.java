@@ -9,8 +9,8 @@ public final class LocalEventPaths {
     private static final String ARCHIVE_DIR_NAME = "archive";
     private static final String LOCAL_METADATA_FILE_NAME = "local_metadata.json";
     private static final String ILOPPIS_METADATA_FILE_NAME = "iloppis_metadata.json";
+    private static final String ILOPPIS_CREDENTIALS_FILE_NAME = "iloppis_credentials.json";
     private static final String PENDING_ITEMS_FILE_NAME = "pending_items.jsonl";
-    private static final String SOLD_ITEMS_FILE_NAME = "sold_items.jsonl";
     private static final String REJECTED_PURCHASES_FILE_NAME = "rejected_purchases.jsonl";
 
     public static final String LEGACY_METADATA_FILE_NAME = "metadata.json";
@@ -37,16 +37,16 @@ public final class LocalEventPaths {
         return getEventDir(eventId).resolve(ILOPPIS_METADATA_FILE_NAME);
     }
 
+    public static Path getIloppisCredentialsPath(String eventId) {
+        return getEventDir(eventId).resolve(ILOPPIS_CREDENTIALS_FILE_NAME);
+    }
+
     public static Path getMetadataPath(String eventId) {
         return getLocalMetadataPath(eventId);
     }
 
     public static Path getPendingItemsPath(String eventId) {
         return getEventDir(eventId).resolve(PENDING_ITEMS_FILE_NAME);
-    }
-
-    public static Path getSoldItemsPath(String eventId) {
-        return getEventDir(eventId).resolve(SOLD_ITEMS_FILE_NAME);
     }
 
     public static Path getRejectedPurchasesPath(String eventId) {

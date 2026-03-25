@@ -6,6 +6,7 @@ This package contains tools for testing the iLoppis platform under load conditio
 
 - **SetupRunner**: Creates complete market infrastructure from scratch
 - **LoadTestRunner**: Generates load by creating sold items
+- **CashierFlowLoadTestRunner**: Exercises the LoppisKassan cashier flow (local file write first, then background upload)
 - **MailHogClient**: Handles magic link email parsing from MailHog
 
 ## Quick Start
@@ -51,6 +52,26 @@ cp load-test-iloppis.env.example load-test-iloppis.env
 # Run load test
 make load-test ENV=load-test-iloppis.env
 ```
+
+### 3. Run Cashier Flow Load Test
+
+Use this when you want to test the actual LoppisKassan iLoppis flow, not just direct backend posting:
+
+```bash
+cp load-test-cashier.env.example load-test-cashier.env
+# Edit if needed
+make cashier-load-test ENV=load-test-cashier.env
+```
+
+This runner:
+- writes each purchase to `pending_items.jsonl`
+- lets `BackgroundSyncManager` upload in the background
+- keeps sending new purchases at a fixed pace
+- reports local persist latency, pending/rejected status and remote verification
+
+Notes:
+- `CLEAR_REMOTE=true` requires elevated event credentials. A normal cashier API key / cashier alias can post sold items, but cannot delete existing sold items from staging.
+- For staging runs, prefer leaving existing data in place and verifying only the generated `purchaseId` / `itemId` set from the current run.
 
 ## Setup Process Details
 
@@ -171,6 +192,16 @@ https://iloppis.fly.dev/?api_key=ce169ac8-c65c-426c-83a8-df3e24f30d13
 - Check seller numbers match: LoadTest uses `1..SELLER_COUNT`
 - Verify API key has cashier permissions
 
+### Cashier flow load test cannot clear remote data
+**Symptom:** `403` when `CLEAR_REMOTE=true`
+
+**Cause:**
+- Cashier credentials are intentionally limited and cannot delete sold items
+
+**Solutions:**
+- Run with `CLEAR_REMOTE=false`
+- If you really need a clean remote baseline, use an elevated owner/admin API key outside the cashier flow
+
 ## Local Mode (No Backend)
 
 For testing without backend:
@@ -181,7 +212,7 @@ EVENT_ID=local-test
 # ... other params
 ```
 
-This writes directly to `data/events/{eventId}/pending_items.jsonl`
+This writes directly to `~/.loppiskassan/events/{eventId}/pending_items.jsonl`
 
 ## Performance
 

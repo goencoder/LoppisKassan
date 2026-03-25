@@ -17,7 +17,6 @@ import java.nio.file.Path;
  */
 public class GlobalConfigurationStore {
     private static final String CONFIG_FILE = "global.json";
-    private static final Path CONFIG_PATH = AppPaths.getConfigDir().resolve(CONFIG_FILE);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
     private static GlobalConfig config;
@@ -31,6 +30,7 @@ public class GlobalConfigurationStore {
      */
     private static class GlobalConfig {
         private String language = "sv";
+        private String cashierName;
         
         public GlobalConfig() {}
     }
@@ -39,9 +39,10 @@ public class GlobalConfigurationStore {
         try {
             // Create config directory if it doesn't exist
             Files.createDirectories(AppPaths.getConfigDir());
-            
-            if (Files.exists(CONFIG_PATH)) {
-                try (Reader reader = new FileReader(CONFIG_PATH.toFile())) {
+
+            Path configPath = getConfigPath();
+            if (Files.exists(configPath)) {
+                try (Reader reader = new FileReader(configPath.toFile())) {
                     config = GSON.fromJson(reader, GlobalConfig.class);
                     if (config == null) {
                         config = new GlobalConfig();
@@ -65,7 +66,7 @@ public class GlobalConfigurationStore {
     private static void save() {
         try {
             Files.createDirectories(AppPaths.getConfigDir());
-            try (Writer writer = new FileWriter(CONFIG_PATH.toFile())) {
+            try (Writer writer = new FileWriter(getConfigPath().toFile())) {
                 GSON.toJson(config, writer);
             }
         } catch (IOException ex) {
@@ -84,6 +85,24 @@ public class GlobalConfigurationStore {
         config.language = language;
         save();
     }
+
+    // Cashier display name / alias for this machine.
+    public static String getCashierName() {
+        if (config.cashierName == null) {
+            return null;
+        }
+        String trimmed = config.cashierName.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+    
+    public static void setCashierName(String name) {
+        String normalized = normalizeCashierName(name);
+        if (java.util.Objects.equals(config.cashierName, normalized)) {
+            return;
+        }
+        config.cashierName = normalized;
+        save();
+    }
     
     /**
      * Reset all global settings to defaults
@@ -91,5 +110,17 @@ public class GlobalConfigurationStore {
     public static void reset() {
         config = new GlobalConfig();
         save();
+    }
+
+    private static Path getConfigPath() {
+        return AppPaths.getConfigDir().resolve(CONFIG_FILE);
+    }
+
+    private static String normalizeCashierName(String name) {
+        if (name == null) {
+            return null;
+        }
+        String trimmed = name.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

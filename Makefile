@@ -62,6 +62,16 @@ endif
 	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.LoadTestRunner \
 	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
 
+cashier-load-test: install-client ## Run cashier-flow load test (local file write + background upload) (ENV=path/to/env)
+ifeq ($(strip $(ENV)),)
+	$(error ENV file path required, e.g. make cashier-load-test ENV=./load-test-cashier.env)
+endif
+	set -a; source $(ENV); set +a; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
+	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.CashierFlowLoadTestRunner \
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+
 setup-test: install-client ## Run market setup (creates market, event, vendors) (ENV=path/to/env)
 ifeq ($(strip $(ENV)),)
 	$(error ENV file path required, e.g. make setup-test ENV=./load-test-setup.env)

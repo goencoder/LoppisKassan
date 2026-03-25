@@ -102,7 +102,7 @@ class LocalizationParameterTest {
     @Test
     void loadEventsErrorShowsPathInSwedish() {
         LocalizationManager.setLanguage("sv");
-        String filePath = "/data/events/test.jsonl";
+        String filePath = "/events/test-event/test.jsonl";
         
         String result = LocalizationManager.tr("error.load_local_events.message", filePath);
         
@@ -115,7 +115,7 @@ class LocalizationParameterTest {
     @Test
     void loadEventsErrorShowsPathInEnglish() {
         LocalizationManager.setLanguage("en");
-        String filePath = "/data/events/test.jsonl";
+        String filePath = "/events/test-event/test.jsonl";
         
         String result = LocalizationManager.tr("error.load_local_events.message", filePath);
         
@@ -140,5 +140,16 @@ class LocalizationParameterTest {
             "Expected message to contain event name with special chars. Got: " + result);
         assertFalse(result.contains("{0}"), 
             "Message should not contain literal {0} placeholder. Got: " + result);
+    }
+
+    @Test
+    void initializeStartsInSwedishEvenIfEnglishWasSaved() {
+        GlobalConfigurationStore.setLanguage("en");
+
+        LocalizationManager.initialize();
+
+        assertEquals("sv", LocalizationManager.getLanguage());
+        assertEquals("sv", GlobalConfigurationStore.getLanguage());
+        assertEquals("Välj Loppis", LocalizationManager.tr("tab.discovery"));
     }
 }
