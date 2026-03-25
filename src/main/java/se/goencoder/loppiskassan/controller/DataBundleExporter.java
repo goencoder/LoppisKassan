@@ -63,8 +63,7 @@ public class DataBundleExporter {
 
             // 3. Generate filename and show save dialog
             String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-            String sanitizedName = sanitize(cashierName);
-            String defaultFileName = "kassa-" + sanitizedName + "-" + timestamp + ".zip";
+            String defaultFileName = buildDefaultFileName(eventId, cashierName, timestamp);
 
             Component parent = DialogService.getDialogParent();
             se.goencoder.loppiskassan.ui.dialogs.ExportDataDialog dialog =
@@ -212,5 +211,19 @@ public class DataBundleExporter {
                 .replaceAll("[^a-z0-9-]+", "")
                 .replaceAll("^-+|-+$", "");
         return slug.isEmpty() ? DEFAULT_CASHIER_SLUG : slug;
+    }
+
+    static String buildDefaultFileName(String eventId, String cashierName, String timestamp) {
+        String sanitizedName = sanitize(cashierName);
+        if (!DEFAULT_CASHIER_SLUG.equals(sanitizedName)) {
+            return DEFAULT_CASHIER_SLUG + "-" + sanitizedName + "-" + timestamp + ".zip";
+        }
+
+        String eventSlug = sanitize(eventId);
+        if (!DEFAULT_CASHIER_SLUG.equals(eventSlug)) {
+            return DEFAULT_CASHIER_SLUG + "-" + eventSlug + "-" + timestamp + ".zip";
+        }
+
+        return DEFAULT_CASHIER_SLUG + "-" + timestamp + ".zip";
     }
 }

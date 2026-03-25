@@ -32,6 +32,22 @@ class DataBundleExporterTest {
     }
 
     @Test
+    void buildDefaultFileNameUsesEventIdWhenCashierSlugFallsBack() {
+        assertEquals(
+                "kassa-event-123-2026-03-25-080000.zip",
+                DataBundleExporter.buildDefaultFileName("event-123", "###", "2026-03-25-080000")
+        );
+    }
+
+    @Test
+    void buildDefaultFileNameOmitsDuplicateFallbackSlug() {
+        assertEquals(
+                "kassa-2026-03-25-080000.zip",
+                DataBundleExporter.buildDefaultFileName("###", "###", "2026-03-25-080000")
+        );
+    }
+
+    @Test
     void createBundleProducesValidZip() throws Exception {
         // Setup: create test items
         String eventId = "test-event-001";

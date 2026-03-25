@@ -479,6 +479,7 @@ public class BackgroundSyncManager {
             return;
         }
 
+        boolean needsFallbackFlush = false;
         try {
             if (eventId != null && !eventId.isBlank()) {
                 executor.submit(() -> {
@@ -487,13 +488,16 @@ public class BackgroundSyncManager {
                 }).get(SHUTDOWN_FLUSH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             }
         } catch (RejectedExecutionException e) {
+            needsFallbackFlush = true;
             log.warning("Could not schedule final queue flush during shutdown: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warning("Interrupted while waiting for final queue flush.");
         } catch (TimeoutException e) {
+            needsFallbackFlush = true;
             log.warning("Timed out waiting for final queue flush during shutdown.");
         } catch (ExecutionException e) {
+            needsFallbackFlush = true;
             Throwable cause = e.getCause();
             String message = cause != null ? cause.getMessage() : e.getMessage();
             log.severe("Shutdown flush failed: " + message);
@@ -512,8 +516,19 @@ public class BackgroundSyncManager {
                     + SHUTDOWN_TERMINATION_TIMEOUT_SECONDS + " seconds. Forcing shutdownNow().");
             executor.shutdownNow();
         }
+        if (needsFallbackFlush && eventId != null && !eventId.isBlank()) {
+            flushQueueToDiskBestEffort(eventId);
+        }
         if (interrupted) {
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private void flushQueueToDiskBestEffort(String eventId) {
+        try {
+            flushQueueToDisk(eventId);
+        } catch (IOException e) {
+            log.severe("Best-effort shutdown flush failed: " + e.getMessage());
         }
     }
 

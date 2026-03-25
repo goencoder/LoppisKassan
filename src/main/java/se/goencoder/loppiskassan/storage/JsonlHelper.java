@@ -89,6 +89,8 @@ public final class JsonlHelper {
             } catch (AtomicMoveNotSupportedException ex) {
                 Files.move(tempPath, path, StandardCopyOption.REPLACE_EXISTING);
             }
+            fsync(path);
+            fsyncParentDirectoryBestEffort(path);
             moved = true;
         } finally {
             if (!moved) {
@@ -103,6 +105,18 @@ public final class JsonlHelper {
     private static void fsync(Path path) throws IOException {
         try (FileChannel channel = FileChannel.open(path, StandardOpenOption.WRITE)) {
             channel.force(true);
+        }
+    }
+
+    private static void fsyncParentDirectoryBestEffort(Path path) {
+        Path parent = path.getParent();
+        if (parent == null) {
+            return;
+        }
+        try (FileChannel channel = FileChannel.open(parent, StandardOpenOption.READ)) {
+            channel.force(true);
+        } catch (Exception ignored) {
+            // Directory fsync is not supported on all platforms/filesystems.
         }
     }
 
