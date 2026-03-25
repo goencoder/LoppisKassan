@@ -239,8 +239,10 @@ public class BackgroundSyncManager {
         }
         ensureRunning(eventId);
         runOnSyncThread(() -> {
-            PendingItemsStore store = new PendingItemsStore(eventId);
-            store.saveAll(items);
+            synchronized (pendingFileLock) {
+                PendingItemsStore store = new PendingItemsStore(eventId);
+                store.saveAll(items);
+            }
             return null;
         });
         notifyPendingCountChanged();
@@ -256,20 +258,22 @@ public class BackgroundSyncManager {
         }
         ensureRunning(eventId);
         runOnSyncThread(() -> {
-            PendingItemsStore store = new PendingItemsStore(eventId);
-            List<V1SoldItem> allItems = store.readAll();
-            boolean updatedExisting = false;
-            for (int i = 0; i < allItems.size(); i++) {
-                V1SoldItem existing = allItems.get(i);
-                if (existing.getItemId() != null && existing.getItemId().equals(item.getItemId())) {
-                    allItems.set(i, item);
-                    updatedExisting = true;
+            synchronized (pendingFileLock) {
+                PendingItemsStore store = new PendingItemsStore(eventId);
+                List<V1SoldItem> allItems = store.readAll();
+                boolean updatedExisting = false;
+                for (int i = 0; i < allItems.size(); i++) {
+                    V1SoldItem existing = allItems.get(i);
+                    if (existing.getItemId() != null && existing.getItemId().equals(item.getItemId())) {
+                        allItems.set(i, item);
+                        updatedExisting = true;
+                    }
                 }
-            }
-            if (updatedExisting) {
-                store.saveAll(allItems);
-            } else {
-                store.appendItems(List.of(item));
+                if (updatedExisting) {
+                    store.saveAll(allItems);
+                } else {
+                    store.appendItems(List.of(item));
+                }
             }
             return null;
         });
