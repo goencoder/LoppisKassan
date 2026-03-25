@@ -21,7 +21,7 @@ Den här guiden hjälper dig att installera LoppisKassan på din dator.
 ## Vanliga problem och lösningar
 
 - **Problem:** Programmet startar inte när jag kör `.jar`-filen.
-  **Lösning:** Kontrollera att du har rätt version av Java installerad (java 17 har testats) och att du kör kommandot från rätt katalog.
+  **Lösning:** Kontrollera att du har Java 21 installerat och att du kör kommandot från rätt katalog.
 
 
 Om du stöter på andra problem, tveka inte att kontakta oss via vår [bughantering](https://github.com/goencoder/loppiskassan/issues).

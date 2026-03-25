@@ -49,7 +49,6 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
      */
     static class ILoppisConfig {
         private String eventId;           // UUID from API
-        private String apiKey;            // Legacy field, migrated to per-event credentials
         private String apiBaseUrl;        // API base URL (e.g., http://127.0.0.1:8080)
         private String approvedSellers;   // JSON array of approved vendor IDs (cached for offline validation)
         private String revenueSplit;      // JSON string of revenue split configuration
@@ -65,29 +64,15 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
     
     public static void setEventId(String eventId) {
         INSTANCE.config.eventId = eventId;
-        migrateLegacyApiKey(eventId);
         INSTANCE.save();
     }
     
-    // API Key
+    // API Key (per-event, stored in OnlineEventCredentialsStore)
     public static String getApiKey() {
-        String eventId = getEventId();
-        String eventApiKey = OnlineEventCredentialsStore.getApiKey(eventId);
-        if (eventApiKey != null && !eventApiKey.isBlank()) {
-            return eventApiKey;
-        }
-
-        String legacyApiKey = INSTANCE.config.apiKey;
-        if (legacyApiKey != null && !legacyApiKey.isBlank() && eventId != null && !eventId.isBlank()) {
-            OnlineEventCredentialsStore.setApiKey(eventId, legacyApiKey);
-            INSTANCE.config.apiKey = null;
-            INSTANCE.save();
-        }
-        return legacyApiKey;
+        return OnlineEventCredentialsStore.getApiKey(getEventId());
     }
 
     public static void setApiKey(String apiKey) {
-        INSTANCE.config.apiKey = null;
         OnlineEventCredentialsStore.setApiKey(INSTANCE.config.eventId, apiKey);
         INSTANCE.save();
     }
@@ -157,17 +142,4 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
         INSTANCE.save();
     }
 
-    private static void migrateLegacyApiKey(String eventId) {
-        if (eventId == null || eventId.isBlank()) {
-            return;
-        }
-
-        String legacyApiKey = INSTANCE.config.apiKey;
-        if (legacyApiKey == null || legacyApiKey.isBlank()) {
-            return;
-        }
-
-        OnlineEventCredentialsStore.setApiKey(eventId, legacyApiKey);
-        INSTANCE.config.apiKey = null;
-    }
 }
