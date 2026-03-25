@@ -161,7 +161,6 @@ Om du såg "Fel vid skrivning" / "filrättigheter" / "kataloger":
 
   ~/.loppiskassan/events/<eventId>/pending_items.jsonl
   ~/.loppiskassan/events/<eventId>/rejected_purchases.jsonl
-  ~/.loppiskassan/events/<eventId>/sold_items.jsonl
   ~/.loppiskassan/logs/loppiskassan.log
   ~/.loppiskassan/config/iloppis-mode.json
 

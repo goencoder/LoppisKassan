@@ -124,7 +124,6 @@ public class DataBundleExporter {
 
         List<Path> eventFiles = collectExistingFiles(eventDir,
                 "pending_items.jsonl",
-                "sold_items.jsonl",
                 "rejected_purchases.jsonl",
                 "iloppis_metadata.json",
                 "local_metadata.json");
@@ -163,7 +162,6 @@ public class DataBundleExporter {
     private static int getBundleEntryCount(String eventId) throws IOException {
         int fileCount = collectExistingFiles(LocalEventPaths.getEventDir(eventId),
                 "pending_items.jsonl",
-                "sold_items.jsonl",
                 "rejected_purchases.jsonl",
                 "iloppis_metadata.json",
                 "local_metadata.json").size();

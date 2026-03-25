@@ -54,7 +54,6 @@ config/
     └── {eventId}/
         ├── metadata.json           # LocalEvent-metadata
         ├── pending_items.jsonl     # Ej uppladdade varor
-        ├── sold_items.jsonl        # Uppladdade varor
         └── rejected_purchases.jsonl
 ```
 
@@ -209,7 +208,6 @@ public class CachedOnlineEvent {
     └── d50e8356-8deb-428a-a588.../     # Cachat iLoppis-event (ONLINE)
         ├── metadata.json               # CachedOnlineEvent JSON
         ├── pending_items.jsonl          # Ej uppladdade (befintlig)
-        ├── sold_items.jsonl             # Uppladdade (befintlig)
         └── rejected_purchases.jsonl
 ```
 

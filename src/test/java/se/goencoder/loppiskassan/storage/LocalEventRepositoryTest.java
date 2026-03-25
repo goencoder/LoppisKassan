@@ -43,11 +43,9 @@ public class LocalEventRepositoryTest {
 
             Path metadataPath = LocalEventPaths.getMetadataPath(event.getEventId());
             Path pendingPath = LocalEventPaths.getPendingItemsPath(event.getEventId());
-            Path soldPath = LocalEventPaths.getSoldItemsPath(event.getEventId());
 
             assertTrue(Files.exists(metadataPath));
             assertTrue(Files.exists(pendingPath));
-            assertTrue(Files.exists(soldPath));
 
             LocalEvent loaded = LocalEventRepository.load(event.getEventId());
             assertNotNull(loaded);

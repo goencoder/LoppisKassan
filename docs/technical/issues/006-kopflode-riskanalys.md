@@ -152,7 +152,6 @@ Oavsett om incidenter inträffade:
 Från varje kassadator:
 ~/.loppiskassan/events/<eventId>/pending_items.jsonl
 ~/.loppiskassan/events/<eventId>/rejected_purchases.jsonl
-~/.loppiskassan/events/<eventId>/sold_items.jsonl
 ~/.loppiskassan/logs/loppiskassan.log
 ~/.loppiskassan/logs/loppiskassan.log.0  (upp till .4)
 ~/.loppiskassan/config/iloppis-mode.json
@@ -180,9 +179,43 @@ Eller om pending-antal inte ökar trots att köp registreras:
 
 ---
 
-## 5. Systemets interna felhantering (för tekniskt ansvarig)
+## 5. Vad används filerna till?
 
-### 5.1 BackgroundSyncManager-flödet
+Inställningsdialogen visar flera filer under `~/.loppiskassan/events/<eventId>/`. Alla är inte lika viktiga i drift. Nedan är den faktiska användningen i koden.
+
+| Fil / katalog | Användning | Status |
+|---------------|------------|--------|
+| `events/<eventId>/` | Rotkatalog för allt event-specifikt tillstånd. Alla övriga filer för eventet ligger här under. | **Aktiv** |
+| `local_metadata.json` | Lokalt evenemangs metadata. Skapas, laddas och sparas av `LocalEventRepository`. Används främst för lokala evenemang och när appen listar/sparar lokala kassor. | **Aktiv, lokal-läge** |
+| `iloppis_metadata.json` | Cachad iLoppis-metadata för offline-start och visning av tidigare kända iLoppis-evenemang. Hanteras av `OnlineEventCache`. | **Aktiv, iLoppis-cache** |
+| `pending_items.jsonl` | Den centrala driftfilen och den fullständiga köploggen. Den innehåller både poster som redan synkats och poster som fortfarande väntar på uppladdning. Lokalt läge använder den som historikfil. I iLoppis-läge läses den av bakgrundssynk, historik, CSV-export och vyn för senaste köp. | **Kritisk, aktiv** |
+| `rejected_purchases.jsonl` | Poster som backend avvisat. Används av `RejectedItemsStore`, den röda statusindikatorn och dialogen där poster kan rättas eller tas bort. | **Aktiv, iLoppis-felsökning** |
+| `archive/` | Katalog för arkiverade CSV-filer efter utbetalning. Används bara för lokala evenemang. iLoppis använder inte detta flöde. | **Aktiv, lokal-läge** |
+
+### 5.1 Viktig tolkning
+
+- `pending_items.jsonl` är den enda filen som är direkt affärskritisk för köpflödet.
+- `pending_items.jsonl` ska tolkas som hela köploggen, inte bara "väntande" poster.
+- `archive/` är relevant för lokala evenemang men inte för iLoppis.
+
+### 5.2 Känslig data
+
+- API-nyckeln ska inte ligga i rotkonfigurationen.
+- API-nyckeln lagras nu event-specifikt i `iloppis_credentials.json`, separat från `iloppis_metadata.json`.
+- `iloppis_credentials.json` visas inte i inställningsdialogen och ska inte skickas till support.
+- När supportbundle skapas saneras `iloppis_metadata.json` och `iloppis-mode.json` så att `apiKey` inte följer med även om äldre filer skulle innehålla den.
+
+### 5.3 Konsekvens för felsökning
+
+- Vid misstanke om tappade köp är `pending_items.jsonl` den primära sanningskällan.
+- `rejected_purchases.jsonl` är sekundär men viktig när servern har nekat poster.
+- `iloppis_metadata.json` och `local_metadata.json` behövs för kontext om vilket evenemang som kördes.
+
+---
+
+## 6. Systemets interna felhantering (för tekniskt ansvarig)
+
+### 6.1 BackgroundSyncManager-flödet
 
 ```
 Kassör -> CashierTabController.persistItems()
@@ -200,7 +233,7 @@ Bakgrundstråd (var 30 sek):
       -> Vid rejected: sparar till rejected_purchases.jsonl
 ```
 
-### 5.2 Felkoder från backend
+### 6.2 Felkoder från backend
 
 | Felkod | Betydelse | Konsekvens |
 |--------|-----------|------------|
@@ -208,7 +241,7 @@ Bakgrundstråd (var 30 sek):
 | `DUPLICATE_RECEIPT` | Samma item_id redan mottagen | Idempotent — markeras uploaded |
 | `UNSPECIFIED` | Okänt serverfel | Post -> rejected, manuell granskning |
 
-### 5.3 Replay-procedur (efter incident)
+### 6.3 Replay-procedur (efter incident)
 
 1. Ta skrivskyddad kopia av allt insamlat
 2. Identifiera alla `uploaded: false` poster i pending_items.jsonl
@@ -219,6 +252,6 @@ Bakgrundstråd (var 30 sek):
 
 ---
 
-## 6. Konsolideringsnotering
+## 7. Konsolideringsnotering
 
 Ersätter Issue 007 och 008. Baserad på fullständig kodgenomgång av alla JOptionPane/JDialog-klasser, AppShellStatusbar, BackgroundSyncManager, AuthErrorHandler, RejectedItemsHelper, ConnectivityChecker, FileHelper/JsonlHelper, och alla relevanta nycklar i sv.json.

@@ -9,7 +9,7 @@ För att installera LoppisKassan, följ vår [installationsmanual](docs/installa
 ## Användarmanual
 **Notera!** Här är länken till den senaste versionen av manualen:
 
-Manual: [LoppisKassan v2.0](docs/manual_v2.md)
+Manual: [LoppisKassan v3.0](docs/manual_v3.md)
 
 **Äldre versioner:**
 - Manual: [LoppisKassan](https://seteddy.wordpress.com/2016/09/20/loppiskassan/)
@@ -19,7 +19,7 @@ Manual: [LoppisKassan v2.0](docs/manual_v2.md)
 ## Bygga LoppisKassan från källkod
 För att bygga och köra detta projekt krävs följande 
 - [Git](https://git-scm.com/download/mac)
-- [Java](https://www.oracle.com/java/technologies/downloads/)
+- [Java 21](https://www.oracle.com/java/technologies/downloads/)
 - [Maven (mvn)](https://maven.apache.org/download.cgi)
 
 ## Klona projektet
@@ -39,7 +39,7 @@ cd LoppisKassan
    Öppna en terminal och kör följande kommando (uppdatera sökvägen till din lokala javainstallation):
 
 ```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-1.8.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
 ```
 
 3. **Bygg projektet**:
@@ -53,7 +53,7 @@ mvn clean package
     Efter att ha byggt projektet, kör följande kommando för att starta applikationen:
     
 ```bash
-$JAVA_HOME/bin/java -jar target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
+$JAVA_HOME/bin/java -jar target/LoppisKassan-v3.0.0-jar-with-dependencies.jar
 ```
 ## Licens
 

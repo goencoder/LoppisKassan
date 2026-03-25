@@ -55,7 +55,6 @@ class DataBundleExporterTest {
         Files.createDirectories(logsDir);
 
         Files.writeString(eventDir.resolve("pending_items.jsonl"), "{\"itemId\":\"i1\"}\n");
-        Files.writeString(eventDir.resolve("sold_items.jsonl"), "{\"itemId\":\"i2\"}\n");
         Files.writeString(eventDir.resolve("rejected_purchases.jsonl"), "{\"itemId\":\"i3\"}\n");
         Files.writeString(eventDir.resolve("iloppis_metadata.json"),
                 "{\"eventId\":\"" + eventId + "\",\"apiKey\":\"event-secret\",\"eventName\":\"Test Loppis\"}\n");
@@ -74,7 +73,6 @@ class DataBundleExporterTest {
 
         boolean hasManifest = false;
         boolean hasPending = false;
-        boolean hasSold = false;
         boolean hasRejected = false;
         boolean hasEventMetadata = false;
         boolean hasGlobalConfig = false;
@@ -94,8 +92,6 @@ class DataBundleExporterTest {
                     manifestContent = content;
                 } else if ("event/pending_items.jsonl".equals(entry.getName())) {
                     hasPending = true;
-                } else if ("event/sold_items.jsonl".equals(entry.getName())) {
-                    hasSold = true;
                 } else if ("event/rejected_purchases.jsonl".equals(entry.getName())) {
                     hasRejected = true;
                 } else if ("event/iloppis_metadata.json".equals(entry.getName())) {
@@ -115,7 +111,6 @@ class DataBundleExporterTest {
 
         assertTrue(hasManifest, "ZIP should contain manifest.json");
         assertTrue(hasPending, "ZIP should contain event/pending_items.jsonl");
-        assertTrue(hasSold, "ZIP should contain event/sold_items.jsonl");
         assertTrue(hasRejected, "ZIP should contain event/rejected_purchases.jsonl");
         assertTrue(hasEventMetadata, "ZIP should contain event/iloppis_metadata.json");
         assertTrue(hasGlobalConfig, "ZIP should contain config/global.json");

@@ -5,7 +5,7 @@ Den här guiden hjälper dig att installera LoppisKassan på din dator.
 ## Installation med `.jar`-fil
 
 ### Förutsättningar
-- **Java** måste vara installerat på din dator. Du kan ladda ner Java från [Oracles officiella webbplats](https://www.oracle.com/java/technologies/downloads/).
+- **Java 21** måste vara installerat på din dator.
 
 ### Installation
 1. Ladda ner den senaste versionen av `.jar`-filen från vår [releasesida](https://github.com/goencoder/loppiskassan/releases).
@@ -13,7 +13,7 @@ Den här guiden hjälper dig att installera LoppisKassan på din dator.
 3. Öppna en terminal (kommandotolk) och kör följande kommando:
 
     ```bash
-    java -jar LoppisKassan-v2.0.0-jar-with-dependencies.jar
+    java -jar LoppisKassan-v3.0.0-jar-with-dependencies.jar
     ```
 
 4. Programmet bör nu starta. Om du får problem, se till att du har rätt version av Java installerad.

@@ -178,12 +178,8 @@ public final class SettingsDialog extends JDialog implements LocalizationAware {
                 eventDir.resolve("iloppis_metadata.json").toString()));
         rows.add(new PathRow(LocalizationManager.tr("settings.row.pending_items"),
                 eventDir.resolve("pending_items.jsonl").toString()));
-        rows.add(new PathRow(LocalizationManager.tr("settings.row.uploaded_items"),
-                eventDir.resolve("pending_items.jsonl").toString()));
         rows.add(new PathRow(LocalizationManager.tr("settings.row.rejected_items"),
                 eventDir.resolve("rejected_purchases.jsonl").toString()));
-        rows.add(new PathRow(LocalizationManager.tr("settings.row.sold_items"),
-                eventDir.resolve("sold_items.jsonl").toString()));
         rows.add(new PathRow(LocalizationManager.tr("settings.row.archive_dir"),
                 eventDir.resolve("archive").toString()));
 
