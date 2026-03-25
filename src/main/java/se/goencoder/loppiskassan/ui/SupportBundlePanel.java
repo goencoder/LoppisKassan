@@ -5,119 +5,184 @@ import se.goencoder.loppiskassan.controller.DataBundleExporter;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridLayout;
 
 /**
  * Dedicated support page for exporting an iLoppis troubleshooting bundle.
  */
 public class SupportBundlePanel extends JPanel implements LocalizationAware {
 
-    private static final int CARD_WIDTH = 760;
-    private static final int TEXT_WIDTH = 620;
+    private final LocalizationManager.LanguageChangeListener languageChangeListener = this::reloadTexts;
 
     private JLabel titleLabel;
-    private JLabel descriptionLabel;
+    private JTextArea descriptionArea;
+    private JLabel detailsTitleLabel;
     private JLabel eventLabel;
-    private JLabel eventIdLabel;
-    private JLabel includesLabel;
+    private JTextField eventIdField;
+    private JTextArea includesArea;
+    private JLabel actionTitleLabel;
+    private JTextArea actionHelpArea;
+    private JLabel sendToLabel;
     private JButton exportButton;
 
     public SupportBundlePanel() {
         setLayout(new BorderLayout());
         setBackground(AppColors.WHITE);
+        setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
-        JPanel contentPanel = new JPanel();
-        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBackground(AppColors.WHITE);
-        contentPanel.setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        JPanel canvas = new JPanel(new BorderLayout());
+        canvas.setBackground(AppColors.WHITE);
 
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(AppColors.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppColors.BORDER, 1),
-                BorderFactory.createEmptyBorder(28, 32, 28, 32)
-        ));
-        card.setMaximumSize(new Dimension(CARD_WIDTH, Integer.MAX_VALUE));
-        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel shell = new JPanel();
+        shell.setLayout(new BoxLayout(shell, BoxLayout.Y_AXIS));
+        shell.setBackground(AppColors.WHITE);
+        shell.setPreferredSize(new Dimension(840, 360));
+
+        JPanel headerCard = createCard();
+        headerCard.setLayout(new BoxLayout(headerCard, BoxLayout.Y_AXIS));
 
         titleLabel = new JLabel();
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 20f));
+        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 22f));
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.add(titleLabel);
+        headerCard.add(titleLabel);
+        headerCard.add(Box.createVerticalStrut(10));
 
-        card.add(Box.createVerticalStrut(8));
+        descriptionArea = createBodyTextArea();
+        descriptionArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+        headerCard.add(descriptionArea);
 
-        descriptionLabel = new JLabel();
-        descriptionLabel.setFont(descriptionLabel.getFont().deriveFont(13f));
-        descriptionLabel.setForeground(AppColors.TEXT_MUTED);
-        descriptionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.add(descriptionLabel);
+        shell.add(headerCard);
+        shell.add(Box.createVerticalStrut(20));
 
-        card.add(Box.createVerticalStrut(24));
+        JPanel contentGrid = new JPanel(new GridLayout(1, 2, 20, 0));
+        contentGrid.setBackground(AppColors.WHITE);
+        contentGrid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        contentGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
 
-        JPanel infoPanel = new JPanel(new GridBagLayout());
-        infoPanel.setBackground(AppColors.WHITE);
-        infoPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.BORDER),
-                BorderFactory.createEmptyBorder(16, 0, 16, 0)
-        ));
-        infoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 72));
+        JPanel detailsCard = createTintedCard(AppColors.SURFACE);
+        detailsCard.setLayout(new BoxLayout(detailsCard, BoxLayout.Y_AXIS));
+
+        detailsTitleLabel = new JLabel();
+        detailsTitleLabel.setFont(detailsTitleLabel.getFont().deriveFont(Font.BOLD, 16f));
+        detailsTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
+        detailsTitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailsCard.add(detailsTitleLabel);
+        detailsCard.add(Box.createVerticalStrut(16));
 
         eventLabel = new JLabel();
-        eventLabel.setFont(eventLabel.getFont().deriveFont(Font.BOLD, 12f));
+        eventLabel.setFont(eventLabel.getFont().deriveFont(Font.PLAIN, 12f));
         eventLabel.setForeground(AppColors.TEXT_MUTED);
+        eventLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailsCard.add(eventLabel);
+        detailsCard.add(Box.createVerticalStrut(8));
 
-        GridBagConstraints labelGbc = new GridBagConstraints();
-        labelGbc.gridx = 0;
-        labelGbc.gridy = 0;
-        labelGbc.anchor = GridBagConstraints.WEST;
-        labelGbc.insets = new Insets(0, 0, 0, 16);
-        infoPanel.add(eventLabel, labelGbc);
+        eventIdField = new JTextField();
+        eventIdField.setEditable(false);
+        eventIdField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        eventIdField.setBackground(AppColors.WHITE);
+        eventIdField.setForeground(AppColors.TEXT_PRIMARY);
+        eventIdField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.BORDER, 1),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
+        eventIdField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        eventIdField.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailsCard.add(eventIdField);
+        detailsCard.add(Box.createVerticalStrut(16));
 
-        eventIdLabel = new JLabel();
-        eventIdLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        includesArea = createBodyTextArea();
+        includesArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+        detailsCard.add(includesArea);
+        detailsCard.add(Box.createVerticalGlue());
 
-        GridBagConstraints valueGbc = new GridBagConstraints();
-        valueGbc.gridx = 1;
-        valueGbc.gridy = 0;
-        valueGbc.weightx = 1.0;
-        valueGbc.fill = GridBagConstraints.HORIZONTAL;
-        valueGbc.anchor = GridBagConstraints.WEST;
-        infoPanel.add(eventIdLabel, valueGbc);
+        JPanel actionCard = createTintedCard(AppColors.FIELD_BG);
+        actionCard.setLayout(new BoxLayout(actionCard, BoxLayout.Y_AXIS));
 
-        card.add(infoPanel);
-        card.add(Box.createVerticalStrut(24));
+        actionTitleLabel = new JLabel();
+        actionTitleLabel.setFont(actionTitleLabel.getFont().deriveFont(Font.BOLD, 16f));
+        actionTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
+        actionTitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        actionCard.add(actionTitleLabel);
+        actionCard.add(Box.createVerticalStrut(16));
 
-        includesLabel = new JLabel();
-        includesLabel.setFont(includesLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        includesLabel.setForeground(AppColors.TEXT_MUTED);
-        includesLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.add(includesLabel);
+        actionHelpArea = createBodyTextArea();
+        actionHelpArea.setAlignmentX(Component.LEFT_ALIGNMENT);
+        actionCard.add(actionHelpArea);
+        actionCard.add(Box.createVerticalStrut(16));
 
-        card.add(Box.createVerticalStrut(16));
+        sendToLabel = new JLabel();
+        sendToLabel.setOpaque(true);
+        sendToLabel.setBackground(AppColors.WHITE);
+        sendToLabel.setForeground(AppColors.TEXT_SECONDARY);
+        sendToLabel.setFont(sendToLabel.getFont().deriveFont(Font.BOLD, 12f));
+        sendToLabel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.BORDER, 1),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
+        sendToLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        actionCard.add(sendToLabel);
+        actionCard.add(Box.createVerticalGlue());
+        actionCard.add(Box.createVerticalStrut(16));
 
-        exportButton = AppButton.create("", AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
+        exportButton = AppButton.create("", AppButton.Variant.PRIMARY, AppButton.Size.LARGE);
+        exportButton.setAlignmentX(Component.LEFT_ALIGNMENT);
         exportButton.addActionListener(e -> handleExport());
+        actionCard.add(exportButton);
 
-        JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        buttonRow.setBackground(AppColors.WHITE);
-        buttonRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        buttonRow.add(exportButton);
-        card.add(buttonRow);
+        contentGrid.add(detailsCard);
+        contentGrid.add(actionCard);
+        shell.add(contentGrid);
 
-        contentPanel.add(card);
-        contentPanel.add(Box.createVerticalGlue());
+        canvas.add(shell, BorderLayout.NORTH);
+        add(canvas, BorderLayout.CENTER);
 
-        JScrollPane scrollPane = new JScrollPane(contentPanel);
-        scrollPane.setBorder(null);
-        scrollPane.getViewport().setBackground(AppColors.WHITE);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        add(scrollPane, BorderLayout.CENTER);
-
-        LocalizationManager.addListener(this::reloadTexts);
+        LocalizationManager.addListener(languageChangeListener);
         reloadTexts();
+    }
+
+    private JPanel createCard() {
+        JPanel panel = new JPanel();
+        panel.setBackground(AppColors.WHITE);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.BORDER, 1),
+                BorderFactory.createEmptyBorder(24, 24, 24, 24)
+        ));
+        return panel;
+    }
+
+    private JPanel createTintedCard(java.awt.Color background) {
+        JPanel panel = new JPanel();
+        panel.setBackground(background);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.BORDER, 1),
+                BorderFactory.createEmptyBorder(20, 20, 20, 20)
+        ));
+        return panel;
+    }
+
+    private JTextArea createBodyTextArea() {
+        JTextArea area = new JTextArea();
+        area.setEditable(false);
+        area.setFocusable(false);
+        area.setOpaque(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(area.getFont().deriveFont(Font.PLAIN, 13f));
+        area.setForeground(AppColors.TEXT_MUTED);
+        area.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return area;
     }
 
     private void handleExport() {
@@ -135,20 +200,21 @@ public class SupportBundlePanel extends JPanel implements LocalizationAware {
     @Override
     public void reloadTexts() {
         titleLabel.setText(LocalizationManager.tr("support_bundle.section.title"));
-        descriptionLabel.setText(asWrappedHtml(LocalizationManager.tr("support_bundle.section.description")));
+        descriptionArea.setText(LocalizationManager.tr("support_bundle.section.description"));
+        detailsTitleLabel.setText(LocalizationManager.tr("support_bundle.details.title"));
         eventLabel.setText(LocalizationManager.tr("support_bundle.event_id"));
-        includesLabel.setText(asWrappedHtml(LocalizationManager.tr("support_bundle.includes")));
+        includesArea.setText(LocalizationManager.tr("support_bundle.includes"));
+        actionTitleLabel.setText(LocalizationManager.tr("support_bundle.action.title"));
+        actionHelpArea.setText(LocalizationManager.tr("support_bundle.dialog.tip"));
+        sendToLabel.setText(LocalizationManager.tr("support_bundle.send_to"));
         exportButton.setText(LocalizationManager.tr("support_bundle.button"));
-        eventIdLabel.setText(AppModeManager.getEventId() != null ? AppModeManager.getEventId() : "-");
-    }
-
-    private static String asWrappedHtml(String text) {
-        return "<html><div style='width: " + TEXT_WIDTH + "px;'>" + text + "</div></html>";
+        eventIdField.setText(AppModeManager.getEventId() != null ? AppModeManager.getEventId() : "-");
+        eventIdField.setCaretPosition(0);
     }
 
     @Override
     public void removeNotify() {
-        LocalizationManager.removeListener(this::reloadTexts);
+        LocalizationManager.removeListener(languageChangeListener);
         super.removeNotify();
     }
 }
