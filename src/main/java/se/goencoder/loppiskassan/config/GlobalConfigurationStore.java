@@ -86,13 +86,22 @@ public class GlobalConfigurationStore {
         save();
     }
 
-    // Cashier name (nickname for this machine)
+    // Cashier display name / alias for this machine.
     public static String getCashierName() {
-        return config.cashierName;
+        if (config.cashierName == null) {
+            return null;
+        }
+        String trimmed = config.cashierName.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
     
     public static void setCashierName(String name) {
-        config.cashierName = name;
+        if (name == null) {
+            config.cashierName = null;
+        } else {
+            String trimmed = name.trim();
+            config.cashierName = trimmed.isEmpty() ? null : trimmed;
+        }
         save();
     }
     
