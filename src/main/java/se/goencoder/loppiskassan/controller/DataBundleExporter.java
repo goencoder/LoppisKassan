@@ -4,10 +4,10 @@ import org.json.JSONObject;
 import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.service.DialogService;
-import se.goencoder.loppiskassan.storage.JsonlHelper;
 import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.ui.Popup;
-import se.goencoder.loppiskassan.V1SoldItem;
+import se.goencoder.loppiskassan.ui.dialogs.ExportDataDialog;
+import se.goencoder.loppiskassan.util.AppPaths;
 
 import javax.swing.JOptionPane;
 import java.awt.Component;
@@ -19,17 +19,16 @@ import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Exports a complete data bundle (ZIP) from a local cashier.
- * <p>
- * The bundle contains all data files for the event in a standardized format,
- * making it easy to collect files from all cashiers after an event.
- * The filename includes the cashier nickname and a timestamp.
+ * Creates a ZIP bundle with troubleshooting data for iLoppis support.
  */
 public class DataBundleExporter {
 
@@ -38,75 +37,54 @@ public class DataBundleExporter {
     private static final String DEFAULT_CASHIER_SLUG = "kassa";
 
     /**
-     * Export a data bundle for the given event.
-     * Prompts for cashier name if not set, then creates a ZIP with all event data.
+     * Export a support bundle for the selected iLoppis event.
      */
     public static void exportBundle(String eventId, String eventName) {
-        // 1. Ensure cashier name is set
         String cashierName = ensureCashierName();
-        if (cashierName == null) {
-            return; // User cancelled
+        if (cashierName == null || eventId == null || eventId.isBlank()) {
+            return;
         }
 
         try {
-            // 2. Read data
-            Path pendingPath = LocalEventPaths.getPendingItemsPath(eventId);
-            List<V1SoldItem> items = JsonlHelper.readItems(pendingPath);
+            String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
+            String defaultFileName = "iloppis-support-" + buildDefaultFileName(eventId, cashierName, timestamp);
 
-            if (items.isEmpty()) {
-                Popup.WARNING.showAndWait(
-                        LocalizationManager.tr("export.no_data.title"),
-                        LocalizationManager.tr("export.no_data.message")
-                );
+            Component parent = DialogService.getDialogParent();
+            ExportDataDialog dialog = new ExportDataDialog(
+                    parent,
+                    defaultFileName,
+                    getBundleEntryCount(eventId),
+                    ".zip",
+                    "support_bundle.dialog.title",
+                    "support_bundle.dialog.tip");
+            File destination = dialog.showDialog();
+            if (destination == null) {
                 return;
             }
 
-            // 3. Generate filename and show save dialog
-            String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-            String defaultFileName = buildDefaultFileName(eventId, cashierName, timestamp);
+            createBundle(destination.toPath(), eventId, eventName, cashierName);
 
-            Component parent = DialogService.getDialogParent();
-            se.goencoder.loppiskassan.ui.dialogs.ExportDataDialog dialog =
-                    new se.goencoder.loppiskassan.ui.dialogs.ExportDataDialog(
-                            parent, defaultFileName, items.size(), ".zip");
-            File destination = dialog.showDialog();
-            if (destination == null) {
-                return; // User cancelled
-            }
-
-            // 4. Create ZIP bundle
-            createBundle(destination.toPath(), eventId, eventName, cashierName, items);
-
-            // 5. Show success
             Popup.INFORMATION.showAndWait(
-                    LocalizationManager.tr("bundle.success.title"),
-                    LocalizationManager.tr("bundle.success.message",
+                    LocalizationManager.tr("support_bundle.success.title"),
+                    LocalizationManager.tr("support_bundle.success.message",
                             destination.getName(),
                             destination.getParent(),
-                            items.size(),
                             cashierName)
             );
-
         } catch (Exception e) {
             Popup.ERROR.showAndWait(
-                    LocalizationManager.tr("export.error.title"),
+                    LocalizationManager.tr("support_bundle.error.title"),
                     e.getMessage()
             );
         }
     }
 
-    /**
-     * Ensure a cashier name is configured. Prompts the user if not set.
-     *
-     * @return the cashier name, or null if user cancelled
-     */
     static String ensureCashierName() {
         String name = GlobalConfigurationStore.getCashierName();
         if (name != null && !name.isBlank()) {
             return name.trim();
         }
 
-        // Prompt user for cashier name
         Component parent = DialogService.getDialogParent();
         String input = (String) JOptionPane.showInputDialog(
                 parent,
@@ -127,56 +105,105 @@ public class DataBundleExporter {
         return trimmed;
     }
 
-    /**
-     * Create the ZIP bundle with all event data files.
-     */
     static void createBundle(Path zipPath, String eventId, String eventName,
-                             String cashierName, List<V1SoldItem> items) throws IOException {
-        Path rejectedPath = LocalEventPaths.getRejectedPurchasesPath(eventId);
-        createBundle(zipPath, eventId, eventName, cashierName, items, rejectedPath);
+                             String cashierName) throws IOException {
+        createBundle(zipPath, eventId, eventName, cashierName,
+                LocalEventPaths.getEventDir(eventId),
+                AppPaths.getConfigDir(),
+                AppPaths.getLogsDir());
     }
 
-    /**
-     * Create the ZIP bundle with all event data files.
-     * Accepts an explicit rejected-items path (useful for testing).
-     */
     static void createBundle(Path zipPath, String eventId, String eventName,
-                             String cashierName, List<V1SoldItem> items,
-                             Path rejectedPath) throws IOException {
+                             String cashierName, Path eventDir, Path configDir,
+                             Path logsDir) throws IOException {
         Path parent = zipPath.getParent();
         if (parent != null) {
             Files.createDirectories(parent);
         }
 
+        List<Path> eventFiles = collectExistingFiles(eventDir,
+                "pending_items.jsonl",
+                "sold_items.jsonl",
+                "rejected_purchases.jsonl",
+                "iloppis_metadata.json",
+                "local_metadata.json");
+        List<Path> configFiles = collectExistingFiles(configDir,
+                "global.json",
+                "iloppis-mode.json");
+        List<Path> logFiles = collectLogFiles(logsDir);
+
         try (ZipOutputStream zos = new ZipOutputStream(
                 Files.newOutputStream(zipPath), StandardCharsets.UTF_8)) {
-
-            // 1. Manifest with metadata
             JSONObject manifest = new JSONObject();
             manifest.put("cashierName", cashierName);
             manifest.put("eventId", eventId);
             manifest.put("eventName", eventName != null ? eventName : "");
             manifest.put("exportTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-            manifest.put("itemCount", items.size());
-            manifest.put("format", "loppiskassan-bundle-v1");
-
-            int totalRevenue = items.stream().mapToInt(V1SoldItem::getPrice).sum();
-            manifest.put("totalRevenue", totalRevenue);
-
-            long uploadedCount = items.stream().filter(V1SoldItem::isUploaded).count();
-            manifest.put("uploadedCount", uploadedCount);
-            manifest.put("pendingCount", items.size() - uploadedCount);
+            manifest.put("format", "iloppis-support-bundle-v1");
+            manifest.put("purpose", "support");
+            manifest.put("eventFiles", toRelativeNames(eventFiles, eventDir));
+            manifest.put("configFiles", toRelativeNames(configFiles, configDir));
+            manifest.put("logFiles", toRelativeNames(logFiles, logsDir));
 
             addTextEntry(zos, "manifest.json", manifest.toString(2));
 
-            // 2. Pending items — stream JSONL directly to the zip entry.
-            addPendingItemsEntry(zos, "pending_items.jsonl", items);
-
-            // 3. Rejected items (if any)
-            if (rejectedPath != null && Files.exists(rejectedPath) && Files.size(rejectedPath) > 0) {
-                addFileEntry(zos, "rejected_purchases.jsonl", rejectedPath);
+            for (Path file : eventFiles) {
+                addBundleFileEntry(zos, "event/" + file.getFileName(), file);
+            }
+            for (Path file : configFiles) {
+                addBundleFileEntry(zos, "config/" + file.getFileName(), file);
+            }
+            for (Path file : logFiles) {
+                addFileEntry(zos, "logs/" + file.getFileName(), file);
             }
         }
+    }
+
+    private static int getBundleEntryCount(String eventId) throws IOException {
+        int fileCount = collectExistingFiles(LocalEventPaths.getEventDir(eventId),
+                "pending_items.jsonl",
+                "sold_items.jsonl",
+                "rejected_purchases.jsonl",
+                "iloppis_metadata.json",
+                "local_metadata.json").size();
+        fileCount += collectExistingFiles(AppPaths.getConfigDir(),
+                "global.json",
+                "iloppis-mode.json").size();
+        fileCount += collectLogFiles(AppPaths.getLogsDir()).size();
+        return fileCount + 1; // manifest.json
+    }
+
+    private static List<Path> collectExistingFiles(Path parent, String... names) {
+        List<Path> files = new ArrayList<>();
+        for (String name : names) {
+            Path path = parent.resolve(name);
+            if (Files.exists(path) && Files.isRegularFile(path)) {
+                files.add(path);
+            }
+        }
+        return files;
+    }
+
+    private static List<Path> collectLogFiles(Path logsDir) throws IOException {
+        if (Files.notExists(logsDir) || !Files.isDirectory(logsDir)) {
+            return List.of();
+        }
+
+        try (var stream = Files.list(logsDir)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().startsWith("loppiskassan.log"))
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                    .toList();
+        }
+    }
+
+    private static List<String> toRelativeNames(List<Path> files, Path baseDir) {
+        List<String> names = new ArrayList<>(files.size());
+        for (Path file : files) {
+            names.add(baseDir.relativize(file).toString());
+        }
+        return names;
     }
 
     private static void addTextEntry(ZipOutputStream zos, String name, String content) throws IOException {
@@ -185,19 +212,43 @@ public class DataBundleExporter {
         zos.closeEntry();
     }
 
+    private static void addBundleFileEntry(ZipOutputStream zos, String entryName, Path file) throws IOException {
+        if (shouldSanitizeJson(file)) {
+            addTextEntry(zos, entryName, sanitizeJsonContent(file));
+            return;
+        }
+        addFileEntry(zos, entryName, file);
+    }
+
     private static void addFileEntry(ZipOutputStream zos, String name, Path file) throws IOException {
         zos.putNextEntry(new ZipEntry(name));
         Files.copy(file, zos);
         zos.closeEntry();
     }
 
-    private static void addPendingItemsEntry(ZipOutputStream zos, String name, List<V1SoldItem> items) throws IOException {
-        zos.putNextEntry(new ZipEntry(name));
-        for (V1SoldItem item : items) {
-            zos.write(JsonlHelper.toJsonLine(item).getBytes(StandardCharsets.UTF_8));
-            zos.write('\n');
+    private static boolean shouldSanitizeJson(Path file) {
+        String fileName = file.getFileName().toString();
+        return "iloppis-mode.json".equals(fileName) || "iloppis_metadata.json".equals(fileName);
+    }
+
+    private static String sanitizeJsonContent(Path file) throws IOException {
+        try {
+            JSONObject json = new JSONObject(Files.readString(file, StandardCharsets.UTF_8));
+            removeSensitiveKeys(json, Set.of("apiKey"));
+            return json.toString(2);
+        } catch (Exception e) {
+            JSONObject fallback = new JSONObject();
+            fallback.put("sourceFile", file.getFileName().toString());
+            fallback.put("omitted", true);
+            fallback.put("reason", "Could not sanitize JSON safely");
+            return fallback.toString(2);
         }
-        zos.closeEntry();
+    }
+
+    private static void removeSensitiveKeys(JSONObject json, Set<String> keysToRemove) {
+        for (String key : keysToRemove) {
+            json.remove(key);
+        }
     }
 
     static String sanitize(String name) {

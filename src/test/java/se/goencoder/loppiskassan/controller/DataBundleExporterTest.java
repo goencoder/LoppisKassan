@@ -2,19 +2,16 @@ package se.goencoder.loppiskassan.controller;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import se.goencoder.loppiskassan.V1PaymentMethod;
-import se.goencoder.loppiskassan.V1SoldItem;
-import se.goencoder.loppiskassan.storage.JsonlHelper;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DataBundleExporterTest {
 
@@ -49,40 +46,43 @@ class DataBundleExporterTest {
 
     @Test
     void createBundleProducesValidZip() throws Exception {
-        // Setup: create test items
         String eventId = "test-event-001";
         Path eventDir = tempDir.resolve("events").resolve(eventId);
+        Path configDir = tempDir.resolve("config");
+        Path logsDir = tempDir.resolve("logs");
         Files.createDirectories(eventDir);
+        Files.createDirectories(configDir);
+        Files.createDirectories(logsDir);
 
-        V1SoldItem item1 = new V1SoldItem("p1", "i1",
-                LocalDateTime.of(2026, 3, 24, 10, 0), 1, 100, null,
-                V1PaymentMethod.Kontant, false);
-        V1SoldItem item2 = new V1SoldItem("p1", "i2",
-                LocalDateTime.of(2026, 3, 24, 10, 1), 2, 200, null,
-                V1PaymentMethod.Swish, true);
+        Files.writeString(eventDir.resolve("pending_items.jsonl"), "{\"itemId\":\"i1\"}\n");
+        Files.writeString(eventDir.resolve("sold_items.jsonl"), "{\"itemId\":\"i2\"}\n");
+        Files.writeString(eventDir.resolve("rejected_purchases.jsonl"), "{\"itemId\":\"i3\"}\n");
+        Files.writeString(eventDir.resolve("iloppis_metadata.json"),
+                "{\"eventId\":\"" + eventId + "\",\"apiKey\":\"event-secret\",\"eventName\":\"Test Loppis\"}\n");
+        Files.writeString(configDir.resolve("global.json"), "{\"language\":\"sv\"}\n");
+        Files.writeString(configDir.resolve("iloppis-mode.json"),
+                "{\"eventId\":\"" + eventId + "\",\"apiKey\":\"root-secret\",\"apiBaseUrl\":\"https://example.test\"}\n");
+        Files.writeString(logsDir.resolve("loppiskassan.log"), "test log\n");
 
-        // Create rejected file on disk (read by createBundle)
-        Path rejectedPath = eventDir.resolve("rejected_purchases.jsonl");
-        V1SoldItem rejected = new V1SoldItem("p2", "i3",
-                LocalDateTime.of(2026, 3, 24, 11, 0), 99, 50, null,
-                V1PaymentMethod.Kontant, false);
-        JsonlHelper.appendItems(rejectedPath, List.of(rejected));
-
-        // Create bundle with explicit rejected path
-        Path zipPath = tempDir.resolve("kassa-test-2026-03-24-100000.zip");
+        Path zipPath = tempDir.resolve("iloppis-support-test-2026-03-24-100000.zip");
 
         DataBundleExporter.createBundle(zipPath, eventId, "Test Loppis", "Kassa-1",
-                List.of(item1, item2), rejectedPath);
+                eventDir, configDir, logsDir);
 
-        // Verify ZIP exists and has correct entries
         assertTrue(Files.exists(zipPath));
         assertTrue(Files.size(zipPath) > 0);
 
-        // Read ZIP contents
         boolean hasManifest = false;
         boolean hasPending = false;
+        boolean hasSold = false;
         boolean hasRejected = false;
+        boolean hasEventMetadata = false;
+        boolean hasGlobalConfig = false;
+        boolean hasModeConfig = false;
+        boolean hasLog = false;
         String manifestContent = null;
+        String eventMetadataContent = null;
+        String modeConfigContent = null;
 
         try (ZipInputStream zis = new ZipInputStream(
                 Files.newInputStream(zipPath), StandardCharsets.UTF_8)) {
@@ -92,25 +92,50 @@ class DataBundleExporterTest {
                 if ("manifest.json".equals(entry.getName())) {
                     hasManifest = true;
                     manifestContent = content;
-                } else if ("pending_items.jsonl".equals(entry.getName())) {
+                } else if ("event/pending_items.jsonl".equals(entry.getName())) {
                     hasPending = true;
-                } else if ("rejected_purchases.jsonl".equals(entry.getName())) {
+                } else if ("event/sold_items.jsonl".equals(entry.getName())) {
+                    hasSold = true;
+                } else if ("event/rejected_purchases.jsonl".equals(entry.getName())) {
                     hasRejected = true;
+                } else if ("event/iloppis_metadata.json".equals(entry.getName())) {
+                    hasEventMetadata = true;
+                    eventMetadataContent = content;
+                } else if ("config/global.json".equals(entry.getName())) {
+                    hasGlobalConfig = true;
+                } else if ("config/iloppis-mode.json".equals(entry.getName())) {
+                    hasModeConfig = true;
+                    modeConfigContent = content;
+                } else if ("logs/loppiskassan.log".equals(entry.getName())) {
+                    hasLog = true;
                 }
                 zis.closeEntry();
             }
         }
 
         assertTrue(hasManifest, "ZIP should contain manifest.json");
-        assertTrue(hasPending, "ZIP should contain pending_items.jsonl");
-        assertTrue(hasRejected, "ZIP should contain rejected_purchases.jsonl");
+        assertTrue(hasPending, "ZIP should contain event/pending_items.jsonl");
+        assertTrue(hasSold, "ZIP should contain event/sold_items.jsonl");
+        assertTrue(hasRejected, "ZIP should contain event/rejected_purchases.jsonl");
+        assertTrue(hasEventMetadata, "ZIP should contain event/iloppis_metadata.json");
+        assertTrue(hasGlobalConfig, "ZIP should contain config/global.json");
+        assertTrue(hasModeConfig, "ZIP should contain config/iloppis-mode.json");
+        assertTrue(hasLog, "ZIP should contain logs/loppiskassan.log");
         assertNotNull(manifestContent);
+        assertNotNull(eventMetadataContent);
+        assertNotNull(modeConfigContent);
         assertTrue(manifestContent.contains("\"cashierName\": \"Kassa-1\""));
-        assertTrue(manifestContent.contains("\"itemCount\": 2"));
-        assertTrue(manifestContent.contains("\"totalRevenue\": 300"));
-        assertTrue(manifestContent.contains("\"format\": \"loppiskassan-bundle-v1\""));
-        assertTrue(manifestContent.contains("\"uploadedCount\": 1"));
-        assertTrue(manifestContent.contains("\"pendingCount\": 1"));
+        assertTrue(manifestContent.contains("\"eventId\": \"" + eventId + "\""));
+        assertTrue(manifestContent.contains("\"format\": \"iloppis-support-bundle-v1\""));
+        assertTrue(manifestContent.contains("\"purpose\": \"support\""));
+        assertTrue(eventMetadataContent.contains("\"eventId\": \"" + eventId + "\""));
+        assertTrue(modeConfigContent.contains("\"eventId\": \"" + eventId + "\""));
+        assertTrue(eventMetadataContent.contains("\"eventName\": \"Test Loppis\""));
+        assertTrue(modeConfigContent.contains("\"apiBaseUrl\": \"https://example.test\""));
+        assertTrue(!eventMetadataContent.contains("event-secret"));
+        assertTrue(!modeConfigContent.contains("root-secret"));
+        assertTrue(!eventMetadataContent.contains("apiKey"));
+        assertTrue(!modeConfigContent.contains("apiKey"));
     }
 
     @Test

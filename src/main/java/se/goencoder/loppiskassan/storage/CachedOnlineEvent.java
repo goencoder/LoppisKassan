@@ -9,8 +9,9 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Represents a cached iLoppis online event with associated credentials.
- * Stored as iloppis_metadata.json under ~/.loppiskassan/events/{eventId}/.
+ * Represents a cached iLoppis online event.
+ * Metadata is stored as iloppis_metadata.json under ~/.loppiskassan/events/{eventId}/.
+ * Legacy metadata may still contain apiKey, but new writes keep credentials separate.
  */
 public class CachedOnlineEvent {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -166,7 +167,6 @@ public class CachedOnlineEvent {
         json.put("addressStreet", addressStreet != null ? addressStreet : "");
         json.put("addressCity", addressCity != null ? addressCity : "");
         json.put("marketId", marketId != null ? marketId : "");
-        json.put("apiKey", apiKey != null ? apiKey : "");
         json.put("approvedSellersJson", approvedSellersJson != null ? approvedSellersJson : "");
         json.put("revenueSplitJson", revenueSplitJson != null ? revenueSplitJson : "");
         if (startTime != null) {

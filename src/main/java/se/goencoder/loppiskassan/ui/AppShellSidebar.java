@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 
 /**
  * Sidebar för App Shell navigation.
- * Visar navigationsknappar för Kassa, Historik, Export/Import, Arkiv.
+ * Visar navigationsknappar för appens vyer beroende på aktivt läge.
  */
 public class AppShellSidebar extends JPanel implements LocalizationAware {
     
@@ -23,6 +23,7 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
     private NavigationButton cashierButton;
     private NavigationButton historyButton;
     private NavigationButton exportButton;
+    private NavigationButton supportButton;
     private NavigationButton archiveButton;
     
     public AppShellSidebar(Consumer<AppShellFrame.NavigationTarget> onNavigate) {
@@ -54,7 +55,6 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
         add(historyButton);
         add(Box.createVerticalStrut(4));
         
-        // Export/Import (endast lokal kassa)
         if (AppModeManager.isLocalMode()) {
             exportButton = createNavigationButton("sidebar.export", AppShellFrame.NavigationTarget.EXPORT);
             buttons.add(exportButton);
@@ -65,6 +65,11 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
             archiveButton = createNavigationButton("sidebar.archive", AppShellFrame.NavigationTarget.ARCHIVE);
             buttons.add(archiveButton);
             add(archiveButton);
+            add(Box.createVerticalStrut(4));
+        } else {
+            supportButton = createNavigationButton("sidebar.support", AppShellFrame.NavigationTarget.SUPPORT);
+            buttons.add(supportButton);
+            add(supportButton);
             add(Box.createVerticalStrut(4));
         }
         
@@ -95,6 +100,7 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
             case CASHIER -> cashierButton;
             case HISTORY -> historyButton;
             case EXPORT -> exportButton;
+            case SUPPORT -> supportButton;
             case ARCHIVE -> archiveButton;
         };
         
@@ -110,6 +116,7 @@ public class AppShellSidebar extends JPanel implements LocalizationAware {
         if (historyButton != null) historyButton.setText(LocalizationManager.tr(
                 AppModeManager.isLocalMode() ? "sidebar.history" : "sidebar.live"));
         if (exportButton != null) exportButton.setText(LocalizationManager.tr("sidebar.export"));
+        if (supportButton != null) supportButton.setText(LocalizationManager.tr("sidebar.support"));
         if (archiveButton != null) archiveButton.setText(LocalizationManager.tr("sidebar.archive"));
     }
     

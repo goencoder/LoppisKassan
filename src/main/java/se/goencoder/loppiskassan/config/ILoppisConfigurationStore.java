@@ -1,5 +1,7 @@
 package se.goencoder.loppiskassan.config;
 
+import se.goencoder.loppiskassan.storage.OnlineEventCredentialsStore;
+
 import java.nio.file.Path;
 
 /**
@@ -47,7 +49,7 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
      */
     static class ILoppisConfig {
         private String eventId;           // UUID from API
-        private String apiKey;            // Authentication key
+        private String apiKey;            // Legacy field, migrated to per-event credentials
         private String apiBaseUrl;        // API base URL (e.g., http://127.0.0.1:8080)
         private String approvedSellers;   // JSON array of approved vendor IDs (cached for offline validation)
         private String revenueSplit;      // JSON string of revenue split configuration
@@ -63,16 +65,30 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
     
     public static void setEventId(String eventId) {
         INSTANCE.config.eventId = eventId;
+        migrateLegacyApiKey(eventId);
         INSTANCE.save();
     }
     
     // API Key
     public static String getApiKey() {
-        return INSTANCE.config.apiKey;
+        String eventId = getEventId();
+        String eventApiKey = OnlineEventCredentialsStore.getApiKey(eventId);
+        if (eventApiKey != null && !eventApiKey.isBlank()) {
+            return eventApiKey;
+        }
+
+        String legacyApiKey = INSTANCE.config.apiKey;
+        if (legacyApiKey != null && !legacyApiKey.isBlank() && eventId != null && !eventId.isBlank()) {
+            OnlineEventCredentialsStore.setApiKey(eventId, legacyApiKey);
+            INSTANCE.config.apiKey = null;
+            INSTANCE.save();
+        }
+        return legacyApiKey;
     }
-    
+
     public static void setApiKey(String apiKey) {
-        INSTANCE.config.apiKey = apiKey;
+        INSTANCE.config.apiKey = null;
+        OnlineEventCredentialsStore.setApiKey(INSTANCE.config.eventId, apiKey);
         INSTANCE.save();
     }
     
@@ -128,8 +144,9 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
      * Check if iLoppis mode is configured
      */
     public static boolean isConfigured() {
-        return INSTANCE.config.eventId != null && !INSTANCE.config.eventId.isEmpty() 
-            && INSTANCE.config.apiKey != null && !INSTANCE.config.apiKey.isEmpty();
+        String apiKey = getApiKey();
+        return INSTANCE.config.eventId != null && !INSTANCE.config.eventId.isEmpty()
+            && apiKey != null && !apiKey.isEmpty();
     }
     
     /**
@@ -138,5 +155,19 @@ public class ILoppisConfigurationStore extends ConfigurationStore<ILoppisConfigu
     public static void reset() {
         INSTANCE.config = new ILoppisConfig();
         INSTANCE.save();
+    }
+
+    private static void migrateLegacyApiKey(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+
+        String legacyApiKey = INSTANCE.config.apiKey;
+        if (legacyApiKey == null || legacyApiKey.isBlank()) {
+            return;
+        }
+
+        OnlineEventCredentialsStore.setApiKey(eventId, legacyApiKey);
+        INSTANCE.config.apiKey = null;
     }
 }

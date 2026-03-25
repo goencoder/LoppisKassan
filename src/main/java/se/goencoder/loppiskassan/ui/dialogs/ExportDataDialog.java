@@ -26,20 +26,29 @@ public class ExportDataDialog extends JDialog {
     private final String defaultFilename;
     private final int itemCount;
     private final String fileExtension;
+    private final String titleKey;
+    private final String tipKey;
     private boolean confirmed = false;
     
     public ExportDataDialog(Component parent, String defaultFilename, int itemCount) {
-        this(parent, defaultFilename, itemCount, ".jsonl");
+        this(parent, defaultFilename, itemCount, ".jsonl", "export.dialog.title", "export.dialog.tip");
     }
 
     public ExportDataDialog(Component parent, String defaultFilename, int itemCount, String fileExtension) {
+        this(parent, defaultFilename, itemCount, fileExtension, "export.dialog.title", "export.dialog.tip");
+    }
+
+    public ExportDataDialog(Component parent, String defaultFilename, int itemCount,
+                            String fileExtension, String titleKey, String tipKey) {
         super(parent != null ? SwingUtilities.getWindowAncestor(parent) : null, 
-              LocalizationManager.tr("export.dialog.title"), 
+              LocalizationManager.tr(titleKey),
               ModalityType.APPLICATION_MODAL);
         
         this.defaultFilename = defaultFilename;
         this.itemCount = itemCount;
         this.fileExtension = fileExtension;
+        this.titleKey = titleKey;
+        this.tipKey = tipKey;
         
         initializeComponents();
         layoutComponents();
@@ -118,7 +127,7 @@ public class ExportDataDialog extends JDialog {
         // Tip
         JLabel tipLabel = new JLabel(String.format(
             "<html><div style='color: #666; font-size: 11px;'>💡 %s</div></html>",
-            LocalizationManager.tr("export.dialog.tip")
+            LocalizationManager.tr(tipKey)
         ));
         tipLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         mainPanel.add(tipLabel);

@@ -645,9 +645,9 @@ public class DiscoveryTabController implements DiscoveryControllerInterface {
             return;
         }
 
+        AppModeManager.setEventId(eventId);
         ApiHelper.INSTANCE.setCurrentApiKey(cached.getApiKey());
         ILoppisConfigurationStore.setApiKey(cached.getApiKey());
-        AppModeManager.setEventId(eventId);
 
         V1RevenueSplit activeSplit = split;
         try {

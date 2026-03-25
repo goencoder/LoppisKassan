@@ -30,6 +30,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     private JPanel cashierView;
     private JPanel historyView;
     private JPanel exportView;
+    private JPanel supportView;
     private JPanel archiveView;
     private JPanel discoveryView;
     
@@ -127,6 +128,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             historyView = new HistoryTabPanel();
         } else {
             historyView = new LiveStatsPanel();
+            supportView = new SupportBundlePanel();
         }
         
         // Export/Import-vy (endast lokal kassa)
@@ -163,6 +165,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             case CASHIER -> cashierView;
             case HISTORY -> historyView;
             case EXPORT -> exportView;
+            case SUPPORT -> supportView;
             case ARCHIVE -> archiveView;
         };
         
@@ -260,6 +263,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         CASHIER,
         HISTORY,
         EXPORT,
+        SUPPORT,
         ARCHIVE
     }
 }
