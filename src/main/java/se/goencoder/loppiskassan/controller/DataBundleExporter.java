@@ -48,12 +48,13 @@ public class DataBundleExporter {
         try {
             String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
             String defaultFileName = "iloppis-support-" + buildDefaultFileName(eventId, cashierName, timestamp);
+            int entryCount = getBundleEntryCountBestEffort(eventId);
 
             Component parent = DialogService.getDialogParent();
             ExportDataDialog dialog = new ExportDataDialog(
                     parent,
                     defaultFileName,
-                    getBundleEntryCount(eventId),
+                    entryCount,
                     ".zip",
                     "support_bundle.dialog.title",
                     "support_bundle.dialog.tip");
@@ -171,6 +172,14 @@ public class DataBundleExporter {
                 "iloppis-mode.json").size();
         fileCount += collectLogFiles(AppPaths.getLogsDir()).size();
         return fileCount + 1; // manifest.json
+    }
+
+    private static int getBundleEntryCountBestEffort(String eventId) {
+        try {
+            return getBundleEntryCount(eventId);
+        } catch (IOException e) {
+            return 0;
+        }
     }
 
     private static List<Path> collectExistingFiles(Path parent, String... names) {

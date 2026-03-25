@@ -336,10 +336,10 @@ public class BackgroundSyncManager {
         try {
             syncOnceInternal();
             backgroundFileErrorShown.set(false);
-        } catch (java.io.IOException e) {
-            log.severe("Background sync: File write error - " + e.getMessage());
+        } catch (IOException e) {
+            log.severe("Background sync: Disk I/O error - " + e.getMessage());
             if (backgroundFileErrorShown.compareAndSet(false, true)) {
-                Popup.error("error.background_file_write", e.getMessage());
+                Popup.error("error.background_file_io", e.getMessage());
             }
         } catch (Exception e) {
             log.warning("Background sync: Unexpected error - " + e.getMessage());
@@ -516,7 +516,7 @@ public class BackgroundSyncManager {
                     + SHUTDOWN_TERMINATION_TIMEOUT_SECONDS + " seconds. Forcing shutdownNow().");
             executor.shutdownNow();
         }
-        if (needsFallbackFlush && eventId != null && !eventId.isBlank()) {
+        if (needsFallbackFlush && terminated && eventId != null && !eventId.isBlank()) {
             flushQueueToDiskBestEffort(eventId);
         }
         if (interrupted) {
