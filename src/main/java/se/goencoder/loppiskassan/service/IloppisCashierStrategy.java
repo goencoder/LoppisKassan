@@ -71,6 +71,15 @@ public class IloppisCashierStrategy implements CashierStrategy {
             return false;
         }
 
+        // Stamp each item with the current register session for traceability (ILP-003).
+        RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
+        if (session != null) {
+            for (V1SoldItem item : items) {
+                item.setRegisterId(session.registerId);
+                item.setSessionId(session.sessionId);
+            }
+        }
+
         // Local-first: persist immediately to disk, then trigger background upload.
         BackgroundSyncManager.getInstance().enqueueItems(eventId, items);
         return true;

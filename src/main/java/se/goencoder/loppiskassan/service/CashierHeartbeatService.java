@@ -51,6 +51,26 @@ public class CashierHeartbeatService {
             String clientType,
             String displayName
     ) throws IOException {
+        return sendHeartbeat(eventId, clientState, pendingPurchasesCount, clientType, displayName, null, null, null);
+    }
+
+    /**
+     * Extended heartbeat that also carries register session lifecycle fields.
+     *
+     * @param lifecycleEventType one of OPEN, SYNC, CLOSE_REQUESTED, CLOSE_CONFIRMED — or null to omit
+     * @param registerId         stable register name/id — or null to omit
+     * @param sessionId          active session id — or null to omit
+     */
+    public HeartbeatResult sendHeartbeat(
+            String eventId,
+            String clientState,
+            int pendingPurchasesCount,
+            String clientType,
+            String displayName,
+            String lifecycleEventType,
+            String registerId,
+            String sessionId
+    ) throws IOException {
         String apiKey = ApiHelper.INSTANCE.getCurrentApiKey();
         if (eventId == null || eventId.isBlank() || apiKey == null || apiKey.isBlank()) {
             return new HeartbeatResult(displayName);
@@ -66,6 +86,15 @@ public class CashierHeartbeatService {
         payload.put("pending_purchases_count", Math.max(0, pendingPurchasesCount));
         payload.put("client_type", clientType);
         payload.put("display_name", displayName == null ? "" : displayName);
+        if (lifecycleEventType != null && !lifecycleEventType.isBlank()) {
+            payload.put("lifecycle_event_type", lifecycleEventType);
+        }
+        if (registerId != null && !registerId.isBlank()) {
+            payload.put("register_id", registerId);
+        }
+        if (sessionId != null && !sessionId.isBlank()) {
+            payload.put("session_id", sessionId);
+        }
 
         String json = GSON.toJson(payload);
         RequestBody body = RequestBody.create(JSON_MEDIA_TYPE, json.getBytes(StandardCharsets.UTF_8));

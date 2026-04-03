@@ -24,6 +24,10 @@ public final class AppPaths {
     private AppPaths() {}
 
     public static Path getBaseDir() {
+        String override = System.getProperty("loppiskassan.base.dir");
+        if (override != null && !override.isBlank()) {
+            return Paths.get(override);
+        }
         String homeDir = System.getProperty("user.home");
         return Paths.get(homeDir, BASE_DIR_NAME);
     }

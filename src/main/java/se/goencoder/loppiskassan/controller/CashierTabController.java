@@ -12,6 +12,7 @@ import se.goencoder.loppiskassan.service.LocalCashierStrategy;
 import se.goencoder.loppiskassan.service.IloppisCashierStrategy;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.service.CashierHeartbeatService;
+import se.goencoder.loppiskassan.service.RegisterSessionManager;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
@@ -360,12 +361,16 @@ public class CashierTabController implements CashierControllerInterface {
                 ? HEARTBEAT_STATE_SUBMITTING
                 : (heartbeatPendingPurchasesCount > 0 ? HEARTBEAT_STATE_ACTIVE : HEARTBEAT_STATE_IDLE);
 
+        RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
         CashierHeartbeatService.HeartbeatResult result = heartbeatService.sendHeartbeat(
                 eventId,
                 clientState,
                 heartbeatPendingPurchasesCount,
                 HEARTBEAT_CLIENT_TYPE_JAVA,
-                heartbeatDisplayName
+                heartbeatDisplayName,
+                "REGISTER_LIFECYCLE_SYNC",
+                session != null ? session.registerId : null,
+                session != null ? session.sessionId : null
         );
 
         applyHeartbeatResult(result);

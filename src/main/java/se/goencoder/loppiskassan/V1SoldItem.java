@@ -21,6 +21,10 @@ public class V1SoldItem {
     private String purchaseId;
     private final String itemId;
     private boolean uploaded;
+    /** Register that recorded this sale. Populated on creation, sent to server on sync. */
+    private String registerId;
+    /** Session that was active when this sale was recorded. */
+    private String sessionId;
 
     /**
      * Konstruktor för att skapa en ny såld vara.
@@ -112,6 +116,22 @@ public class V1SoldItem {
     }
     public void setUploaded(boolean uploaded) {
         this.uploaded = uploaded;
+    }
+
+    public String getRegisterId() {
+        return registerId;
+    }
+
+    public void setRegisterId(String registerId) {
+        this.registerId = registerId;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
     }
 
     // Overridden methods for equality and hashing

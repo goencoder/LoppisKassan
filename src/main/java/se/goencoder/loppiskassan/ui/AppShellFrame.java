@@ -1,10 +1,12 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
+import se.goencoder.loppiskassan.service.RegisterSessionManager;
 import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.ui.dialogs.PendingItemsDialog;
@@ -12,6 +14,8 @@ import se.goencoder.loppiskassan.ui.dialogs.RejectedItemsDialog;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * App Shell frame för Loppiskassan 3.0.
@@ -70,6 +74,12 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             String eventId = AppModeManager.getEventId();
             if (eventId != null && !eventId.isBlank()) {
                 BackgroundSyncManager.getInstance().ensureRunning(eventId);
+                RegisterSessionManager sessionMgr = RegisterSessionManager.getInstance();
+                sessionMgr.loadOrRecover(eventId);
+                if (!sessionMgr.isSessionActive()) {
+                    String registerName = GlobalConfigurationStore.getCashierName();
+                    sessionMgr.openSession(eventId, registerName != null ? registerName : "Kassan");
+                }
             }
         }
         
@@ -84,7 +94,13 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         LocalizationManager.addListener(languageChangeListener);
         
         setTitle(LocalizationManager.tr("frame.title"));
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                handleWindowClose();
+            }
+        });
         setSize(1024, 700);
         setLocationRelativeTo(null);
     }
@@ -260,7 +276,77 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         LocalizationManager.removeListener(languageChangeListener);
         super.removeNotify();
     }
-    
+
+    /**
+     * ILP-003-06: Exit guard — intercepts window close when a register session is active
+     * or there are unsynced pending items.
+     *
+     * <p>If both conditions are absent the window closes normally.
+     * If unsynced items exist the user must confirm before exit; the session is left as-is
+     * so it can be recovered on next launch.
+     * If the session can be closed cleanly (no pending items) the close handshake is sent
+     * via the heartbeat before the JVM exits.</p>
+     */
+    private void handleWindowClose() {
+        if (AppModeManager.isLocalMode()) {
+            exitApplication();
+            return;
+        }
+
+        String eventId = AppModeManager.getEventId();
+        boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
+        int pendingCount = 0;
+        if (eventId != null && !eventId.isBlank()) {
+            try {
+                pendingCount = new PendingItemsStore(eventId).readPending().size();
+            } catch (Exception ignored) {}
+        }
+
+        if (!sessionActive && pendingCount == 0) {
+            exitApplication();
+            return;
+        }
+
+        if (pendingCount > 0) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    String.format(
+                            "<html><b>Kassan har %d osynkade försäljningar.</b><br>" +
+                            "Om du stänger nu kan dessa saknas i rapporten.<br><br>" +
+                            "Håll kassan uppkopplad tills synken är klar, bekräfta sedan stängning.<br><br>" +
+                            "Vill du ändå stänga?</html>",
+                            pendingCount),
+                    "Osynkade försäljningar",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return; // abort close
+            }
+        } else if (sessionActive) {
+            // Session open but no pending items — offer clean close
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    "<html><b>Registret är fortfarande öppet.</b><br>" +
+                    "Vill du stänga registret och avsluta?</html>",
+                    "Stäng register",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+            // Best-effort: fire CLOSE_CONFIRMED heartbeat before exiting
+            RegisterSessionManager.getInstance().requestClose();
+            RegisterSessionManager.getInstance().confirmClose();
+        }
+
+        exitApplication();
+    }
+
+    private void exitApplication() {
+        dispose();
+        System.exit(0);
+    }
+
     /**
      * Navigationsmål i applikationen.
      */
