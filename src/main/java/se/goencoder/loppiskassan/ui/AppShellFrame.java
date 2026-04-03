@@ -78,7 +78,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 sessionMgr.loadOrRecover(eventId);
                 if (!sessionMgr.isSessionActive()) {
                     String registerName = GlobalConfigurationStore.getCashierName();
-                    sessionMgr.openSession(eventId, registerName != null ? registerName : "Kassan");
+                    sessionMgr.openSession(eventId, registerName != null ? registerName : LocalizationManager.tr("register.default_name"));
                 }
             }
         }
@@ -310,13 +310,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         if (pendingCount > 0) {
             int choice = JOptionPane.showConfirmDialog(
                     this,
-                    String.format(
-                            "<html><b>Kassan har %d osynkade försäljningar.</b><br>" +
-                            "Om du stänger nu kan dessa saknas i rapporten.<br><br>" +
-                            "Håll kassan uppkopplad tills synken är klar, bekräfta sedan stängning.<br><br>" +
-                            "Vill du ändå stänga?</html>",
-                            pendingCount),
-                    "Osynkade försäljningar",
+                    String.format(LocalizationManager.tr("exit.pending_sync.message"), pendingCount),
+                    LocalizationManager.tr("exit.pending_sync.title"),
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
             if (choice != JOptionPane.YES_OPTION) {
@@ -326,9 +321,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             // Session open but no pending items — offer clean close
             int choice = JOptionPane.showConfirmDialog(
                     this,
-                    "<html><b>Registret är fortfarande öppet.</b><br>" +
-                    "Vill du stänga registret och avsluta?</html>",
-                    "Stäng register",
+                    LocalizationManager.tr("exit.session_open.message"),
+                    LocalizationManager.tr("exit.session_open.title"),
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.QUESTION_MESSAGE);
             if (choice != JOptionPane.YES_OPTION) {

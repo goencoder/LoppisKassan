@@ -457,5 +457,11 @@
   "support_bundle.button": "\uD83D\uDCE6 Skapa datafil…",
   "support_bundle.success.title": "Datafil skapad!",
   "support_bundle.success.message": "\uD83D\uDCE6 {0}\n\uD83D\uDCC1 {1}\n\nFilen skapades för kassa ''{2}''.\n\nSkicka filen till iLoppis support för felsökning.",
-  "support_bundle.error.title": "Kunde inte skapa datafil"
+  "support_bundle.error.title": "Kunde inte skapa datafil",
+
+  "register.default_name": "Kassan",
+  "exit.pending_sync.title": "Osynkade försäljningar",
+  "exit.pending_sync.message": "<html><b>Kassan har %d osynkade försäljningar.</b><br>Om du stänger nu kan dessa saknas i rapporten.<br><br>Håll kassan uppkopplad tills synken är klar, bekräfta sedan stängning.<br><br>Vill du ändå stänga?</html>",
+  "exit.session_open.title": "Stäng register",
+  "exit.session_open.message": "<html><b>Registret är fortfarande öppet.</b><br>Vill du stänga registret och avsluta?</html>"
 }

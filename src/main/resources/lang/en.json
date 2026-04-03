@@ -456,5 +456,11 @@
   "support_bundle.button": "\uD83D\uDCE6 Create data file…",
   "support_bundle.success.title": "Data file created!",
   "support_bundle.success.message": "\uD83D\uDCE6 {0}\n\uD83D\uDCC1 {1}\n\nThe file was created for cashier ''{2}''.\n\nSend it to iLoppis support for troubleshooting.",
-  "support_bundle.error.title": "Could not create data file"
+  "support_bundle.error.title": "Could not create data file",
+
+  "register.default_name": "Cashier",
+  "exit.pending_sync.title": "Unsynced sales",
+  "exit.pending_sync.message": "<html><b>The register has %d unsynced sales.</b><br>If you close now these may be missing from the report.<br><br>Keep the register online until sync completes, then confirm close.<br><br>Close anyway?</html>",
+  "exit.session_open.title": "Close register",
+  "exit.session_open.message": "<html><b>The register is still open.</b><br>Do you want to close the register and quit?</html>"
 }
