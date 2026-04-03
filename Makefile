@@ -4,10 +4,10 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 
 # ---- Local OpenAPI client ----
-CLIENT_JAR := lib/openapi-java-client-0.0.7.jar
+CLIENT_JAR := lib/openapi-java-client-0.0.8.jar
 GROUP_ID   := se.goencoder.iloppis
 ARTIFACT_ID:= iloppis-client
-VERSION    := 0.0.7
+VERSION    := 0.0.8
 
 JAR_NAME := target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
 
@@ -46,8 +46,8 @@ ci: build-codex ## Run CI pipeline (build + test + verify)
 
 install-client: proxy
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
-	  -Dfile=lib/openapi-java-client-0.0.7.jar \
-	  -DpomFile=lib/openapi-java-client-0.0.7.pom
+	  -Dfile=lib/openapi-java-client-0.0.8.jar \
+	  -DpomFile=lib/openapi-java-client-0.0.8.pom
 
 build-codex: install-client ## Build for Codex (no jpackage)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package

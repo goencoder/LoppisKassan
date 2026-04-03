@@ -5,7 +5,11 @@ import com.google.gson.JsonParser;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
+import se.goencoder.iloppis.api.StatsServiceApi;
+import se.goencoder.iloppis.model.V1RegisterLifecycleEventType;
+import se.goencoder.iloppis.model.V1UpdateCashierPresenceResponse;
 import se.goencoder.loppiskassan.rest.ApiHelper;
+import se.goencoder.loppiskassan.rest.FixedApiClient;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,12 +28,18 @@ class CashierHeartbeatServiceTest {
         AtomicReference<String> methodRef = new AtomicReference<>();
         AtomicReference<String> authRef = new AtomicReference<>();
         AtomicReference<String> bodyRef = new AtomicReference<>();
+        String responseJson = new V1UpdateCashierPresenceResponse()
+                .displayName("minty raven")
+                .registerId("register-a")
+                .sessionId("session-a")
+                .lifecycleEventType(V1RegisterLifecycleEventType.SYNC)
+                .toJson();
 
         server.createContext("/v1/events/evt-123/cashier-presence:heartbeat", exchange -> {
             methodRef.set(exchange.getRequestMethod());
             authRef.set(exchange.getRequestHeaders().getFirst("Authorization"));
             bodyRef.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            writeJson(exchange, 200, "{\"display_name\":\"minty raven\"}");
+            writeJson(exchange, 200, responseJson);
         });
         server.start();
 
@@ -38,15 +48,18 @@ class CashierHeartbeatServiceTest {
         ApiHelper.INSTANCE.setCurrentApiKey("test-api-key");
 
         try {
-            // Use test constructor with shared OkHttp client (has AuthInterceptor) but local base URL
-            CashierHeartbeatService service = new CashierHeartbeatService(
-                    ApiHelper.INSTANCE.getHttpClient(), testBaseUrl);
+            FixedApiClient client = new FixedApiClient();
+            client.setBasePath(testBaseUrl);
+            CashierHeartbeatService service = new CashierHeartbeatService(new StatsServiceApi(client));
             CashierHeartbeatService.HeartbeatResult result = service.sendHeartbeat(
                     "evt-123",
                     "CASHIER_CLIENT_STATE_ACTIVE_TRANSACTION",
                     -3,
                     "CASHIER_CLIENT_TYPE_JAVA",
-                    "old-name"
+                    "old-name",
+                    "REGISTER_LIFECYCLE_EVENT_TYPE_SYNC",
+                    "register-a",
+                    "session-a"
             );
 
             assertNotNull(result);
@@ -55,11 +68,13 @@ class CashierHeartbeatServiceTest {
             assertEquals("Bearer test-api-key", authRef.get());
 
             JsonObject payload = JsonParser.parseString(bodyRef.get()).getAsJsonObject();
-            assertEquals("evt-123", payload.get("event_id").getAsString());
-            assertEquals("CASHIER_CLIENT_STATE_ACTIVE_TRANSACTION", payload.get("client_state").getAsString());
-            assertEquals(0, payload.get("pending_purchases_count").getAsInt());
-            assertEquals("CASHIER_CLIENT_TYPE_JAVA", payload.get("client_type").getAsString());
-            assertEquals("old-name", payload.get("display_name").getAsString());
+            assertEquals("CASHIER_CLIENT_STATE_ACTIVE_TRANSACTION", payload.get("clientState").getAsString());
+            assertEquals(0, payload.get("pendingPurchasesCount").getAsInt());
+            assertEquals("CASHIER_CLIENT_TYPE_JAVA", payload.get("clientType").getAsString());
+            assertEquals("old-name", payload.get("displayName").getAsString());
+            assertEquals("REGISTER_LIFECYCLE_EVENT_TYPE_SYNC", payload.get("lifecycleEventType").getAsString());
+            assertEquals("register-a", payload.get("registerId").getAsString());
+            assertEquals("session-a", payload.get("sessionId").getAsString());
         } finally {
             if (previousApiKey != null) {
                 ApiHelper.INSTANCE.setCurrentApiKey(previousApiKey);
@@ -83,8 +98,9 @@ class CashierHeartbeatServiceTest {
         ApiHelper.INSTANCE.setCurrentApiKey("test-api-key");
 
         try {
-            CashierHeartbeatService service = new CashierHeartbeatService(
-                    ApiHelper.INSTANCE.getHttpClient(), testBaseUrl);
+            FixedApiClient client = new FixedApiClient();
+            client.setBasePath(testBaseUrl);
+            CashierHeartbeatService service = new CashierHeartbeatService(new StatsServiceApi(client));
             CashierHeartbeatService.HeartbeatResult result = service.sendHeartbeat(
                     "evt-123",
                     "CASHIER_CLIENT_STATE_IDLE",

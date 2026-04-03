@@ -19,7 +19,7 @@
         <!-- To update the version of this dependency:
              1. Generate and build new version in iloppis/backend:
                   cd /Users/goranengdahl/GolandProjects/iloppis/backend
-                  - Update ARTIFACT_VERSION in Makefile to next patch (e.g. 0.0.7)
+                   - Update ARTIFACT_VERSION in Makefile to next patch (e.g. 0.0.8)
                   - Run: make build-java-client
              2. Copy JAR and POM to LoppisKassan:
                   cp gen/java-client/target/iloppis-client-X.X.X.jar \
@@ -35,7 +35,7 @@
         <dependency>
             <groupId>se.goencoder.iloppis</groupId>
             <artifactId>iloppis-client</artifactId>
-            <version>0.0.7</version>
+            <version>0.0.8</version>
         </dependency>
 
         <dependency>

@@ -1,19 +1,15 @@
 package se.goencoder.loppiskassan.service;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import okhttp3.MediaType;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import se.goencoder.iloppis.api.StatsServiceApi;
+import se.goencoder.iloppis.invoker.ApiException;
+import se.goencoder.iloppis.model.StatsServiceUpdateCashierPresenceBody;
+import se.goencoder.iloppis.model.V1CashierClientState;
+import se.goencoder.iloppis.model.V1CashierClientType;
+import se.goencoder.iloppis.model.V1RegisterLifecycleEventType;
+import se.goencoder.iloppis.model.V1UpdateCashierPresenceResponse;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -24,24 +20,19 @@ import java.util.logging.Logger;
 public class CashierHeartbeatService {
 
     private static final Logger log = Logger.getLogger(CashierHeartbeatService.class.getName());
-    private static final MediaType JSON_MEDIA_TYPE = MediaType.get("application/json");
-    private static final Gson GSON = new Gson();
 
-    private final okhttp3.OkHttpClient httpClient;
-    private final String baseUrl;
+    private final StatsServiceApi statsServiceApi;
 
     public record HeartbeatResult(String displayName) {}
 
-    /** Production constructor — uses the shared ApiHelper client and base URL. */
+    /** Production constructor — uses the shared generated StatsServiceApi. */
     public CashierHeartbeatService() {
-        this.httpClient = ApiHelper.INSTANCE.getHttpClient();
-        this.baseUrl = ApiHelper.INSTANCE.getBasePath();
+        this(ApiHelper.INSTANCE.getStatsServiceApi());
     }
 
-    /** Test constructor — allows overriding the HTTP client and base URL. */
-    CashierHeartbeatService(okhttp3.OkHttpClient httpClient, String baseUrl) {
-        this.httpClient = httpClient;
-        this.baseUrl = baseUrl;
+    /** Test constructor — allows overriding the generated API instance. */
+    CashierHeartbeatService(StatsServiceApi statsServiceApi) {
+        this.statsServiceApi = statsServiceApi;
     }
 
     public HeartbeatResult sendHeartbeat(
@@ -76,72 +67,71 @@ public class CashierHeartbeatService {
             return new HeartbeatResult(displayName);
         }
 
-        String normalizedBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        String encodedEventId = URLEncoder.encode(eventId, StandardCharsets.UTF_8).replace("+", "%20");
-        String url = normalizedBase + "/v1/events/" + encodedEventId + "/cashier-presence:heartbeat";
+        V1CashierClientState mappedClientState = mapClientState(clientState);
+        V1CashierClientType mappedClientType = mapClientType(clientType);
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("event_id", eventId);
-        payload.put("client_state", clientState);
-        payload.put("pending_purchases_count", Math.max(0, pendingPurchasesCount));
-        payload.put("client_type", clientType);
-        payload.put("display_name", displayName == null ? "" : displayName);
+        if (mappedClientState == null || mappedClientType == null) {
+            log.warning("Heartbeat skipped due to unsupported enum mapping");
+            return new HeartbeatResult(displayName);
+        }
+
+        StatsServiceUpdateCashierPresenceBody request = new StatsServiceUpdateCashierPresenceBody()
+                .clientState(mappedClientState)
+                .pendingPurchasesCount(Math.max(0, pendingPurchasesCount))
+                .clientType(mappedClientType)
+                .displayName(displayName == null ? "" : displayName);
+
         if (lifecycleEventType != null && !lifecycleEventType.isBlank()) {
-            payload.put("lifecycle_event_type", lifecycleEventType);
+            V1RegisterLifecycleEventType mappedLifecycleEventType = mapLifecycleEventType(lifecycleEventType);
+            if (mappedLifecycleEventType != null) {
+                request.lifecycleEventType(mappedLifecycleEventType);
+            }
         }
         if (registerId != null && !registerId.isBlank()) {
-            payload.put("register_id", registerId);
+            request.registerId(registerId);
         }
         if (sessionId != null && !sessionId.isBlank()) {
-            payload.put("session_id", sessionId);
+            request.sessionId(sessionId);
         }
 
-        String json = GSON.toJson(payload);
-        RequestBody body = RequestBody.create(JSON_MEDIA_TYPE, json.getBytes(StandardCharsets.UTF_8));
-
-        // Auth header injected automatically by AuthInterceptor on the shared client
-        Request request = new Request.Builder()
-                .url(url)
-                .post(body)
-                .addHeader("Accept", "application/json")
-                .addHeader("Content-Type", JSON_MEDIA_TYPE.toString())
-                .build();
-
-        try (Response response = httpClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                String responseBody = response.body() != null ? response.body().string() : "";
-                log.warning("Heartbeat failed with status " + response.code() + ": " + responseBody);
-                return new HeartbeatResult(displayName);
-            }
-
-            String responseBody = response.body() != null ? response.body().string() : "";
-            if (responseBody.isBlank()) {
-                return new HeartbeatResult(displayName);
-            }
-
-            String nextDisplayName = extractDisplayName(responseBody, displayName);
-            return new HeartbeatResult(nextDisplayName);
+        try {
+            V1UpdateCashierPresenceResponse response = statsServiceApi.statsServiceUpdateCashierPresence(eventId, request);
+            return new HeartbeatResult(extractDisplayName(response, displayName));
+        } catch (ApiException e) {
+            log.warning("Heartbeat failed with status " + e.getCode() + ": " + e.getResponseBody());
+            return new HeartbeatResult(displayName);
         }
     }
 
-    private String extractDisplayName(String json, String fallback) {
+    private static V1CashierClientState mapClientState(String value) {
         try {
-            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
-            if (root.has("display_name") && !root.get("display_name").isJsonNull()) {
-                String value = root.get("display_name").getAsString().trim();
-                if (!value.isEmpty()) {
-                    return value;
-                }
-            }
-            if (root.has("displayName") && !root.get("displayName").isJsonNull()) {
-                String value = root.get("displayName").getAsString().trim();
-                if (!value.isEmpty()) {
-                    return value;
-                }
-            }
-        } catch (Exception ignored) {
-            // Ignore decode issues and keep current name.
+            return V1CashierClientState.fromValue(value);
+        } catch (RuntimeException ignored) {
+            return null;
         }
-        return fallback;
+    }
+
+    private static V1CashierClientType mapClientType(String value) {
+        try {
+            return V1CashierClientType.fromValue(value);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static V1RegisterLifecycleEventType mapLifecycleEventType(String value) {
+        try {
+            return V1RegisterLifecycleEventType.fromValue(value);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private String extractDisplayName(V1UpdateCashierPresenceResponse response, String fallback) {
+        if (response == null || response.getDisplayName() == null) {
+            return fallback;
+        }
+        String value = response.getDisplayName().trim();
+        return value.isEmpty() ? fallback : value;
     }
 }
