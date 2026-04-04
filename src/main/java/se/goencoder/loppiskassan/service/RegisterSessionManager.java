@@ -171,6 +171,9 @@ public class RegisterSessionManager {
      * @return the recovered session, or {@code null} if none existed.
      */
     public synchronized SessionData loadOrRecover(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return null;
+        }
         Path path = getSessionPath(eventId);
         if (!Files.exists(path)) {
             log.info("No persisted register session found for event " + eventId);

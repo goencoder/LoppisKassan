@@ -103,6 +103,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         if (AppModeManager.isLocalMode()) {
             statusbar.setOnlineStatus();
             statusbar.setRejectedStatus(0);
+            pendingCountCache = 0;
             return;
         }
 
@@ -110,16 +111,17 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         if (eventId == null || eventId.isBlank()) {
             statusbar.setOnlineStatus();
             statusbar.setRejectedStatus(0);
+            pendingCountCache = 0;
             return;
         }
 
         int pendingCount = 0;
         try {
             pendingCount = new PendingItemsStore(eventId).readPending().size();
+            pendingCountCache = pendingCount;
         } catch (Exception ignored) {
-            pendingCount = 0;
+            pendingCountCache = null;
         }
-        pendingCountCache = pendingCount;
         statusbar.setPendingStatus(pendingCount);
         statusbar.setRejectedStatus(RejectedItemsManager.getInstance().getRejectedCount(eventId));
     }
@@ -293,6 +295,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
 
         String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            exitApplication();
+            return;
+        }
         boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
         Integer pendingCount = pendingCountCache;
         boolean pendingReadFailed = pendingCount == null;
@@ -379,31 +385,38 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             displayName = LocalizationManager.tr("register.default_name");
         }
 
-        CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
-        try {
-            heartbeatService.sendHeartbeat(
-                    eventId,
-                    "CASHIER_CLIENT_STATE_IDLE",
-                    0,
-                    "CASHIER_CLIENT_TYPE_JAVA",
-                    displayName,
-                    "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
-                    session.registerId,
-                    session.sessionId
-            );
-            heartbeatService.sendHeartbeat(
-                    eventId,
-                    "CASHIER_CLIENT_STATE_IDLE",
-                    0,
-                    "CASHIER_CLIENT_TYPE_JAVA",
-                    displayName,
-                    "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
-                    session.registerId,
-                    session.sessionId
-            );
-        } catch (Exception ignored) {
-            // Exit flow is best-effort by design.
-        }
+        String finalDisplayName = displayName;
+        String registerId = session.registerId;
+        String sessionId = session.sessionId;
+        Thread closeHandshakeThread = new Thread(() -> {
+            CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
+            try {
+                heartbeatService.sendHeartbeat(
+                        eventId,
+                        "CASHIER_CLIENT_STATE_IDLE",
+                        0,
+                        "CASHIER_CLIENT_TYPE_JAVA",
+                        finalDisplayName,
+                        "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
+                        registerId,
+                        sessionId
+                );
+                heartbeatService.sendHeartbeat(
+                        eventId,
+                        "CASHIER_CLIENT_STATE_IDLE",
+                        0,
+                        "CASHIER_CLIENT_TYPE_JAVA",
+                        finalDisplayName,
+                        "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
+                        registerId,
+                        sessionId
+                );
+            } catch (Exception ignored) {
+                // Exit flow is best-effort by design.
+            }
+        }, "close-handshake-heartbeat");
+        closeHandshakeThread.setDaemon(true);
+        closeHandshakeThread.start();
     }
 
     /**
