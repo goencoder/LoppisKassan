@@ -368,7 +368,7 @@ public class CashierTabController implements CashierControllerInterface {
                 heartbeatPendingPurchasesCount,
                 HEARTBEAT_CLIENT_TYPE_JAVA,
                 heartbeatDisplayName,
-                "REGISTER_LIFECYCLE_SYNC",
+            "REGISTER_LIFECYCLE_EVENT_TYPE_SYNC",
                 session != null ? session.registerId : null,
                 session != null ? session.sessionId : null
         );

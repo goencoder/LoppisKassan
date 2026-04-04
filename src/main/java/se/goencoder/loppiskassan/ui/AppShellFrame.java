@@ -6,6 +6,7 @@ import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
+import se.goencoder.loppiskassan.service.CashierHeartbeatService;
 import se.goencoder.loppiskassan.service.RegisterSessionManager;
 import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
@@ -71,16 +72,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                     RejectedItemsDialog.show(this, AppModeManager.getEventId()));
 
             refreshStatusIndicators();
-            String eventId = AppModeManager.getEventId();
-            if (eventId != null && !eventId.isBlank()) {
-                BackgroundSyncManager.getInstance().ensureRunning(eventId);
-                RegisterSessionManager sessionMgr = RegisterSessionManager.getInstance();
-                sessionMgr.loadOrRecover(eventId);
-                if (!sessionMgr.isSessionActive()) {
-                    String registerName = GlobalConfigurationStore.getCashierName();
-                    sessionMgr.openSession(eventId, registerName != null ? registerName : LocalizationManager.tr("register.default_name"));
-                }
-            }
+            ensureOnlineSessionInitialized();
         }
         
         // Visa första vyn beroende på om evenemang är valt
@@ -179,6 +171,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             navigateTo(NavigationTarget.DISCOVERY);
             sidebar.setSelected(NavigationTarget.DISCOVERY);
             return;
+        }
+
+        if (!AppModeManager.isLocalMode() && target == NavigationTarget.CASHIER) {
+            ensureOnlineSessionInitialized();
         }
         
         JPanel targetView = switch (target) {
@@ -328,7 +324,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             if (choice != JOptionPane.YES_OPTION) {
                 return;
             }
-            // Best-effort: fire CLOSE_CONFIRMED heartbeat before exiting
+            // Best-effort: fire close handshake heartbeats before exiting.
+            sendCloseHandshakeHeartbeat(eventId);
             RegisterSessionManager.getInstance().requestClose();
             RegisterSessionManager.getInstance().confirmClose();
         }
@@ -339,6 +336,65 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     private void exitApplication() {
         dispose();
         System.exit(0);
+    }
+
+    private void ensureOnlineSessionInitialized() {
+        if (AppModeManager.isLocalMode()) {
+            return;
+        }
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+
+        BackgroundSyncManager.getInstance().ensureRunning(eventId);
+        RegisterSessionManager sessionMgr = RegisterSessionManager.getInstance();
+        sessionMgr.loadOrRecover(eventId);
+        if (!sessionMgr.isSessionActive()) {
+            String registerName = GlobalConfigurationStore.getCashierName();
+            sessionMgr.openSession(eventId, registerName != null ? registerName : LocalizationManager.tr("register.default_name"));
+        }
+    }
+
+    private void sendCloseHandshakeHeartbeat(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+        RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
+        if (session == null) {
+            return;
+        }
+
+        String displayName = GlobalConfigurationStore.getCashierName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = LocalizationManager.tr("register.default_name");
+        }
+
+        CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
+        try {
+            heartbeatService.sendHeartbeat(
+                    eventId,
+                    "CASHIER_CLIENT_STATE_IDLE",
+                    0,
+                    "CASHIER_CLIENT_TYPE_JAVA",
+                    displayName,
+                    "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
+                    session.registerId,
+                    session.sessionId
+            );
+            heartbeatService.sendHeartbeat(
+                    eventId,
+                    "CASHIER_CLIENT_STATE_IDLE",
+                    0,
+                    "CASHIER_CLIENT_TYPE_JAVA",
+                    displayName,
+                    "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
+                    session.registerId,
+                    session.sessionId
+            );
+        } catch (Exception ignored) {
+            // Exit flow is best-effort by design.
+        }
     }
 
     /**
