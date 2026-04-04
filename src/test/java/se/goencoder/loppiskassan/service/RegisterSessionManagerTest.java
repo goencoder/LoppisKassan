@@ -19,6 +19,7 @@ class RegisterSessionManagerTest {
 
     @TempDir
     Path tempDir;
+    private String previousBaseDir;
 
     @BeforeEach
     void resetSingleton() throws Exception {
@@ -26,13 +27,19 @@ class RegisterSessionManagerTest {
         f.setAccessible(true);
         f.set(null, null);
 
+        previousBaseDir = System.getProperty("loppiskassan.base.dir");
+
         // Point LocalEventPaths base dir to tempDir so no real FS side-effects.
         System.setProperty("loppiskassan.base.dir", tempDir.toString());
     }
 
     @AfterEach
     void clearSysProperty() {
-        System.clearProperty("loppiskassan.base.dir");
+        if (previousBaseDir == null) {
+            System.clearProperty("loppiskassan.base.dir");
+        } else {
+            System.setProperty("loppiskassan.base.dir", previousBaseDir);
+        }
     }
 
     // ─────────────────────────────────────────────────────── open

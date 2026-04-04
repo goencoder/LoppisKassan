@@ -9,7 +9,6 @@ import se.goencoder.iloppis.model.V1RegisterLifecycleEventType;
 import se.goencoder.iloppis.model.V1UpdateCashierPresenceResponse;
 import se.goencoder.loppiskassan.rest.ApiHelper;
 
-import java.io.IOException;
 import java.util.logging.Logger;
 
 /**
@@ -41,7 +40,7 @@ public class CashierHeartbeatService {
             int pendingPurchasesCount,
             String clientType,
             String displayName
-    ) throws IOException {
+    ) {
         return sendHeartbeat(eventId, clientState, pendingPurchasesCount, clientType, displayName, null, null, null);
     }
 
@@ -65,7 +64,7 @@ public class CashierHeartbeatService {
             String lifecycleEventType,
             String registerId,
             String sessionId
-    ) throws IOException {
+    ) {
         String apiKey = ApiHelper.INSTANCE.getCurrentApiKey();
         if (eventId == null || eventId.isBlank() || apiKey == null || apiKey.isBlank()) {
             return new HeartbeatResult(displayName);

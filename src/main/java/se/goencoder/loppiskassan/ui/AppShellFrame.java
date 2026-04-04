@@ -39,6 +39,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     private JPanel archiveView;
     private JPanel discoveryView;
     private JPanel recentPurchasesView;
+    private Integer pendingCountCache;
     
     public AppShellFrame() {
         setLayout(new BorderLayout());
@@ -63,6 +64,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         if (!AppModeManager.isLocalMode()) {
             BackgroundSyncManager.getInstance().setPendingCountListener(count -> {
                 statusbar.setPendingStatus(count);
+                pendingCountCache = count;
             });
             RejectedItemsManager.getInstance().setRejectedCountListener(statusbar::setRejectedStatus);
 
@@ -117,6 +119,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         } catch (Exception ignored) {
             pendingCount = 0;
         }
+        pendingCountCache = pendingCount;
         statusbar.setPendingStatus(pendingCount);
         statusbar.setRejectedStatus(RejectedItemsManager.getInstance().getRejectedCount(eventId));
     }
@@ -291,17 +294,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
 
         String eventId = AppModeManager.getEventId();
         boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
-        int pendingCount = 0;
-        boolean pendingReadFailed = false;
-        if (eventId != null && !eventId.isBlank()) {
-            try {
-                pendingCount = new PendingItemsStore(eventId).readPending().size();
-            } catch (Exception ignored) {
-                pendingReadFailed = true;
-            }
-        }
+        Integer pendingCount = pendingCountCache;
+        boolean pendingReadFailed = pendingCount == null;
 
-        if (!sessionActive && pendingCount == 0 && !pendingReadFailed) {
+        if (!sessionActive && pendingCount != null && pendingCount == 0 && !pendingReadFailed) {
             exitApplication();
             return;
         }
@@ -316,7 +312,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             if (choice != JOptionPane.YES_OPTION) {
                 return;
             }
-        } else if (pendingCount > 0) {
+        } else if (pendingCount != null && pendingCount > 0) {
             int choice = JOptionPane.showConfirmDialog(
                     this,
                     LocalizationManager.tr("exit.pending_sync.message", pendingCount),

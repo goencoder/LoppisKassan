@@ -351,7 +351,7 @@ public class CashierTabController implements CashierControllerInterface {
         executor.submit(this::sendHeartbeatSafely);
     }
 
-    private void sendHeartbeat() throws Exception {
+    private void sendHeartbeat() {
         String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
             return;

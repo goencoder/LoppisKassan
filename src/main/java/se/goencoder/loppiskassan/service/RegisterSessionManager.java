@@ -78,6 +78,14 @@ public class RegisterSessionManager {
      * @param registerId human-readable register name (e.g. "Kassan 1")
      */
     public synchronized SessionData openSession(String eventId, String registerId) {
+        if (eventId == null || eventId.isBlank() || registerId == null || registerId.isBlank()) {
+            log.warning("Refusing to open register session with missing eventId/registerId");
+            return current;
+        }
+        if (current != null && !isTerminal(current.state)) {
+            log.info("Register session already active; reusing existing session " + current.sessionId);
+            return current;
+        }
         SessionData s = new SessionData();
         s.sessionId = UlidGenerator.generate();
         s.eventId = eventId;
@@ -171,7 +179,7 @@ public class RegisterSessionManager {
         try {
             String json = Files.readString(path);
             SessionData s = GSON.fromJson(json, SessionData.class);
-            if (s == null || s.sessionId == null) {
+            if (s == null || s.sessionId == null || s.eventId == null || s.registerId == null || s.state == null) {
                 log.warning("Corrupt register session file — discarding");
                 try {
                     Files.deleteIfExists(path);
@@ -194,18 +202,26 @@ public class RegisterSessionManager {
     // ─────────────────────────────────────────────────────────────────────────
 
     private void persist(String eventId, SessionData s) {
-        Path path = getSessionPath(eventId);
+        Path tmp = null;
         try {
+            Path path = getSessionPath(eventId);
             Files.createDirectories(path.getParent());
-            Path tmp = path.resolveSibling(SESSION_FILE_NAME + ".tmp");
+            tmp = path.resolveSibling(SESSION_FILE_NAME + ".tmp");
             Files.writeString(tmp, GSON.toJson(s));
             try {
                 Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException e) {
                 Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
             }
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             log.log(Level.WARNING, "Failed to persist register session", e);
+            if (tmp != null) {
+                try {
+                    Files.deleteIfExists(tmp);
+                } catch (IOException cleanupException) {
+                    log.log(Level.WARNING, "Failed to clean up temporary register session file", cleanupException);
+                }
+            }
         }
     }
 
