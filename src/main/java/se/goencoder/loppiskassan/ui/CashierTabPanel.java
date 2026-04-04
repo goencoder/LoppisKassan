@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
@@ -31,6 +32,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private JLabel changeValueLabel;
     private JLabel totalAmountLabel;
     private JLabel totalItemCountLabel;
+    private JLabel registerNameLabel;
+    private JLabel registerNameEmptyLabel;
     private JPanel emptyStatePanel;
     private JScrollPane tableScrollPane;
     private JPanel cartPanel; // Varukorg-container
@@ -258,12 +261,17 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         inputPanel.add(topRow);
 
         // ===== INSTRUCTIONS ROW =====
-        JPanel instructionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
+        JPanel instructionsPanel = new JPanel(new BorderLayout());
         instructionsPanel.setOpaque(false);
         JLabel instructionsLabel = new JLabel("Enter = Lägg till   Delete = Ta bort   Esc = Avbryt");
         instructionsLabel.setFont(instructionsLabel.getFont().deriveFont(Font.PLAIN, 11f));
         instructionsLabel.setForeground(AppColors.TEXT_MUTED);
-        instructionsPanel.add(instructionsLabel);
+        instructionsPanel.add(instructionsLabel, BorderLayout.WEST);
+
+        registerNameLabel = new JLabel();
+        registerNameLabel.setFont(registerNameLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        registerNameLabel.setForeground(AppColors.TEXT_MUTED);
+        instructionsPanel.add(registerNameLabel, BorderLayout.EAST);
         inputPanel.add(instructionsPanel);
 
         return inputPanel;
@@ -293,11 +301,18 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         text2Label.setFont(text2Label.getFont().deriveFont(14f));
         text2Label.setForeground(AppColors.TEXT_MUTED);
         text2Label.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        registerNameEmptyLabel = new JLabel();
+        registerNameEmptyLabel.setFont(registerNameEmptyLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        registerNameEmptyLabel.setForeground(AppColors.TEXT_MUTED);
+        registerNameEmptyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         content.add(iconLabel);
         content.add(Box.createVerticalStrut(16));
         content.add(textLabel);
         content.add(text2Label);
+        content.add(Box.createVerticalStrut(12));
+        content.add(registerNameEmptyLabel);
         
         panel.add(content);
         return panel;
@@ -444,6 +459,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         if (controller instanceof se.goencoder.loppiskassan.controller.CashierTabController tabController) {
             tabController.onCashierViewSelected();
         }
+        updateRegisterName();
         SwingUtilities.invokeLater(this::setFocusToSellerField);
     }
 
@@ -487,7 +503,21 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         if (cashierTable.getColumnModel().getColumnCount() > 3) {
             cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(3));
         }
+        updateRegisterName();
         updateSummary();
+    }
+
+    private void updateRegisterName() {
+        String configuredName = GlobalConfigurationStore.getCashierName();
+        String fallbackName = LocalizationManager.tr("register.default_name");
+        String name = configuredName != null ? configuredName : fallbackName;
+        String labelText = LocalizationManager.tr("cashier.register_name", name);
+        if (registerNameLabel != null) {
+            registerNameLabel.setText(labelText);
+        }
+        if (registerNameEmptyLabel != null) {
+            registerNameEmptyLabel.setText(labelText);
+        }
     }
 
     // ------------------------------------------------------------------------

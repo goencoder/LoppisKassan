@@ -52,6 +52,7 @@
   "cashier.cancel_purchase": "Avbryt köp",
   "cashier.cash": "Kontant",
   "cashier.swish": "Swish",
+  "cashier.register_name": "Kassa: {0}",
   "cashier.invalid_seller.title": "Felaktigt säljnummer",
   "cashier.invalid_seller.message": "Säljnummer måste vara ett heltal",
   "cashier.seller_not_approved.title": "Säljare ej godkänd",
