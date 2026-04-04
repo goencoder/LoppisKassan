@@ -6,6 +6,7 @@ import se.goencoder.loppiskassan.storage.LocalEventPaths;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -172,6 +173,11 @@ public class RegisterSessionManager {
             SessionData s = GSON.fromJson(json, SessionData.class);
             if (s == null || s.sessionId == null) {
                 log.warning("Corrupt register session file — discarding");
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException e) {
+                    log.log(Level.WARNING, "Failed to delete corrupt register session file", e);
+                }
                 return null;
             }
             current = s;
@@ -193,7 +199,11 @@ public class RegisterSessionManager {
             Files.createDirectories(path.getParent());
             Path tmp = path.resolveSibling(SESSION_FILE_NAME + ".tmp");
             Files.writeString(tmp, GSON.toJson(s));
-            Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             log.log(Level.WARNING, "Failed to persist register session", e);
         }

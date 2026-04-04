@@ -48,7 +48,11 @@ public class CashierHeartbeatService {
     /**
      * Extended heartbeat that also carries register session lifecycle fields.
      *
-     * @param lifecycleEventType one of OPEN, SYNC, CLOSE_REQUESTED, CLOSE_CONFIRMED — or null to omit
+    * @param lifecycleEventType enum wire value string (for example
+    *                           REGISTER_LIFECYCLE_EVENT_TYPE_SYNC,
+    *                           REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED,
+    *                           REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED) —
+    *                           or null to omit
      * @param registerId         stable register name/id — or null to omit
      * @param sessionId          active session id — or null to omit
      */

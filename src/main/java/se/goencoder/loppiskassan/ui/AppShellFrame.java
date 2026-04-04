@@ -292,21 +292,34 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         String eventId = AppModeManager.getEventId();
         boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
         int pendingCount = 0;
+        boolean pendingReadFailed = false;
         if (eventId != null && !eventId.isBlank()) {
             try {
                 pendingCount = new PendingItemsStore(eventId).readPending().size();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                pendingReadFailed = true;
+            }
         }
 
-        if (!sessionActive && pendingCount == 0) {
+        if (!sessionActive && pendingCount == 0 && !pendingReadFailed) {
             exitApplication();
             return;
         }
 
-        if (pendingCount > 0) {
+        if (pendingReadFailed) {
             int choice = JOptionPane.showConfirmDialog(
                     this,
-                    String.format(LocalizationManager.tr("exit.pending_sync.message"), pendingCount),
+                    LocalizationManager.tr("exit.pending_sync.read_failed"),
+                    LocalizationManager.tr("exit.pending_sync.read_failed_title"),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+        } else if (pendingCount > 0) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    LocalizationManager.tr("exit.pending_sync.message", pendingCount),
                     LocalizationManager.tr("exit.pending_sync.title"),
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
