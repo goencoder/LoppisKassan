@@ -82,17 +82,19 @@ public class RegisterSessionManager {
             log.warning("Refusing to open register session with missing eventId/registerId");
             return null;
         }
-        if (current != null && !isTerminal(current.state)) {
-            if (eventId.equals(current.eventId)) {
+        if (current != null) {
+            if (current.state == RegisterSessionState.OPEN && eventId.equals(current.eventId)) {
                 log.info("Register session already active; reusing existing session " + current.sessionId);
                 return current;
             }
-            log.info("Active register session " + current.sessionId
-                    + " belongs to event " + current.eventId
-                    + "; closing it before opening a new session for event " + eventId);
-            current.state = RegisterSessionState.FORCED_CLOSED;
-            current.closedAt = Instant.now().toString();
-            persist(current.eventId, current);
+            if (current.state == RegisterSessionState.OPEN && !eventId.equals(current.eventId)) {
+                log.info("Active register session " + current.sessionId
+                        + " belongs to event " + current.eventId
+                        + "; closing it before opening a new session for event " + eventId);
+                current.state = RegisterSessionState.FORCED_CLOSED;
+                current.closedAt = Instant.now().toString();
+                persist(current.eventId, current);
+            }
         }
         SessionData s = new SessionData();
         s.sessionId = UlidGenerator.generate();

@@ -94,6 +94,18 @@ class RegisterSessionManagerTest {
     }
 
     @Test
+    void openSession_afterCloseRequested_createsNewSession() {
+        var mgr = RegisterSessionManager.getInstance();
+        var first = mgr.openSession("evt-1", "K1");
+        mgr.requestClose();
+
+        var second = mgr.openSession("evt-1", "K1");
+
+        assertNotEquals(first.sessionId, second.sessionId);
+        assertEquals(RegisterSessionState.OPEN, second.state);
+    }
+
+    @Test
     void requestClose_returnsFalseWhenNoSession() {
         var mgr = RegisterSessionManager.getInstance();
         assertFalse(mgr.requestClose());
