@@ -414,7 +414,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         Thread closeHandshakeThread = new Thread(() -> {
             CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
             try {
-                heartbeatService.sendHeartbeat(
+                boolean closeRequestedSent = heartbeatService.sendHeartbeat(
                         eventId,
                         "CASHIER_CLIENT_STATE_IDLE",
                         0,
@@ -423,8 +423,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                         "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
                         registerId,
                         sessionId
-                );
-                heartbeatService.sendHeartbeat(
+                ).success();
+                boolean closeConfirmedSent = closeRequestedSent && heartbeatService.sendHeartbeat(
                         eventId,
                         "CASHIER_CLIENT_STATE_IDLE",
                         0,
@@ -433,12 +433,16 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                         "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
                         registerId,
                         sessionId
-                );
+                ).success();
+                if (closeRequestedSent) {
+                    RegisterSessionManager.getInstance().requestClose();
+                }
+                if (closeConfirmedSent) {
+                    RegisterSessionManager.getInstance().confirmClose();
+                }
             } catch (Exception ignored) {
                 // Exit flow is best-effort by design.
             }
-            RegisterSessionManager.getInstance().requestClose();
-            RegisterSessionManager.getInstance().confirmClose();
             SwingUtilities.invokeLater(() -> {
                 timeout.stop();
                 closingDialog.dispose();

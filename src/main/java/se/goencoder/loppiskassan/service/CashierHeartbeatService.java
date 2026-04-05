@@ -22,7 +22,7 @@ public class CashierHeartbeatService {
 
     private final StatsServiceApi statsServiceApi;
 
-    public record HeartbeatResult(String displayName) {}
+    public record HeartbeatResult(String displayName, boolean success) {}
 
     /** Production constructor — uses the shared generated StatsServiceApi. */
     public CashierHeartbeatService() {
@@ -67,7 +67,7 @@ public class CashierHeartbeatService {
     ) {
         String apiKey = ApiHelper.INSTANCE.getCurrentApiKey();
         if (eventId == null || eventId.isBlank() || apiKey == null || apiKey.isBlank()) {
-            return new HeartbeatResult(displayName);
+            return new HeartbeatResult(displayName, false);
         }
 
         V1CashierClientState mappedClientState = mapClientState(clientState);
@@ -75,7 +75,7 @@ public class CashierHeartbeatService {
 
         if (mappedClientState == null || mappedClientType == null) {
             log.warning("Heartbeat skipped due to unsupported enum mapping");
-            return new HeartbeatResult(displayName);
+            return new HeartbeatResult(displayName, false);
         }
 
         StatsServiceUpdateCashierPresenceBody request = new StatsServiceUpdateCashierPresenceBody()
@@ -99,10 +99,10 @@ public class CashierHeartbeatService {
 
         try {
             V1UpdateCashierPresenceResponse response = statsServiceApi.statsServiceUpdateCashierPresence(eventId, request);
-            return new HeartbeatResult(extractDisplayName(response, displayName));
+            return new HeartbeatResult(extractDisplayName(response, displayName), true);
         } catch (ApiException e) {
             log.warning("Heartbeat failed with status " + e.getCode() + ": " + e.getResponseBody());
-            return new HeartbeatResult(displayName);
+            return new HeartbeatResult(displayName, false);
         }
     }
 

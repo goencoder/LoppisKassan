@@ -362,16 +362,27 @@ public class CashierTabController implements CashierControllerInterface {
                 : (heartbeatPendingPurchasesCount > 0 ? HEARTBEAT_STATE_ACTIVE : HEARTBEAT_STATE_IDLE);
 
         RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
-        CashierHeartbeatService.HeartbeatResult result = heartbeatService.sendHeartbeat(
-                eventId,
-                clientState,
-                heartbeatPendingPurchasesCount,
-                HEARTBEAT_CLIENT_TYPE_JAVA,
-                heartbeatDisplayName,
-            "REGISTER_LIFECYCLE_EVENT_TYPE_SYNC",
-                session != null ? session.registerId : null,
-                session != null ? session.sessionId : null
-        );
+        CashierHeartbeatService.HeartbeatResult result;
+        if (session == null) {
+            result = heartbeatService.sendHeartbeat(
+                    eventId,
+                    clientState,
+                    heartbeatPendingPurchasesCount,
+                    HEARTBEAT_CLIENT_TYPE_JAVA,
+                    heartbeatDisplayName
+            );
+        } else {
+            result = heartbeatService.sendHeartbeat(
+                    eventId,
+                    clientState,
+                    heartbeatPendingPurchasesCount,
+                    HEARTBEAT_CLIENT_TYPE_JAVA,
+                    heartbeatDisplayName,
+                    "REGISTER_LIFECYCLE_EVENT_TYPE_SYNC",
+                    session.registerId,
+                    session.sessionId
+            );
+        }
 
         applyHeartbeatResult(result);
     }

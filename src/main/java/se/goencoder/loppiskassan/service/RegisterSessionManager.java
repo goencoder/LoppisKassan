@@ -89,7 +89,10 @@ public class RegisterSessionManager {
             }
             log.info("Active register session " + current.sessionId
                     + " belongs to event " + current.eventId
-                    + "; opening a new session for event " + eventId);
+                    + "; closing it before opening a new session for event " + eventId);
+            current.state = RegisterSessionState.FORCED_CLOSED;
+            current.closedAt = Instant.now().toString();
+            persist(current.eventId, current);
         }
         SessionData s = new SessionData();
         s.sessionId = UlidGenerator.generate();
