@@ -95,7 +95,7 @@ class CashierTabControllerTest {
         try {
             GlobalConfigurationStore.setCashierName("Gammalt namn");
 
-            controller.applyHeartbeatResult(new CashierHeartbeatService.HeartbeatResult("Server Alias"));
+            controller.applyHeartbeatResult(new CashierHeartbeatService.HeartbeatResult("Server Alias", true));
 
             assertEquals("Server Alias", controller.getHeartbeatDisplayName());
             assertEquals("Server Alias", GlobalConfigurationStore.getCashierName());
