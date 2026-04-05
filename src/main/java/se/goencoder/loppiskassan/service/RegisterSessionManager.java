@@ -10,6 +10,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -192,7 +193,7 @@ public class RegisterSessionManager {
             return null;
         }
         try {
-            String json = Files.readString(path);
+            String json = Files.readString(path, StandardCharsets.UTF_8);
             SessionData s = GSON.fromJson(json, SessionData.class);
             if (s == null || s.sessionId == null || s.eventId == null || s.registerId == null || s.state == null) {
                 current = null;
@@ -205,15 +206,21 @@ public class RegisterSessionManager {
                 return null;
             }
             if (!eventId.equals(s.eventId)) {
+                current = null;
                 log.warning("Register session event mismatch; expected " + eventId + " got " + s.eventId);
                 return null;
             }
             current = s;
             log.info("Recovered register session: " + s.sessionId + " state=" + s.state);
             return s;
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             current = null;
             log.log(Level.WARNING, "Failed to read register session file", e);
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException cleanupError) {
+                log.log(Level.WARNING, "Failed to delete corrupt register session file", cleanupError);
+            }
             return null;
         }
     }
@@ -228,7 +235,7 @@ public class RegisterSessionManager {
             Path path = getSessionPath(eventId);
             Files.createDirectories(path.getParent());
             tmp = path.resolveSibling(SESSION_FILE_NAME + ".tmp");
-            Files.writeString(tmp, GSON.toJson(s));
+            Files.writeString(tmp, GSON.toJson(s), StandardCharsets.UTF_8);
             try {
                 Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException e) {

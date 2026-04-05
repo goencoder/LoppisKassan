@@ -354,6 +354,7 @@
   "livestats.state.stalled": "Stalled",
   "livestats.state.offline": "Offline",
   "status.local_mode": "Local register",
+  "status.local_mode_with_register": "Local register · {0}",
   "status.online_mode": "Connected to iLoppis",
   "status.online_mode_with_register": "Connected to iLoppis · Register: {0}",
   "status.offline_pending": "Offline – {0} entries pending sync",

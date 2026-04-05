@@ -8,6 +8,7 @@ import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.service.CashierHeartbeatService;
 import se.goencoder.loppiskassan.service.RegisterSessionManager;
+import se.goencoder.loppiskassan.service.RegisterSessionState;
 import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.ui.dialogs.PendingItemsDialog;
@@ -365,12 +366,16 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
 
         BackgroundSyncManager.getInstance().ensureRunning(eventId);
         RegisterSessionManager sessionMgr = RegisterSessionManager.getInstance();
-        sessionMgr.loadOrRecover(eventId);
+        RegisterSessionManager.SessionData recovered = sessionMgr.loadOrRecover(eventId);
         String registerName = GlobalConfigurationStore.getCashierName();
         if (registerName == null || registerName.isBlank()) {
             registerName = LocalizationManager.tr("register.default_name");
         }
-        sessionMgr.openSession(eventId, registerName);
+        if (recovered == null
+                || recovered.state == RegisterSessionState.CLOSED
+                || recovered.state == RegisterSessionState.FORCED_CLOSED) {
+            sessionMgr.openSession(eventId, registerName);
+        }
     }
 
     private void startCloseHandshakeAndExit(String eventId) {

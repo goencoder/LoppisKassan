@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.service.RegisterSessionManager;
 import se.goencoder.loppiskassan.util.SwedishDateFormatter;
 
 import javax.swing.*;
@@ -78,7 +79,7 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
             setStatusChip(
                     statusLabel,
                     AppColors.SUCCESS,
-                    LocalizationManager.tr("status.local_mode") + " | " + registerLabel
+                    LocalizationManager.tr("status.local_mode_with_register", registerLabel)
             );
             statusLabel.setCursor(Cursor.getDefaultCursor());
         } else {
@@ -96,6 +97,13 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
     }
 
     private String resolveRegisterName() {
+        RegisterSessionManager.SessionData session =
+                RegisterSessionManager.getInstance().getCurrent();
+        String sessionRegister =
+                session != null ? session.registerId : null;
+        if (sessionRegister != null && !sessionRegister.isBlank()) {
+            return sessionRegister.trim();
+        }
         String configuredName = GlobalConfigurationStore.getCashierName();
         if (configuredName == null || configuredName.isBlank()) {
             return LocalizationManager.tr("register.default_name");

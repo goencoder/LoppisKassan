@@ -355,6 +355,7 @@
   "livestats.state.stalled": "Stannad",
   "livestats.state.offline": "Offline",
   "status.local_mode": "Lokal kassa",
+  "status.local_mode_with_register": "Lokal kassa · {0}",
   "status.online_mode": "Ansluten till iLoppis",
   "status.online_mode_with_register": "Ansluten till iLoppis · Kassa: {0}",
   "status.offline_pending": "Offline – {0} poster väntar på synkronisering",
