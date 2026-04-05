@@ -340,7 +340,14 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 return;
             }
             // Best-effort: fire close handshake heartbeats before exiting.
-            sendCloseHandshakeHeartbeat(eventId);
+            Thread closeHandshakeThread = sendCloseHandshakeHeartbeat(eventId);
+            if (closeHandshakeThread != null) {
+                try {
+                    closeHandshakeThread.join(1500L);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             RegisterSessionManager.getInstance().requestClose();
             RegisterSessionManager.getInstance().confirmClose();
         }
@@ -371,13 +378,13 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
     }
 
-    private void sendCloseHandshakeHeartbeat(String eventId) {
+    private Thread sendCloseHandshakeHeartbeat(String eventId) {
         if (eventId == null || eventId.isBlank()) {
-            return;
+            return null;
         }
         RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
         if (session == null) {
-            return;
+            return null;
         }
 
         String displayName = GlobalConfigurationStore.getCashierName();
@@ -415,8 +422,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 // Exit flow is best-effort by design.
             }
         }, "close-handshake-heartbeat");
-        closeHandshakeThread.setDaemon(true);
         closeHandshakeThread.start();
+        return closeHandshakeThread;
     }
 
     /**
