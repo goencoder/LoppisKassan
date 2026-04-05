@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.util.SwedishDateFormatter;
@@ -76,15 +77,25 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
             setStatusChip(statusLabel, AppColors.SUCCESS, LocalizationManager.tr("status.local_mode"));
             statusLabel.setCursor(Cursor.getDefaultCursor());
         } else {
+            String registerName = resolveRegisterName();
             if (pendingCount > 0) {
                 setStatusChip(statusLabel, AppColors.WARNING,
-                        LocalizationManager.tr("status.offline_pending", pendingCount));
+                        LocalizationManager.tr("status.offline_pending_with_register", pendingCount, registerName));
                 statusLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             } else {
-                setStatusChip(statusLabel, AppColors.SUCCESS, LocalizationManager.tr("status.online_mode"));
+                setStatusChip(statusLabel, AppColors.SUCCESS,
+                        LocalizationManager.tr("status.online_mode_with_register", registerName));
                 statusLabel.setCursor(Cursor.getDefaultCursor());
             }
         }
+    }
+
+    private String resolveRegisterName() {
+        String configuredName = GlobalConfigurationStore.getCashierName();
+        if (configuredName != null && !configuredName.isBlank()) {
+            return configuredName;
+        }
+        return LocalizationManager.tr("register.default_name");
     }
     
     /**
