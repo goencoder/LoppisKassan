@@ -80,7 +80,7 @@ public class RegisterSessionManager {
     public synchronized SessionData openSession(String eventId, String registerId) {
         if (eventId == null || eventId.isBlank() || registerId == null || registerId.isBlank()) {
             log.warning("Refusing to open register session with missing eventId/registerId");
-            return current;
+            return null;
         }
         if (current != null && !isTerminal(current.state)) {
             if (eventId.equals(current.eventId)) {
@@ -95,7 +95,7 @@ public class RegisterSessionManager {
         s.sessionId = UlidGenerator.generate();
         s.eventId = eventId;
         s.registerId = registerId;
-        s.deviceId = resolveDeviceId();
+        s.deviceId = DEVICE_ID;
         s.state = RegisterSessionState.OPEN;
         s.openedAt = Instant.now().toString();
         current = s;
@@ -196,6 +196,10 @@ public class RegisterSessionManager {
                 }
                 return null;
             }
+            if (!eventId.equals(s.eventId)) {
+                log.warning("Register session event mismatch; expected " + eventId + " got " + s.eventId);
+                return null;
+            }
             current = s;
             log.info("Recovered register session: " + s.sessionId + " state=" + s.state);
             return s;
@@ -241,10 +245,25 @@ public class RegisterSessionManager {
         return state == RegisterSessionState.CLOSED || state == RegisterSessionState.FORCED_CLOSED;
     }
 
+    private static final String DEVICE_ID = resolveDeviceId();
+
     private static String resolveDeviceId() {
-        // Use hostname as a stable device identifier; falls back to "unknown-device".
+        String configured = System.getenv("LOPPISKASSAN_DEVICE_ID");
+        if (configured != null && !configured.isBlank()) {
+            return configured;
+        }
+        String hostname = System.getenv("HOSTNAME");
+        if (hostname == null || hostname.isBlank()) {
+            hostname = System.getenv("COMPUTERNAME");
+        }
+        if (hostname == null || hostname.isBlank()) {
+            hostname = System.getenv("HOST");
+        }
+        if (hostname != null && !hostname.isBlank()) {
+            return hostname;
+        }
         try {
-            return java.net.InetAddress.getLocalHost().getHostName();
+            return java.net.InetAddress.getLoopbackAddress().getHostName();
         } catch (Exception e) {
             return "unknown-device";
         }

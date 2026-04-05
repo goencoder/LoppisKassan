@@ -71,7 +71,9 @@ public class IloppisCashierStrategy implements CashierStrategy {
             return false;
         }
 
-        // Stamp each item with the current register session for traceability (ILP-003).
+        // Stamp each item with the current register session for local traceability (ILP-003).
+        // These fields are persisted alongside the local payload and can be forwarded once
+        // the server API exposes register/session metadata.
         RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
         if (session != null) {
             for (V1SoldItem item : items) {

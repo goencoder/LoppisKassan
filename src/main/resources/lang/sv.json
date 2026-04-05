@@ -466,5 +466,7 @@
   "exit.pending_sync.read_failed_title": "Kunde inte kontrollera osynkade försäljningar",
   "exit.pending_sync.read_failed": "<html><b>Osynkade försäljningar kunde inte kontrolleras på grund av läsfel.</b><br>Osynkade köp kan fortfarande finnas.<br><br>Vill du avsluta ändå?</html>",
   "exit.session_open.title": "Stäng register",
-  "exit.session_open.message": "<html><b>Registret är fortfarande öppet.</b><br>Vill du stänga registret och avsluta?</html>"
+  "exit.session_open.message": "<html><b>Registret är fortfarande öppet.</b><br>Vill du stänga registret och avsluta?</html>",
+  "exit.session_closing.title": "Stänger register",
+  "exit.session_closing.message": "Stänger register innan avslut…"
 }

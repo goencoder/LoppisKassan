@@ -21,9 +21,9 @@ public class V1SoldItem {
     private String purchaseId;
     private final String itemId;
     private boolean uploaded;
-    /** Register that recorded this sale. Populated on creation, sent to server on sync. */
+    /** Register that recorded this sale. Stored locally with the item metadata. */
     private String registerId;
-    /** Session that was active when this sale was recorded. */
+    /** Session that was active when this sale was recorded. Stored locally with the item metadata. */
     private String sessionId;
 
     /**
@@ -155,4 +155,3 @@ public class V1SoldItem {
 
 
 }
-

@@ -389,6 +389,25 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         String finalDisplayName = displayName;
         String registerId = session.registerId;
         String sessionId = session.sessionId;
+        JDialog closingDialog = new JDialog(
+                this,
+                LocalizationManager.tr("exit.session_closing.title"),
+                false
+        );
+        closingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        JLabel closingLabel = new JLabel(
+                LocalizationManager.tr("exit.session_closing.message"),
+                SwingConstants.CENTER
+        );
+        closingLabel.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
+        closingDialog.add(closingLabel);
+        closingDialog.pack();
+        closingDialog.setLocationRelativeTo(this);
+        closingDialog.setVisible(true);
+
+        Timer timeout = new Timer(5_000, event -> exitApplication());
+        timeout.setRepeats(false);
+        timeout.start();
         Thread closeHandshakeThread = new Thread(() -> {
             CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
             try {
@@ -417,8 +436,13 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             }
             RegisterSessionManager.getInstance().requestClose();
             RegisterSessionManager.getInstance().confirmClose();
-            SwingUtilities.invokeLater(this::exitApplication);
+            SwingUtilities.invokeLater(() -> {
+                timeout.stop();
+                closingDialog.dispose();
+                exitApplication();
+            });
         }, "close-handshake-heartbeat");
+        closeHandshakeThread.setDaemon(true);
         closeHandshakeThread.start();
     }
 

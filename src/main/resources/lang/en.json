@@ -465,5 +465,7 @@
   "exit.pending_sync.read_failed_title": "Could not verify unsynced sales",
   "exit.pending_sync.read_failed": "<html><b>Unsynced sales could not be checked due to a read error.</b><br>Unsynced purchases may still exist.<br><br>Exit anyway?</html>",
   "exit.session_open.title": "Close register",
-  "exit.session_open.message": "<html><b>The register is still open.</b><br>Do you want to close the register and quit?</html>"
+  "exit.session_open.message": "<html><b>The register is still open.</b><br>Do you want to close the register and quit?</html>",
+  "exit.session_closing.title": "Closing register",
+  "exit.session_closing.message": "Closing register before exit…"
 }
