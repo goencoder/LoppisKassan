@@ -115,14 +115,16 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             return;
         }
 
-        int pendingCount = 0;
+        Integer pendingCount = null;
         try {
             pendingCount = new PendingItemsStore(eventId).readPending().size();
             pendingCountCache = pendingCount;
         } catch (Exception ignored) {
             pendingCountCache = null;
         }
-        statusbar.setPendingStatus(pendingCount);
+        if (pendingCountCache != null) {
+            statusbar.setPendingStatus(pendingCountCache);
+        }
         statusbar.setRejectedStatus(RejectedItemsManager.getInstance().getRejectedCount(eventId));
     }
     
@@ -364,10 +366,11 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         BackgroundSyncManager.getInstance().ensureRunning(eventId);
         RegisterSessionManager sessionMgr = RegisterSessionManager.getInstance();
         sessionMgr.loadOrRecover(eventId);
-        if (!sessionMgr.isSessionActive()) {
-            String registerName = GlobalConfigurationStore.getCashierName();
-            sessionMgr.openSession(eventId, registerName != null ? registerName : LocalizationManager.tr("register.default_name"));
+        String registerName = GlobalConfigurationStore.getCashierName();
+        if (registerName == null || registerName.isBlank()) {
+            registerName = LocalizationManager.tr("register.default_name");
         }
+        sessionMgr.openSession(eventId, registerName);
     }
 
     private void startCloseHandshakeAndExit(String eventId) {
