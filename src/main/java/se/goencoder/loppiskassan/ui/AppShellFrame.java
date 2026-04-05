@@ -8,6 +8,7 @@ import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.service.CashierHeartbeatService;
 import se.goencoder.loppiskassan.service.RegisterSessionManager;
+import se.goencoder.loppiskassan.service.RegisterSessionState;
 import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.ui.dialogs.PendingItemsDialog;
@@ -100,104 +101,106 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     }
 
     private void refreshStatusIndicators() {
-        if (AppModeManager.isLocalMode()) {
-            statusbar.setOnlineStatus();
-            statusbar.setRejectedStatus(0);
-            pendingCountCache = 0;
-            return;
-        }
-
-        String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
-            statusbar.setOnlineStatus();
-            statusbar.setRejectedStatus(0);
-            pendingCountCache = 0;
+            exitApplication();
+            return;
+        }
+        RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
+        if (session == null) {
+            exitApplication();
             return;
         }
 
-        Integer pendingCount = null;
-        try {
-            pendingCount = new PendingItemsStore(eventId).readPending().size();
-            pendingCountCache = pendingCount;
-        } catch (Exception ignored) {
-            pendingCountCache = null;
-        }
-        if (pendingCountCache != null) {
-            statusbar.setPendingStatus(pendingCountCache);
-        }
-        statusbar.setRejectedStatus(RejectedItemsManager.getInstance().getRejectedCount(eventId));
-    }
-    
-    private void initializeViews() {
-        // Discovery-vy (evenemangsval)
-        if (AppModeManager.isLocalMode()) {
-            discoveryView = new LocalDiscoveryTabPanel();
-        } else {
-            discoveryView = new DiscoveryTabPanel();
-        }
-        
-        // Kassavy
-        cashierView = new CashierTabPanel(CashierTabController.getInstance());
-
-        if (!AppModeManager.isLocalMode()) {
-            recentPurchasesView = new RecentPurchasesPanel();
-        }
-        
-        // Historikvy / Live stats
-        if (AppModeManager.isLocalMode()) {
-            historyView = new HistoryTabPanel();
-        } else {
-            historyView = new LiveStatsPanel();
-            supportView = new SupportBundlePanel();
-        }
-        
-        // Export/Import-vy (endast lokal kassa)
-        if (AppModeManager.isLocalMode()) {
-            exportView = new ExportImportTabPanel();
-        }
-        
-        // Arkivvy (endast lokal kassa)
-        if (AppModeManager.isLocalMode()) {
-            archiveView = new ArchiveTabPanel();
-        }
-    }
-    
-    /**
-     * Navigerar till angiven vy.
-     */
-    void navigateTo(NavigationTarget target) {
-        if (currentView instanceof LiveStatsPanel liveStats) {
-            liveStats.deselected();
+        String displayName = GlobalConfigurationStore.getCashierName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = LocalizationManager.tr("register.default_name");
         }
 
-        // Validera att evenemang är valt (utom för discovery)
-        if (target != NavigationTarget.DISCOVERY && AppModeManager.getEventId() == null) {
-            Popup.ERROR.showAndWait(
-                LocalizationManager.tr("error.no_event_selected.title"),
-                LocalizationManager.tr("error.no_event_selected.message"));
-            navigateTo(NavigationTarget.DISCOVERY);
-            sidebar.setSelected(NavigationTarget.DISCOVERY);
-            return;
-        }
+        String finalDisplayName = displayName;
+        String registerId = session.registerId;
+        String sessionId = session.sessionId;
 
-        if (!AppModeManager.isLocalMode() && target == NavigationTarget.CASHIER) {
-            ensureOnlineSessionInitialized();
-        }
-        
-        JPanel targetView = switch (target) {
-            case DISCOVERY -> discoveryView;
-            case CASHIER -> cashierView;
-            case RECENT -> recentPurchasesView;
-            case HISTORY -> historyView;
-            case EXPORT -> exportView;
-            case SUPPORT -> supportView;
-            case ARCHIVE -> archiveView;
+        JDialog closingDialog = new JDialog(
+                this,
+                LocalizationManager.tr("exit.session_closing.title"),
+                false
+        );
+        closingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        JLabel closingLabel = new JLabel(
+                LocalizationManager.tr("exit.session_closing.message"),
+                SwingConstants.CENTER
+        );
+        closingLabel.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
+        closingDialog.add(closingLabel);
+        closingDialog.pack();
+        closingDialog.setLocationRelativeTo(this);
+        closingDialog.setVisible(true);
+
+        Timer timeout = new Timer(5_000, event -> exitApplication());
+        timeout.setRepeats(false);
+        timeout.start();
+
+        Runnable closeProgressDialog = () -> {
+            timeout.stop();
+            closingDialog.dispose();
         };
-        
-        if (targetView == null) {
-            return; // Vy saknas (t.ex. export i iLoppis-läge)
-        }
-        
+
+        RegisterSessionState sessionState = session.state;
+        Thread closeHandshakeThread = new Thread(() -> {
+            CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
+            try {
+                RegisterSessionManager sessionManager = RegisterSessionManager.getInstance();
+                if (sessionState == RegisterSessionState.OPEN) {
+                    boolean closeRequestedSent = heartbeatService.sendHeartbeat(
+                            eventId,
+                            "CASHIER_CLIENT_STATE_IDLE",
+                            0,
+                            "CASHIER_CLIENT_TYPE_JAVA",
+                            finalDisplayName,
+                            "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
+                            registerId,
+                            sessionId
+                    ).success();
+                    if (!closeRequestedSent) {
+                        throw new IllegalStateException("close-requested heartbeat was not acknowledged");
+                    }
+                    sessionManager.requestClose();
+                } else if (sessionState != RegisterSessionState.CLOSE_REQUESTED) {
+                    SwingUtilities.invokeLater(() -> {
+                        closeProgressDialog.run();
+                        exitApplication();
+                    });
+                    return;
+                }
+
+                boolean closeConfirmedSent = heartbeatService.sendHeartbeat(
+                        eventId,
+                        "CASHIER_CLIENT_STATE_IDLE",
+                        0,
+                        "CASHIER_CLIENT_TYPE_JAVA",
+                        finalDisplayName,
+                        "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
+                        registerId,
+                        sessionId
+                ).success();
+                if (!closeConfirmedSent) {
+                    throw new IllegalStateException("close-confirmed heartbeat was not acknowledged");
+                }
+                sessionManager.confirmClose();
+                SwingUtilities.invokeLater(() -> {
+                    closeProgressDialog.run();
+                    exitApplication();
+                });
+            } catch (Exception ignored) {
+                SwingUtilities.invokeLater(() -> Popup.ERROR.showAndWait(
+                        LocalizationManager.tr("exit.session_open.close_failed.title"),
+                        LocalizationManager.tr("exit.session_open.close_failed.message")
+                ));
+                SwingUtilities.invokeLater(closeProgressDialog);
+            }
+        }, "close-handshake-heartbeat");
+        closeHandshakeThread.setDaemon(true);
+        closeHandshakeThread.start();
         // Byt vy
         contentPanel.removeAll();
         contentPanel.add(targetView, BorderLayout.CENTER);
@@ -287,8 +290,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
      * <p>If both conditions are absent the window closes normally.
      * If unsynced items exist the user must confirm before exit; the session is left as-is
      * so it can be recovered on next launch.
-     * If the session can be closed cleanly (no pending items) the close handshake is sent
-     * via the heartbeat before the JVM exits.</p>
+    * If the session can be closed cleanly (no pending items) the close handshake must
+    * complete before the JVM exits so local and backend session state stay aligned.</p>
      */
     private void handleWindowClose() {
         if (AppModeManager.isLocalMode()) {
@@ -419,35 +422,62 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                         "CASHIER_CLIENT_STATE_IDLE",
                         0,
                         "CASHIER_CLIENT_TYPE_JAVA",
+                Runnable closeProgressDialog = () -> {
+                    timeout.stop();
+                    closingDialog.dispose();
+                };
+
+                RegisterSessionState sessionState = session.state;
                         finalDisplayName,
                         "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
                         registerId,
-                        sessionId
+                        RegisterSessionManager sessionManager = RegisterSessionManager.getInstance();
+                        if (sessionState == RegisterSessionState.OPEN) {
+                            boolean closeRequestedSent = heartbeatService.sendHeartbeat(
+                                    eventId,
+                                    "CASHIER_CLIENT_STATE_IDLE",
+                                    0,
+                                    "CASHIER_CLIENT_TYPE_JAVA",
+                                    finalDisplayName,
+                                    "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
+                                    registerId,
+                                    sessionId
+                            ).success();
+                            if (!closeRequestedSent) {
+                                throw new IllegalStateException("close-requested heartbeat was not acknowledged");
+                            }
+                            sessionManager.requestClose();
+                        } else if (sessionState != RegisterSessionState.CLOSE_REQUESTED) {
+                            SwingUtilities.invokeLater(() -> {
+                                closeProgressDialog.run();
+                                exitApplication();
+                            });
+                            return;
+                        }
+
+                        boolean closeConfirmedSent = heartbeatService.sendHeartbeat(
                 ).success();
                 boolean closeConfirmedSent = closeRequestedSent && heartbeatService.sendHeartbeat(
-                        eventId,
-                        "CASHIER_CLIENT_STATE_IDLE",
-                        0,
-                        "CASHIER_CLIENT_TYPE_JAVA",
-                        finalDisplayName,
-                        "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
-                        registerId,
-                        sessionId
-                ).success();
-                if (closeRequestedSent) {
-                    RegisterSessionManager.getInstance().requestClose();
-                }
-                if (closeConfirmedSent) {
-                    RegisterSessionManager.getInstance().confirmClose();
-                }
-            } catch (Exception ignored) {
-                // Exit flow is best-effort by design.
-            }
-            SwingUtilities.invokeLater(() -> {
-                timeout.stop();
+=======
+        RegisterSessionState sessionState = session.state;
+        Thread closeHandshakeThread = new Thread(() -> {
+                                "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
+            try {
+            RegisterSessionManager sessionManager = RegisterSessionManager.getInstance();
+            if (sessionState == RegisterSessionState.OPEN) {
+                        if (!closeConfirmedSent) {
+                            throw new IllegalStateException("close-confirmed heartbeat was not acknowledged");
+
+                        SwingUtilities.invokeLater(() -> {
+                            closeProgressDialog.run();
+                            exitApplication();
+                        });
                 closingDialog.dispose();
                 exitApplication();
             });
+=======
+>>>>>>> f4c17f7 (fix: keep register close state aligned with backend)
+                        SwingUtilities.invokeLater(closeProgressDialog);
         }, "close-handshake-heartbeat");
         closeHandshakeThread.setDaemon(true);
         closeHandshakeThread.start();

@@ -180,10 +180,12 @@ public class RegisterSessionManager {
      */
     public synchronized SessionData loadOrRecover(String eventId) {
         if (eventId == null || eventId.isBlank()) {
+            current = null;
             return null;
         }
         Path path = getSessionPath(eventId);
         if (!Files.exists(path)) {
+            current = null;
             log.info("No persisted register session found for event " + eventId);
             return null;
         }
@@ -191,6 +193,7 @@ public class RegisterSessionManager {
             String json = Files.readString(path);
             SessionData s = GSON.fromJson(json, SessionData.class);
             if (s == null || s.sessionId == null || s.eventId == null || s.registerId == null || s.state == null) {
+                current = null;
                 log.warning("Corrupt register session file — discarding");
                 try {
                     Files.deleteIfExists(path);
@@ -207,6 +210,7 @@ public class RegisterSessionManager {
             log.info("Recovered register session: " + s.sessionId + " state=" + s.state);
             return s;
         } catch (IOException e) {
+            current = null;
             log.log(Level.WARNING, "Failed to read register session file", e);
             return null;
         }

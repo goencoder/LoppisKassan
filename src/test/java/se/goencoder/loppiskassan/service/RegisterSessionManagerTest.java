@@ -175,6 +175,17 @@ class RegisterSessionManagerTest {
         assertNull(recovered);
     }
 
+    @Test
+    void loadOrRecover_clearsCurrentWhenSwitchingToEventWithoutSession() {
+        var mgr = RegisterSessionManager.getInstance();
+        mgr.openSession("evt-1", "K1");
+
+        var recovered = mgr.loadOrRecover("evt-2");
+
+        assertNull(recovered);
+        assertNull(mgr.getCurrent());
+    }
+
     // ─────────────────────────────────────────────────────── no-session guard
 
     @Test

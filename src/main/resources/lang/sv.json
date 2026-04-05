@@ -470,5 +470,7 @@
   "exit.session_open.title": "Stäng register",
   "exit.session_open.message": "<html><b>Registret är fortfarande öppet.</b><br>Vill du stänga registret och avsluta?</html>",
   "exit.session_closing.title": "Stänger register",
-  "exit.session_closing.message": "Stänger register innan avslut…"
+  "exit.session_closing.message": "Stänger register innan avslut...",
+  "exit.session_open.close_failed.title": "Kunde inte stänga registret",
+  "exit.session_open.close_failed.message": "<html><b>Registret kunde inte stängas mot servern.</b><br>Försök igen när anslutningen fungerar så att kassan inte lämnas öppen i webbadmin.</html>"
 }
