@@ -73,8 +73,13 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
     }
     
     private void updateStatus() {
+        String registerLabel = LocalizationManager.tr("cashier.register_name", resolveRegisterName());
         if (AppModeManager.isLocalMode()) {
-            setStatusChip(statusLabel, AppColors.SUCCESS, LocalizationManager.tr("status.local_mode"));
+            setStatusChip(
+                    statusLabel,
+                    AppColors.SUCCESS,
+                    LocalizationManager.tr("status.local_mode") + " | " + registerLabel
+            );
             statusLabel.setCursor(Cursor.getDefaultCursor());
         } else {
             String registerName = resolveRegisterName();
@@ -92,10 +97,10 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
 
     private String resolveRegisterName() {
         String configuredName = GlobalConfigurationStore.getCashierName();
-        if (configuredName != null && !configuredName.isBlank()) {
-            return configuredName;
+        if (configuredName == null || configuredName.isBlank()) {
+            return LocalizationManager.tr("register.default_name");
         }
-        return LocalizationManager.tr("register.default_name");
+        return configuredName.trim();
     }
     
     /**

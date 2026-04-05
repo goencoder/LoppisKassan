@@ -53,6 +53,7 @@
   "cashier.cash": "Cash",
   "cashier.swish": "Swish",
   "cashier.register_name": "Register: {0}",
+  "cashier.active_register_name": "Active register: {0}",
   "cashier.invalid_seller.title": "Invalid seller ID",
   "cashier.invalid_seller.message": "Seller ID must be an integer",
   "cashier.seller_not_approved.title": "Seller not approved",

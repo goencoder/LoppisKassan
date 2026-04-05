@@ -303,8 +303,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         text2Label.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         registerNameEmptyLabel = new JLabel();
-        registerNameEmptyLabel.setFont(registerNameEmptyLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        registerNameEmptyLabel.setForeground(AppColors.TEXT_MUTED);
+        registerNameEmptyLabel.setFont(registerNameEmptyLabel.getFont().deriveFont(Font.BOLD, 15f));
+        registerNameEmptyLabel.setForeground(AppColors.TEXT_PRIMARY);
         registerNameEmptyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         content.add(iconLabel);
@@ -510,15 +510,14 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private void updateRegisterName() {
         String configuredName = GlobalConfigurationStore.getCashierName();
         String fallbackName = LocalizationManager.tr("register.default_name");
-        String name = configuredName != null && !configuredName.isBlank()
-                ? configuredName
-                : fallbackName;
-        String labelText = LocalizationManager.tr("cashier.register_name", name);
+        String name = (configuredName == null || configuredName.isBlank()) ? fallbackName : configuredName.trim();
+        String compactLabelText = LocalizationManager.tr("cashier.register_name", name);
+        String prominentLabelText = LocalizationManager.tr("cashier.active_register_name", name);
         if (registerNameLabel != null) {
-            registerNameLabel.setText(labelText);
+            registerNameLabel.setText(compactLabelText);
         }
         if (registerNameEmptyLabel != null) {
-            registerNameEmptyLabel.setText(labelText);
+            registerNameEmptyLabel.setText(prominentLabelText);
         }
     }
 
