@@ -303,7 +303,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         Integer pendingCount = pendingCountCache;
         boolean pendingReadFailed = pendingCount == null;
 
-        if (!sessionActive && pendingCount != null && pendingCount == 0 && !pendingReadFailed) {
+        if (!sessionActive && pendingCount != null && pendingCount == 0) {
             exitApplication();
             return;
         }
@@ -340,16 +340,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 return;
             }
             // Best-effort: fire close handshake heartbeats before exiting.
-            Thread closeHandshakeThread = sendCloseHandshakeHeartbeat(eventId);
-            if (closeHandshakeThread != null) {
-                try {
-                    closeHandshakeThread.join(1500L);
-                } catch (InterruptedException ignored) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            RegisterSessionManager.getInstance().requestClose();
-            RegisterSessionManager.getInstance().confirmClose();
+            startCloseHandshakeAndExit(eventId);
+            return;
         }
 
         exitApplication();
@@ -378,13 +370,15 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
     }
 
-    private Thread sendCloseHandshakeHeartbeat(String eventId) {
+    private void startCloseHandshakeAndExit(String eventId) {
         if (eventId == null || eventId.isBlank()) {
-            return null;
+            exitApplication();
+            return;
         }
         RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
         if (session == null) {
-            return null;
+            exitApplication();
+            return;
         }
 
         String displayName = GlobalConfigurationStore.getCashierName();
@@ -421,9 +415,11 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             } catch (Exception ignored) {
                 // Exit flow is best-effort by design.
             }
+            RegisterSessionManager.getInstance().requestClose();
+            RegisterSessionManager.getInstance().confirmClose();
+            SwingUtilities.invokeLater(this::exitApplication);
         }, "close-handshake-heartbeat");
         closeHandshakeThread.start();
-        return closeHandshakeThread;
     }
 
     /**

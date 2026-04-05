@@ -83,8 +83,13 @@ public class RegisterSessionManager {
             return current;
         }
         if (current != null && !isTerminal(current.state)) {
-            log.info("Register session already active; reusing existing session " + current.sessionId);
-            return current;
+            if (eventId.equals(current.eventId)) {
+                log.info("Register session already active; reusing existing session " + current.sessionId);
+                return current;
+            }
+            log.info("Active register session " + current.sessionId
+                    + " belongs to event " + current.eventId
+                    + "; opening a new session for event " + eventId);
         }
         SessionData s = new SessionData();
         s.sessionId = UlidGenerator.generate();
