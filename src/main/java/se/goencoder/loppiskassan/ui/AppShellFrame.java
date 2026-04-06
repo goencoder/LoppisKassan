@@ -417,7 +417,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
         Thread closeHandshakeThread = new Thread(() -> {
             CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
-            boolean closeSucceeded = false;
+            java.util.concurrent.atomic.AtomicBoolean closeSucceeded = new java.util.concurrent.atomic.AtomicBoolean(false);
             try {
                 boolean closeRequestedSent = heartbeatService.sendHeartbeat(
                         eventId,
@@ -445,7 +445,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 if (closeConfirmedSent) {
                     RegisterSessionManager.getInstance().confirmClose();
                 }
-                closeSucceeded = closeConfirmedSent;
+                closeSucceeded.set(closeConfirmedSent);
             } catch (Exception ignored) {
                 // Exit flow is best-effort by design.
             }
@@ -456,7 +456,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 if (closingDialog != null) {
                     closingDialog.dispose();
                 }
-                if (!closeSucceeded) {
+                if (!closeSucceeded.get()) {
                     JOptionPane.showMessageDialog(
                             this,
                             LocalizationManager.tr("exit.session_open.close_failed.message"),
