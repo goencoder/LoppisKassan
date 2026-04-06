@@ -541,10 +541,13 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
 
     private void updateRegisterName() {
         String configuredName = GlobalConfigurationStore.getCashierName();
-        String fallbackName = LocalizationManager.tr("register.default_name");
-        String name = (configuredName == null || configuredName.isBlank()) ? fallbackName : configuredName.trim();
-        String compactLabelText = LocalizationManager.tr("cashier.register_name", name);
-        String prominentLabelText = LocalizationManager.tr("cashier.active_register_name", name);
+        String defaultName = LocalizationManager.tr("register.default_name");
+        String unnamed = LocalizationManager.tr("register.unnamed");
+        String name = configuredName == null ? "" : configuredName.trim();
+        boolean isPlaceholder = name.isBlank() || name.equalsIgnoreCase(defaultName);
+        String displayName = isPlaceholder ? unnamed : name;
+        String compactLabelText = LocalizationManager.tr("cashier.register_name", displayName);
+        String prominentLabelText = LocalizationManager.tr("cashier.active_register_name", displayName);
         if (registerNameLabel != null) {
             registerNameLabel.setText(compactLabelText);
         }

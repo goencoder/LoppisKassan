@@ -101,14 +101,20 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
                 RegisterSessionManager.getInstance().getCurrent();
         String sessionRegister =
                 session != null ? session.registerId : null;
+        String defaultName = LocalizationManager.tr("register.default_name");
+        String unnamed = LocalizationManager.tr("register.unnamed");
         if (sessionRegister != null && !sessionRegister.isBlank()) {
-            return sessionRegister.trim();
+            String trimmed = sessionRegister.trim();
+            if (!trimmed.equalsIgnoreCase(defaultName)) {
+                return trimmed;
+            }
         }
         String configuredName = GlobalConfigurationStore.getCashierName();
         if (configuredName == null || configuredName.isBlank()) {
-            return LocalizationManager.tr("register.default_name");
+            return unnamed;
         }
-        return configuredName.trim();
+        String trimmed = configuredName.trim();
+        return trimmed.equalsIgnoreCase(defaultName) ? unnamed : trimmed;
     }
     
     /**

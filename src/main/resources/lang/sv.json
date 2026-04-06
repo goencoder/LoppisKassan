@@ -467,6 +467,7 @@
   "support_bundle.error.title": "Kunde inte skapa datafil",
 
   "register.default_name": "Kassan",
+  "register.unnamed": "Ej angiven",
   "exit.pending_sync.title": "Osynkade försäljningar",
   "exit.pending_sync.message": "<html><b>Kassan har {0} osynkade försäljningar.</b><br>Om du stänger nu kan dessa saknas i rapporten.<br><br>Håll kassan uppkopplad tills synken är klar, bekräfta sedan stängning.<br><br>Vill du ändå stänga?</html>",
   "exit.pending_sync.read_failed_title": "Kunde inte kontrollera osynkade försäljningar",

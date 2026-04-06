@@ -466,6 +466,7 @@
   "support_bundle.error.title": "Could not create data file",
 
   "register.default_name": "Register",
+  "register.unnamed": "Unspecified",
   "exit.pending_sync.title": "Unsynced sales",
   "exit.pending_sync.message": "<html><b>The register has {0} unsynced sales.</b><br>If you close now these may be missing from the report.<br><br>Keep the register online until sync completes, then confirm close.<br><br>Close anyway?</html>",
   "exit.pending_sync.read_failed_title": "Could not verify unsynced sales",
