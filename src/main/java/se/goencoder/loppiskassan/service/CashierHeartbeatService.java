@@ -13,8 +13,8 @@ import java.util.logging.Logger;
 
 /**
  * Sends cashier presence heartbeats to backend live-ops endpoint.
- * Uses the shared {@link ApiHelper} HTTP client — authentication is injected
- * automatically by the interceptor.
+ * Uses the generated {@link StatsServiceApi}; authentication is injected
+ * by {@link ApiHelper} interceptors.
  */
 public class CashierHeartbeatService {
 

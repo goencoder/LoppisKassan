@@ -29,6 +29,12 @@ public class SoldItemUtils {
                         ? se.goencoder.iloppis.model.V1PaymentMethod.KONTANT
                         : se.goencoder.iloppis.model.V1PaymentMethod.SWISH
         );
+        if (item.getRegisterId() != null && !item.getRegisterId().isBlank()) {
+            apiItem.setRegisterId(item.getRegisterId());
+        }
+        if (item.getSessionId() != null && !item.getSessionId().isBlank()) {
+            apiItem.setSessionId(item.getSessionId());
+        }
 
         return apiItem;
     }
