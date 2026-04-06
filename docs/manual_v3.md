@@ -112,6 +112,17 @@ I iLoppis-läge kan statusraden visa:
 
 Om något inte gått att ladda upp kan du använda statusraden och tillhörande dialoger för att se vad som väntar eller har avvisats.
 
+### Stäng kassan säkert (iLoppis-läge)
+När du avslutar LoppisKassan i iLoppis-läge kontrolleras om det finns osynkade försäljningar.
+
+- Om väntande synk är **0** kan kassan stängas normalt.
+- Om det finns osynkade försäljningar får du en varning och kan välja att avbryta stängningen.
+- Om du stänger ändå avslutas appen, men osynkade köp ligger kvar lokalt och synkas när anslutningen kommer tillbaka.
+
+**Rekommendation:** Låt kassan vara öppen och uppkopplad tills väntande synk är 0 innan du stänger.
+
+Om en kassa blivit kvar som öppen i webbadmin efter nätproblem, öppna kassan igen när nätet fungerar och stäng den på nytt.
+
 ---
 
 ## Lokala evenemang
