@@ -35,6 +35,7 @@ class CashierTabControllerTest {
         @Override public Map<Integer, Integer[]> getAndClearSellerPrices() { return Map.of(); }
         @Override public void clearView() {}
         @Override public void showCheckoutSuccess(se.goencoder.loppiskassan.V1PaymentMethod paymentMethod, int totalAmount) {}
+        @Override public void setOfflineWarningVisible(boolean visible) {}
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
     }
