@@ -18,6 +18,7 @@ import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
+import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -99,7 +100,14 @@ public class CashierTabController implements CashierControllerInterface {
     public synchronized void onCashierViewSelected() {
         if (AppModeManager.isLocalMode()) {
             stopHeartbeat();
+            if (view != null) {
+                view.setOfflineWarningVisible(false);
+            }
             return;
+        }
+        if (view != null) {
+            boolean online = se.goencoder.loppiskassan.rest.ConnectivityChecker.isOnline();
+            view.setOfflineWarningVisible(!online);
         }
         refreshHeartbeatDisplayNameFromConfig();
         if (heartbeatExecutor == null || heartbeatExecutor.isShutdown()) {
@@ -334,8 +342,14 @@ public class CashierTabController implements CashierControllerInterface {
     private void sendHeartbeatSafely() {
         try {
             sendHeartbeat();
+            if (view != null) {
+                SwingUtilities.invokeLater(() -> view.setOfflineWarningVisible(false));
+            }
         } catch (Exception e) {
             log.fine("cashier heartbeat failed: " + e.getMessage());
+            if (view != null) {
+                SwingUtilities.invokeLater(() -> view.setOfflineWarningVisible(true));
+            }
         }
     }
 

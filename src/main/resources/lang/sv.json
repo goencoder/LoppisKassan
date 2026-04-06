@@ -54,6 +54,8 @@
   "cashier.swish": "Swish",
   "cashier.register_name": "Kassa: {0}",
   "cashier.active_register_name": "Aktiv kassa: {0}",
+  "cashier.offline_empty.title": "Offline",
+  "cashier.offline_empty.message": "Gå online så att köp registreras i iLoppis.",
   "cashier.invalid_seller.title": "Felaktigt säljnummer",
   "cashier.invalid_seller.message": "Säljnummer måste vara ett heltal",
   "cashier.seller_not_approved.title": "Säljare ej godkänd",

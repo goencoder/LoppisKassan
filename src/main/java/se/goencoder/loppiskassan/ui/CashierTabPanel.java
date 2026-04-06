@@ -34,6 +34,9 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private JLabel totalItemCountLabel;
     private JLabel registerNameLabel;
     private JLabel registerNameEmptyLabel;
+    private JPanel offlineWarningPanel;
+    private JLabel offlineWarningTitleLabel;
+    private JLabel offlineWarningBodyLabel;
     private JPanel emptyStatePanel;
     private JScrollPane tableScrollPane;
     private JPanel cartPanel; // Varukorg-container
@@ -306,6 +309,27 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         registerNameEmptyLabel.setFont(registerNameEmptyLabel.getFont().deriveFont(Font.BOLD, 15f));
         registerNameEmptyLabel.setForeground(AppColors.TEXT_PRIMARY);
         registerNameEmptyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        offlineWarningTitleLabel = new JLabel();
+        offlineWarningTitleLabel.setFont(offlineWarningTitleLabel.getFont().deriveFont(Font.BOLD, 12f));
+        offlineWarningTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
+
+        offlineWarningBodyLabel = new JLabel();
+        offlineWarningBodyLabel.setFont(offlineWarningBodyLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        offlineWarningBodyLabel.setForeground(AppColors.TEXT_SECONDARY);
+
+        offlineWarningPanel = new JPanel();
+        offlineWarningPanel.setLayout(new BoxLayout(offlineWarningPanel, BoxLayout.Y_AXIS));
+        offlineWarningPanel.setBackground(AppColors.FIELD_BG);
+        offlineWarningPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.WARNING, 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        offlineWarningPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        offlineWarningPanel.add(offlineWarningTitleLabel);
+        offlineWarningPanel.add(Box.createVerticalStrut(4));
+        offlineWarningPanel.add(offlineWarningBodyLabel);
+        offlineWarningPanel.setVisible(false);
         
         content.add(iconLabel);
         content.add(Box.createVerticalStrut(16));
@@ -313,6 +337,8 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         content.add(text2Label);
         content.add(Box.createVerticalStrut(12));
         content.add(registerNameEmptyLabel);
+        content.add(Box.createVerticalStrut(16));
+        content.add(offlineWarningPanel);
         
         panel.add(content);
         return panel;
@@ -503,6 +529,12 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         if (cashierTable.getColumnModel().getColumnCount() > 3) {
             cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(3));
         }
+        if (offlineWarningTitleLabel != null) {
+            offlineWarningTitleLabel.setText(LocalizationManager.tr("cashier.offline_empty.title"));
+        }
+        if (offlineWarningBodyLabel != null) {
+            offlineWarningBodyLabel.setText(LocalizationManager.tr("cashier.offline_empty.message"));
+        }
         updateRegisterName();
         updateSummary();
     }
@@ -519,6 +551,14 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         if (registerNameEmptyLabel != null) {
             registerNameEmptyLabel.setText(prominentLabelText);
         }
+    }
+
+    @Override
+    public void setOfflineWarningVisible(boolean visible) {
+        if (offlineWarningPanel == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> offlineWarningPanel.setVisible(visible));
     }
 
     // ------------------------------------------------------------------------
