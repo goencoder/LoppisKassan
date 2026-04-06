@@ -315,26 +315,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         registerNameEmptyLabel.setForeground(AppColors.TEXT_PRIMARY);
         registerNameEmptyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        offlineWarningTitleLabel = new JLabel();
-        offlineWarningTitleLabel.setFont(offlineWarningTitleLabel.getFont().deriveFont(Font.BOLD, 12f));
-        offlineWarningTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
-
-        offlineWarningBodyLabel = new JLabel();
-        offlineWarningBodyLabel.setFont(offlineWarningBodyLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        offlineWarningBodyLabel.setForeground(AppColors.TEXT_SECONDARY);
-
-        offlineWarningPanel = new JPanel();
-        offlineWarningPanel.setLayout(new BoxLayout(offlineWarningPanel, BoxLayout.Y_AXIS));
-        offlineWarningPanel.setBackground(new Color(255, 245, 230));
-        offlineWarningPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AppColors.WARNING, 1),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
-        offlineWarningPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        offlineWarningPanel.add(offlineWarningTitleLabel);
-        offlineWarningPanel.add(Box.createVerticalStrut(4));
-        offlineWarningPanel.add(offlineWarningBodyLabel);
-        offlineWarningPanel.setVisible(false);
+        ensureOfflineWarningPanel();
         
         content.add(iconLabel);
         content.add(Box.createVerticalStrut(16));
@@ -352,32 +333,37 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
         container.setBackground(AppColors.WHITE);
         container.setBorder(BorderFactory.createEmptyBorder(8, 16, 12, 16));
-
-        if (offlineWarningPanel == null) {
-            offlineWarningTitleLabel = new JLabel();
-            offlineWarningTitleLabel.setFont(offlineWarningTitleLabel.getFont().deriveFont(Font.BOLD, 12f));
-            offlineWarningTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
-
-            offlineWarningBodyLabel = new JLabel();
-            offlineWarningBodyLabel.setFont(offlineWarningBodyLabel.getFont().deriveFont(Font.PLAIN, 12f));
-            offlineWarningBodyLabel.setForeground(AppColors.TEXT_SECONDARY);
-
-            offlineWarningPanel = new JPanel();
-            offlineWarningPanel.setLayout(new BoxLayout(offlineWarningPanel, BoxLayout.Y_AXIS));
-            offlineWarningPanel.setBackground(new Color(255, 245, 230));
-            offlineWarningPanel.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(AppColors.WARNING, 1),
-                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
-            ));
-            offlineWarningPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            offlineWarningPanel.add(offlineWarningTitleLabel);
-            offlineWarningPanel.add(Box.createVerticalStrut(4));
-            offlineWarningPanel.add(offlineWarningBodyLabel);
-            offlineWarningPanel.setVisible(false);
-        }
-
-        container.add(offlineWarningPanel);
+        container.add(ensureOfflineWarningPanel());
         return container;
+    }
+
+    private JPanel ensureOfflineWarningPanel() {
+        if (offlineWarningPanel != null) {
+            return offlineWarningPanel;
+        }
+        offlineWarningTitleLabel = new JLabel();
+        offlineWarningTitleLabel.setFont(offlineWarningTitleLabel.getFont().deriveFont(Font.BOLD, 12f));
+        offlineWarningTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
+        offlineWarningTitleLabel.setText(LocalizationManager.tr("cashier.offline_empty.title"));
+
+        offlineWarningBodyLabel = new JLabel();
+        offlineWarningBodyLabel.setFont(offlineWarningBodyLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        offlineWarningBodyLabel.setForeground(AppColors.TEXT_SECONDARY);
+        offlineWarningBodyLabel.setText(LocalizationManager.tr("cashier.offline_empty.message"));
+
+        offlineWarningPanel = new JPanel();
+        offlineWarningPanel.setLayout(new BoxLayout(offlineWarningPanel, BoxLayout.Y_AXIS));
+        offlineWarningPanel.setBackground(new Color(255, 245, 230));
+        offlineWarningPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.WARNING, 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        offlineWarningPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        offlineWarningPanel.add(offlineWarningTitleLabel);
+        offlineWarningPanel.add(Box.createVerticalStrut(4));
+        offlineWarningPanel.add(offlineWarningBodyLabel);
+        offlineWarningPanel.setVisible(false);
+        return offlineWarningPanel;
     }
 
     /**

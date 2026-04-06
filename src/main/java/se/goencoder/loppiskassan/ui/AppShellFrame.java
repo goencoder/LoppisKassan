@@ -334,8 +334,17 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
 
         if (sessionActive) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    LocalizationManager.tr("exit.session_open.message"),
+                    LocalizationManager.tr("exit.session_open.title"),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
             // Best-effort: fire close handshake heartbeats before exiting.
-            startCloseHandshakeAndExit(eventId, false);
+            startCloseHandshakeAndExit(eventId, true);
             return;
         }
 

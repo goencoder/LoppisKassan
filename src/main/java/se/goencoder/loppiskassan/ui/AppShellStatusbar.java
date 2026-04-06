@@ -74,16 +74,15 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
     }
     
     private void updateStatus() {
-        String registerLabel = LocalizationManager.tr("cashier.register_name", resolveRegisterName());
+        String registerName = resolveRegisterName();
         if (AppModeManager.isLocalMode()) {
             setStatusChip(
                     statusLabel,
                     AppColors.SUCCESS,
-                    LocalizationManager.tr("status.local_mode_with_register", registerLabel)
+                    LocalizationManager.tr("status.local_mode_with_register", registerName)
             );
             statusLabel.setCursor(Cursor.getDefaultCursor());
         } else {
-            String registerName = resolveRegisterName();
             if (pendingCount > 0) {
                 setStatusChip(statusLabel, AppColors.WARNING,
                         LocalizationManager.tr("status.offline_pending_with_register", pendingCount, registerName));
