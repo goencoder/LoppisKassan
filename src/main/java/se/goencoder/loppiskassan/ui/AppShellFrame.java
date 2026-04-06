@@ -304,46 +304,25 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
         boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
         Integer pendingCount = pendingCountCache;
-        boolean pendingReadFailed = pendingCount == null;
+        int pending = pendingCount == null ? 0 : pendingCount;
 
-        if (!sessionActive && pendingCount != null && pendingCount == 0) {
-            exitApplication();
-            return;
-        }
-
-        if (pendingReadFailed) {
+        if (pending > 0) {
             int choice = JOptionPane.showConfirmDialog(
                     this,
-                    LocalizationManager.tr("exit.pending_sync.read_failed"),
-                    LocalizationManager.tr("exit.pending_sync.read_failed_title"),
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE);
-            if (choice != JOptionPane.YES_OPTION) {
-                return;
-            }
-        } else if (pendingCount != null && pendingCount > 0) {
-            int choice = JOptionPane.showConfirmDialog(
-                    this,
-                    LocalizationManager.tr("exit.pending_sync.message", pendingCount),
+                    LocalizationManager.tr("exit.pending_sync.message", pending),
                     LocalizationManager.tr("exit.pending_sync.title"),
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
             if (choice != JOptionPane.YES_OPTION) {
                 return; // abort close
             }
-        } else if (sessionActive) {
-            // Session open but no pending items — offer clean close
-            int choice = JOptionPane.showConfirmDialog(
-                    this,
-                    LocalizationManager.tr("exit.session_open.message"),
-                    LocalizationManager.tr("exit.session_open.title"),
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE);
-            if (choice != JOptionPane.YES_OPTION) {
-                return;
-            }
+            exitApplication();
+            return;
+        }
+
+        if (sessionActive) {
             // Best-effort: fire close handshake heartbeats before exiting.
-            startCloseHandshakeAndExit(eventId);
+            startCloseHandshakeAndExit(eventId, false);
             return;
         }
 
@@ -378,7 +357,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
     }
 
-    private void startCloseHandshakeAndExit(String eventId) {
+    private void startCloseHandshakeAndExit(String eventId, boolean showDialog) {
         if (eventId == null || eventId.isBlank()) {
             exitApplication();
             return;
@@ -397,25 +376,29 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         String finalDisplayName = displayName;
         String registerId = session.registerId;
         String sessionId = session.sessionId;
-        JDialog closingDialog = new JDialog(
-                this,
-                LocalizationManager.tr("exit.session_closing.title"),
-                false
-        );
-        closingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-        JLabel closingLabel = new JLabel(
-                LocalizationManager.tr("exit.session_closing.message"),
-                SwingConstants.CENTER
-        );
-        closingLabel.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
-        closingDialog.add(closingLabel);
-        closingDialog.pack();
-        closingDialog.setLocationRelativeTo(this);
-        closingDialog.setVisible(true);
+        JDialog closingDialog = null;
+        Timer timeout = null;
+        if (showDialog) {
+            closingDialog = new JDialog(
+                    this,
+                    LocalizationManager.tr("exit.session_closing.title"),
+                    false
+            );
+            closingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+            JLabel closingLabel = new JLabel(
+                    LocalizationManager.tr("exit.session_closing.message"),
+                    SwingConstants.CENTER
+            );
+            closingLabel.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
+            closingDialog.add(closingLabel);
+            closingDialog.pack();
+            closingDialog.setLocationRelativeTo(this);
+            closingDialog.setVisible(true);
 
-        Timer timeout = new Timer(5_000, event -> exitApplication());
-        timeout.setRepeats(false);
-        timeout.start();
+            timeout = new Timer(5_000, event -> exitApplication());
+            timeout.setRepeats(false);
+            timeout.start();
+        }
         Thread closeHandshakeThread = new Thread(() -> {
             CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
             try {
@@ -448,9 +431,15 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             } catch (Exception ignored) {
                 // Exit flow is best-effort by design.
             }
+            JDialog dialog = closingDialog;
+            Timer closeTimeout = timeout;
             SwingUtilities.invokeLater(() -> {
-                timeout.stop();
-                closingDialog.dispose();
+                if (closeTimeout != null) {
+                    closeTimeout.stop();
+                }
+                if (dialog != null) {
+                    dialog.dispose();
+                }
                 exitApplication();
             });
         }, "close-handshake-heartbeat");
