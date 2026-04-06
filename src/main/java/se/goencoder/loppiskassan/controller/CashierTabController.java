@@ -341,9 +341,10 @@ public class CashierTabController implements CashierControllerInterface {
 
     private void sendHeartbeatSafely() {
         try {
-            sendHeartbeat();
+            CashierHeartbeatService.HeartbeatResult result = sendHeartbeat();
+            boolean success = result != null && result.success();
             if (view != null) {
-                SwingUtilities.invokeLater(() -> view.setOfflineWarningVisible(false));
+                SwingUtilities.invokeLater(() -> view.setOfflineWarningVisible(!success));
             }
         } catch (Exception e) {
             log.fine("cashier heartbeat failed: " + e.getMessage());
@@ -365,10 +366,10 @@ public class CashierTabController implements CashierControllerInterface {
         executor.submit(this::sendHeartbeatSafely);
     }
 
-    private void sendHeartbeat() {
+    private CashierHeartbeatService.HeartbeatResult sendHeartbeat() {
         String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
-            return;
+            return null;
         }
 
         String clientState = heartbeatSubmitting
@@ -399,6 +400,7 @@ public class CashierTabController implements CashierControllerInterface {
         }
 
         applyHeartbeatResult(result);
+        return result;
     }
 
     private synchronized void stopHeartbeat() {

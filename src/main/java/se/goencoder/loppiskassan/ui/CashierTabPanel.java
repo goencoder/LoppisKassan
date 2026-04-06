@@ -79,8 +79,13 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         cartPanel.add(tableScrollPane, "table");
         cartPanel.add(emptyStatePanel, "empty");
 
+        JPanel cartWithWarningPanel = new JPanel(new BorderLayout());
+        cartWithWarningPanel.setBackground(AppColors.WHITE);
+        cartWithWarningPanel.add(cartPanel, BorderLayout.CENTER);
+        cartWithWarningPanel.add(createOfflineWarningContainer(), BorderLayout.SOUTH);
+
         // Create split pane for center content (cart + total)
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, cartPanel, totalPanel);
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, cartWithWarningPanel, totalPanel);
         centerSplit.setResizeWeight(0.7); // 70% för varukorg, 30% för total
         centerSplit.setDividerLocation(0.7);
         centerSplit.setBackground(AppColors.WHITE);
@@ -320,7 +325,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
 
         offlineWarningPanel = new JPanel();
         offlineWarningPanel.setLayout(new BoxLayout(offlineWarningPanel, BoxLayout.Y_AXIS));
-        offlineWarningPanel.setBackground(AppColors.FIELD_BG);
+        offlineWarningPanel.setBackground(new Color(255, 245, 230));
         offlineWarningPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(AppColors.WARNING, 1),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)
@@ -337,11 +342,42 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         content.add(text2Label);
         content.add(Box.createVerticalStrut(12));
         content.add(registerNameEmptyLabel);
-        content.add(Box.createVerticalStrut(16));
-        content.add(offlineWarningPanel);
         
         panel.add(content);
         return panel;
+    }
+
+    private JPanel createOfflineWarningContainer() {
+        JPanel container = new JPanel();
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setBackground(AppColors.WHITE);
+        container.setBorder(BorderFactory.createEmptyBorder(8, 16, 12, 16));
+
+        if (offlineWarningPanel == null) {
+            offlineWarningTitleLabel = new JLabel();
+            offlineWarningTitleLabel.setFont(offlineWarningTitleLabel.getFont().deriveFont(Font.BOLD, 12f));
+            offlineWarningTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
+
+            offlineWarningBodyLabel = new JLabel();
+            offlineWarningBodyLabel.setFont(offlineWarningBodyLabel.getFont().deriveFont(Font.PLAIN, 12f));
+            offlineWarningBodyLabel.setForeground(AppColors.TEXT_SECONDARY);
+
+            offlineWarningPanel = new JPanel();
+            offlineWarningPanel.setLayout(new BoxLayout(offlineWarningPanel, BoxLayout.Y_AXIS));
+            offlineWarningPanel.setBackground(new Color(255, 245, 230));
+            offlineWarningPanel.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(AppColors.WARNING, 1),
+                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
+            offlineWarningPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            offlineWarningPanel.add(offlineWarningTitleLabel);
+            offlineWarningPanel.add(Box.createVerticalStrut(4));
+            offlineWarningPanel.add(offlineWarningBodyLabel);
+            offlineWarningPanel.setVisible(false);
+        }
+
+        container.add(offlineWarningPanel);
+        return container;
     }
 
     /**

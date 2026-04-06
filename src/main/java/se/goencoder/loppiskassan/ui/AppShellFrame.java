@@ -304,7 +304,20 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
         boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
         Integer pendingCount = pendingCountCache;
-        int pending = pendingCount == null ? 0 : pendingCount;
+        if (pendingCount == null) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    LocalizationManager.tr("exit.pending_sync.read_failed"),
+                    LocalizationManager.tr("exit.pending_sync.read_failed_title"),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+            exitApplication();
+            return;
+        }
+        int pending = pendingCount;
 
         if (pending > 0) {
             int choice = JOptionPane.showConfirmDialog(
@@ -376,8 +389,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         String finalDisplayName = displayName;
         String registerId = session.registerId;
         String sessionId = session.sessionId;
-        JDialog closingDialog = null;
-        Timer timeout = null;
+        final JDialog closingDialog;
+        final Timer timeout;
         if (showDialog) {
             closingDialog = new JDialog(
                     this,
@@ -398,9 +411,13 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             timeout = new Timer(5_000, event -> exitApplication());
             timeout.setRepeats(false);
             timeout.start();
+        } else {
+            closingDialog = null;
+            timeout = null;
         }
         Thread closeHandshakeThread = new Thread(() -> {
             CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
+            boolean closeSucceeded = false;
             try {
                 boolean closeRequestedSent = heartbeatService.sendHeartbeat(
                         eventId,
@@ -428,17 +445,24 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 if (closeConfirmedSent) {
                     RegisterSessionManager.getInstance().confirmClose();
                 }
+                closeSucceeded = closeConfirmedSent;
             } catch (Exception ignored) {
                 // Exit flow is best-effort by design.
             }
-            JDialog dialog = closingDialog;
-            Timer closeTimeout = timeout;
             SwingUtilities.invokeLater(() -> {
-                if (closeTimeout != null) {
-                    closeTimeout.stop();
+                if (timeout != null) {
+                    timeout.stop();
                 }
-                if (dialog != null) {
-                    dialog.dispose();
+                if (closingDialog != null) {
+                    closingDialog.dispose();
+                }
+                if (!closeSucceeded) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            LocalizationManager.tr("exit.session_open.close_failed.message"),
+                            LocalizationManager.tr("exit.session_open.close_failed.title"),
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
                 }
                 exitApplication();
             });
