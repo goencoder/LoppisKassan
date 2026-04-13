@@ -169,16 +169,16 @@ public class RejectedItemsDialog extends JDialog implements LocalizationAware {
             return;
         }
 
-        Integer newSeller = RejectedItemEditDialog.show(this, entry);
-        if (newSeller == null) {
+        RejectedItemEditDialog.EditResult editResult = RejectedItemEditDialog.show(this, entry);
+        if (editResult == null) {
             return;
         }
 
         RejectedItemEntry updated = new RejectedItemEntry(
                 entry.getItemId(),
                 entry.getPurchaseId(),
-                newSeller,
-                entry.getPrice(),
+                editResult.seller(),
+                editResult.price(),
                 entry.getPaymentMethod(),
                 entry.getSoldTime(),
                 entry.getErrorCode(),

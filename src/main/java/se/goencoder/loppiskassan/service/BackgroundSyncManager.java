@@ -422,12 +422,29 @@ public class BackgroundSyncManager {
                 if (AuthErrorHandler.isAuthError(e)) {
                     AuthErrorHandler.handleAuthStatus(e.getCode());
                     authError = true;
+                    break; // auth failures affect all groups - abort cycle
                 } else if (ApiHelper.isLikelyNetworkError(e)) {
                     networkError = true;
+                    break; // network failures affect all groups - abort cycle
                 } else {
-                    log.warning("Background sync: API error - " + e.getMessage());
+                    // Non-recoverable error for this purchase group only (e.g. HTTP 400 from
+                    // protovalidate when price=0). Synthesise per-item rejections so these items
+                    // are moved out of pending and shown in the review UI. Other groups must still
+                    // be uploaded, so we do NOT break.
+                    log.warning("Background sync: Non-recoverable API error for purchase group - " + e.getMessage());
+                    for (V1SoldItem failedItem : purchaseItems) {
+                        se.goencoder.iloppis.model.V1RejectedItem synthetic = new se.goencoder.iloppis.model.V1RejectedItem();
+                        se.goencoder.iloppis.model.V1SoldItem apiFailedItem =
+                                se.goencoder.loppiskassan.utils.SoldItemUtils.toApiSoldItem(failedItem);
+                        if (failedItem.getSoldTime() != null) {
+                            apiFailedItem.setSoldTime(
+                                    OffsetDateTime.of(failedItem.getSoldTime(), OffsetDateTime.now().getOffset()));
+                        }
+                        synthetic.setItem(apiFailedItem);
+                        synthetic.setReason(e.getMessage());
+                        rejectedItems.add(synthetic);
+                    }
                 }
-                break; // stop this sync cycle on any API failure
             }
         }
 

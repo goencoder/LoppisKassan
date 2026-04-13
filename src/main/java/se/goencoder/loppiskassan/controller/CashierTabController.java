@@ -219,12 +219,23 @@ public class CashierTabController implements CashierControllerInterface {
         LocalDateTime now = LocalDateTime.now();
         // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
         String purchaseId = UlidGenerator.generate();
+        String eventId = AppModeManager.getEventId();
+        boolean online = !AppModeManager.isLocalMode();
+        int itemCount = items.size();
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
         heartbeatSubmitting = true;
         sendHeartbeatNow();
         
         // Calculate total before clearing
         int totalAmount = getSum();
+        log.info(() -> String.format(
+            "cashier:checkout payment=%s items=%d total=%d event=%s mode=%s",
+            paymentMethod,
+            itemCount,
+            totalAmount,
+            eventId,
+            online ? "online" : "local"
+        ));
         
         // Use strategy pattern to persist items
         CashierStrategy strategy = getCashierStrategy();
@@ -279,6 +290,17 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     public void cancelCheckout() {
+        String eventId = AppModeManager.getEventId();
+        boolean online = !AppModeManager.isLocalMode();
+        int cancelledItems = items.size();
+        int cancelledTotal = getSum();
+        log.info(() -> String.format(
+            "cashier:cancel items=%d total=%d event=%s mode=%s",
+            cancelledItems,
+            cancelledTotal,
+            eventId,
+            online ? "online" : "local"
+        ));
         items.clear();
         view.clearView();
         state.reset();  // Reset state to initial values
@@ -416,7 +438,15 @@ public class CashierTabController implements CashierControllerInterface {
 
     static String readPersistedHeartbeatDisplayName() {
         String storedName = GlobalConfigurationStore.getCashierName();
-        return storedName == null ? "" : storedName;
+        if (storedName == null) {
+            return "";
+        }
+        String defaultName = LocalizationManager.tr("register.default_name");
+        if (defaultName != null && storedName.trim().equalsIgnoreCase(defaultName.trim())) {
+            // Treat the default placeholder as unset so the server assigns the name.
+            return "";
+        }
+        return storedName;
     }
 
     void refreshHeartbeatDisplayNameFromConfig() {
