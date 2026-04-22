@@ -399,7 +399,6 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         String registerId = session.registerId;
         String sessionId = session.sessionId;
         final JDialog closingDialog;
-        final Timer timeout;
         if (showDialog) {
             closingDialog = new JDialog(
                     this,
@@ -416,13 +415,8 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             closingDialog.pack();
             closingDialog.setLocationRelativeTo(this);
             closingDialog.setVisible(true);
-
-            timeout = new Timer(5_000, event -> exitApplication());
-            timeout.setRepeats(false);
-            timeout.start();
         } else {
             closingDialog = null;
-            timeout = null;
         }
         Thread closeHandshakeThread = new Thread(() -> {
             CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
@@ -459,9 +453,6 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                 // Exit flow is best-effort by design.
             }
             SwingUtilities.invokeLater(() -> {
-                if (timeout != null) {
-                    timeout.stop();
-                }
                 if (closingDialog != null) {
                     closingDialog.dispose();
                 }
