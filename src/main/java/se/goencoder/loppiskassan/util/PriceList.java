@@ -24,7 +24,7 @@ public final class PriceList {
         for (String t : s.trim().split("\\s+")) {
             if (!TOKEN.matcher(t).matches()) throw new NumberFormatException(t);
             int value = Integer.parseInt(t);
-            if (value <= 0) throw new NumberFormatException(t);
+            if (value < 0) throw new NumberFormatException(t);
             out.add(value);
         }
         return out;

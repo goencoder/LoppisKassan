@@ -14,13 +14,19 @@ class PriceListTest {
     }
 
     @Test
+    void parseZeroIsValid() {
+        List<Integer> list = PriceList.parse("10 0 20");
+        assertEquals(List.of(10, 0, 20), list);
+    }
+
+    @Test
     void parseInvalid() {
         assertThrows(NumberFormatException.class, () -> PriceList.parse("10a 20"));
     }
 
     @Test
-    void parseZeroIsInvalid() {
-        assertThrows(NumberFormatException.class, () -> PriceList.parse("10 0 20"));
+    void parseNegativeIsInvalid() {
+        assertThrows(NumberFormatException.class, () -> PriceList.parse("10 -1 20"));
     }
 
     @Test

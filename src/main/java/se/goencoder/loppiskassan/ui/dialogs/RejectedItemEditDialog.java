@@ -125,7 +125,7 @@ public class RejectedItemEditDialog extends JDialog {
             }
             try {
                 price = Integer.parseInt(priceField.getText().trim());
-                if (price <= 0) throw new NumberFormatException("price");
+                if (price < 0) throw new NumberFormatException("price");
             } catch (NumberFormatException ex) {
                 Popup.ERROR.showAndWait(
                         LocalizationManager.tr("cashier.invalid_price.title"),
