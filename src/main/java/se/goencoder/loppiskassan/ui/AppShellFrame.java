@@ -1,10 +1,14 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
+import se.goencoder.loppiskassan.service.CashierHeartbeatService;
+import se.goencoder.loppiskassan.service.RegisterSessionManager;
+import se.goencoder.loppiskassan.service.RegisterSessionState;
 import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.storage.PendingItemsStore;
 import se.goencoder.loppiskassan.ui.dialogs.PendingItemsDialog;
@@ -12,6 +16,8 @@ import se.goencoder.loppiskassan.ui.dialogs.RejectedItemsDialog;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * App Shell frame för Loppiskassan 3.0.
@@ -34,6 +40,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
     private JPanel archiveView;
     private JPanel discoveryView;
     private JPanel recentPurchasesView;
+    private Integer pendingCountCache;
     
     public AppShellFrame() {
         setLayout(new BorderLayout());
@@ -58,6 +65,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         if (!AppModeManager.isLocalMode()) {
             BackgroundSyncManager.getInstance().setPendingCountListener(count -> {
                 statusbar.setPendingStatus(count);
+                pendingCountCache = count;
             });
             RejectedItemsManager.getInstance().setRejectedCountListener(statusbar::setRejectedStatus);
 
@@ -67,10 +75,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
                     RejectedItemsDialog.show(this, AppModeManager.getEventId()));
 
             refreshStatusIndicators();
-            String eventId = AppModeManager.getEventId();
-            if (eventId != null && !eventId.isBlank()) {
-                BackgroundSyncManager.getInstance().ensureRunning(eventId);
-            }
+            ensureOnlineSessionInitialized();
         }
         
         // Visa första vyn beroende på om evenemang är valt
@@ -84,7 +89,13 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         LocalizationManager.addListener(languageChangeListener);
         
         setTitle(LocalizationManager.tr("frame.title"));
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                handleWindowClose();
+            }
+        });
         setSize(1024, 700);
         setLocationRelativeTo(null);
     }
@@ -93,6 +104,7 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         if (AppModeManager.isLocalMode()) {
             statusbar.setOnlineStatus();
             statusbar.setRejectedStatus(0);
+            pendingCountCache = 0;
             return;
         }
 
@@ -100,16 +112,20 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         if (eventId == null || eventId.isBlank()) {
             statusbar.setOnlineStatus();
             statusbar.setRejectedStatus(0);
+            pendingCountCache = 0;
             return;
         }
 
-        int pendingCount = 0;
+        Integer pendingCount = null;
         try {
             pendingCount = new PendingItemsStore(eventId).readPending().size();
+            pendingCountCache = pendingCount;
         } catch (Exception ignored) {
-            pendingCount = 0;
+            pendingCountCache = null;
         }
-        statusbar.setPendingStatus(pendingCount);
+        if (pendingCountCache != null) {
+            statusbar.setPendingStatus(pendingCountCache);
+        }
         statusbar.setRejectedStatus(RejectedItemsManager.getInstance().getRejectedCount(eventId));
     }
     
@@ -163,6 +179,10 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
             navigateTo(NavigationTarget.DISCOVERY);
             sidebar.setSelected(NavigationTarget.DISCOVERY);
             return;
+        }
+
+        if (!AppModeManager.isLocalMode() && target == NavigationTarget.CASHIER) {
+            ensureOnlineSessionInitialized();
         }
         
         JPanel targetView = switch (target) {
@@ -260,7 +280,197 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         LocalizationManager.removeListener(languageChangeListener);
         super.removeNotify();
     }
-    
+
+    /**
+     * ILP-003-06: Exit guard — intercepts window close when a register session is active
+     * or there are unsynced pending items.
+     *
+     * <p>If both conditions are absent the window closes normally.
+     * If unsynced items exist the user must confirm before exit; the session is left as-is
+     * so it can be recovered on next launch.
+     * If the session can be closed cleanly (no pending items) the close handshake is sent
+     * via the heartbeat before the JVM exits.</p>
+     */
+    private void handleWindowClose() {
+        if (AppModeManager.isLocalMode()) {
+            exitApplication();
+            return;
+        }
+
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            exitApplication();
+            return;
+        }
+        boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
+        Integer pendingCount = pendingCountCache;
+        if (pendingCount == null) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    LocalizationManager.tr("exit.pending_sync.read_failed"),
+                    LocalizationManager.tr("exit.pending_sync.read_failed_title"),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+            exitApplication();
+            return;
+        }
+        int pending = pendingCount;
+
+        if (pending > 0) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    LocalizationManager.tr("exit.pending_sync.message", pending),
+                    LocalizationManager.tr("exit.pending_sync.title"),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return; // abort close
+            }
+            exitApplication();
+            return;
+        }
+
+        if (sessionActive) {
+            int choice = JOptionPane.showConfirmDialog(
+                    this,
+                    LocalizationManager.tr("exit.session_open.message"),
+                    LocalizationManager.tr("exit.session_open.title"),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+            // Best-effort: fire close handshake heartbeats before exiting.
+            startCloseHandshakeAndExit(eventId, true);
+            return;
+        }
+
+        exitApplication();
+    }
+
+    private void exitApplication() {
+        dispose();
+        System.exit(0);
+    }
+
+    private void ensureOnlineSessionInitialized() {
+        if (AppModeManager.isLocalMode()) {
+            return;
+        }
+        String eventId = AppModeManager.getEventId();
+        if (eventId == null || eventId.isBlank()) {
+            return;
+        }
+
+        BackgroundSyncManager.getInstance().ensureRunning(eventId);
+        RegisterSessionManager sessionMgr = RegisterSessionManager.getInstance();
+        RegisterSessionManager.SessionData recovered = sessionMgr.loadOrRecover(eventId);
+        String registerName = GlobalConfigurationStore.getCashierName();
+        if (registerName == null || registerName.isBlank()) {
+            registerName = LocalizationManager.tr("register.default_name");
+        }
+        if (recovered == null
+                || recovered.state == RegisterSessionState.CLOSED
+                || recovered.state == RegisterSessionState.FORCED_CLOSED) {
+            sessionMgr.openSession(eventId, registerName);
+        }
+    }
+
+    private void startCloseHandshakeAndExit(String eventId, boolean showDialog) {
+        if (eventId == null || eventId.isBlank()) {
+            exitApplication();
+            return;
+        }
+        RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
+        if (session == null) {
+            exitApplication();
+            return;
+        }
+
+        String displayName = GlobalConfigurationStore.getCashierName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = LocalizationManager.tr("register.default_name");
+        }
+
+        String finalDisplayName = displayName;
+        String registerId = session.registerId;
+        String sessionId = session.sessionId;
+        final JDialog closingDialog;
+        if (showDialog) {
+            closingDialog = new JDialog(
+                    this,
+                    LocalizationManager.tr("exit.session_closing.title"),
+                    false
+            );
+            closingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+            JLabel closingLabel = new JLabel(
+                    LocalizationManager.tr("exit.session_closing.message"),
+                    SwingConstants.CENTER
+            );
+            closingLabel.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
+            closingDialog.add(closingLabel);
+            closingDialog.pack();
+            closingDialog.setLocationRelativeTo(this);
+            closingDialog.setVisible(true);
+        } else {
+            closingDialog = null;
+        }
+        Thread closeHandshakeThread = new Thread(() -> {
+            CashierHeartbeatService heartbeatService = new CashierHeartbeatService();
+            java.util.concurrent.atomic.AtomicBoolean closeSucceeded = new java.util.concurrent.atomic.AtomicBoolean(false);
+            try {
+                boolean closeRequestedSent = heartbeatService.sendHeartbeat(
+                        eventId,
+                        "CASHIER_CLIENT_STATE_IDLE",
+                        0,
+                        "CASHIER_CLIENT_TYPE_JAVA",
+                        finalDisplayName,
+                        "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_REQUESTED",
+                        registerId,
+                        sessionId
+                ).success();
+                boolean closeConfirmedSent = closeRequestedSent && heartbeatService.sendHeartbeat(
+                        eventId,
+                        "CASHIER_CLIENT_STATE_IDLE",
+                        0,
+                        "CASHIER_CLIENT_TYPE_JAVA",
+                        finalDisplayName,
+                        "REGISTER_LIFECYCLE_EVENT_TYPE_CLOSE_CONFIRMED",
+                        registerId,
+                        sessionId
+                ).success();
+                if (closeRequestedSent) {
+                    RegisterSessionManager.getInstance().requestClose();
+                }
+                if (closeConfirmedSent) {
+                    RegisterSessionManager.getInstance().confirmClose();
+                }
+                closeSucceeded.set(closeConfirmedSent);
+            } catch (Exception ignored) {
+                // Exit flow is best-effort by design.
+            }
+            SwingUtilities.invokeLater(() -> {
+                if (closingDialog != null) {
+                    closingDialog.dispose();
+                }
+                if (!closeSucceeded.get()) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            LocalizationManager.tr("exit.session_open.close_failed.message"),
+                            LocalizationManager.tr("exit.session_open.close_failed.title"),
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                exitApplication();
+            });
+        }, "close-handshake-heartbeat");
+        closeHandshakeThread.setDaemon(true);
+        closeHandshakeThread.start();
+    }
+
     /**
      * Navigationsmål i applikationen.
      */

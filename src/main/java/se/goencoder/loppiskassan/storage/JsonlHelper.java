@@ -151,6 +151,12 @@ public final class JsonlHelper {
         if (item.getCollectedBySellerTime() != null) {
             json.put("paidOutTime", formatTime(item.getCollectedBySellerTime()));
         }
+        if (item.getRegisterId() != null) {
+            json.put("registerId", item.getRegisterId());
+        }
+        if (item.getSessionId() != null) {
+            json.put("sessionId", item.getSessionId());
+        }
         json.put("uploaded", item.isUploaded());
         return json.toString();
     }
@@ -169,7 +175,7 @@ public final class JsonlHelper {
         if (soldTime == null) {
             soldTime = LocalDateTime.now();
         }
-        return new V1SoldItem(
+        V1SoldItem item = new V1SoldItem(
                 purchaseId,
                 itemId,
                 soldTime,
@@ -179,6 +185,15 @@ public final class JsonlHelper {
                 paymentMethod,
                 uploaded
         );
+        String registerId = obj.optString("registerId", obj.optString("register_id", ""));
+        if (!registerId.isBlank()) {
+            item.setRegisterId(registerId);
+        }
+        String sessionId = obj.optString("sessionId", obj.optString("session_id", ""));
+        if (!sessionId.isBlank()) {
+            item.setSessionId(sessionId);
+        }
+        return item;
     }
 
     private static String formatTime(LocalDateTime dateTime) {

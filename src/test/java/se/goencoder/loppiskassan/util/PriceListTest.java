@@ -19,6 +19,11 @@ class PriceListTest {
     }
 
     @Test
+    void parseZeroIsInvalid() {
+        assertThrows(NumberFormatException.class, () -> PriceList.parse("10 0 20"));
+    }
+
+    @Test
     void parseSpaces() {
         List<Integer> list = PriceList.parse("  10  20   30 ");
         assertEquals(List.of(10, 20, 30), list);

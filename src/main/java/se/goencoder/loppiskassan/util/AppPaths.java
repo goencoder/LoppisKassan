@@ -1,6 +1,7 @@
 package se.goencoder.loppiskassan.util;
 
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,6 +25,14 @@ public final class AppPaths {
     private AppPaths() {}
 
     public static Path getBaseDir() {
+        String override = System.getProperty("loppiskassan.base.dir");
+        if (override != null && !override.isBlank()) {
+            try {
+                return Paths.get(override);
+            } catch (InvalidPathException e) {
+                log.warning("Invalid loppiskassan.base.dir, using default base dir: " + e.getMessage());
+            }
+        }
         String homeDir = System.getProperty("user.home");
         return Paths.get(homeDir, BASE_DIR_NAME);
     }

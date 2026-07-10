@@ -4,6 +4,7 @@ import se.goencoder.loppiskassan.V1PaymentMethod;
 import se.goencoder.loppiskassan.V1SoldItem;
 import se.goencoder.loppiskassan.controller.CashierControllerInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 
 import javax.swing.*;
@@ -31,6 +32,11 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     private JLabel changeValueLabel;
     private JLabel totalAmountLabel;
     private JLabel totalItemCountLabel;
+    private JLabel registerNameLabel;
+    private JLabel registerNameEmptyLabel;
+    private JPanel offlineWarningPanel;
+    private JLabel offlineWarningTitleLabel;
+    private JLabel offlineWarningBodyLabel;
     private JPanel emptyStatePanel;
     private JScrollPane tableScrollPane;
     private JPanel cartPanel; // Varukorg-container
@@ -73,8 +79,13 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         cartPanel.add(tableScrollPane, "table");
         cartPanel.add(emptyStatePanel, "empty");
 
+        JPanel cartWithWarningPanel = new JPanel(new BorderLayout());
+        cartWithWarningPanel.setBackground(AppColors.WHITE);
+        cartWithWarningPanel.add(cartPanel, BorderLayout.CENTER);
+        cartWithWarningPanel.add(createOfflineWarningContainer(), BorderLayout.SOUTH);
+
         // Create split pane for center content (cart + total)
-        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, cartPanel, totalPanel);
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, cartWithWarningPanel, totalPanel);
         centerSplit.setResizeWeight(0.7); // 70% för varukorg, 30% för total
         centerSplit.setDividerLocation(0.7);
         centerSplit.setBackground(AppColors.WHITE);
@@ -258,12 +269,17 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         inputPanel.add(topRow);
 
         // ===== INSTRUCTIONS ROW =====
-        JPanel instructionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 4));
+        JPanel instructionsPanel = new JPanel(new BorderLayout());
         instructionsPanel.setOpaque(false);
         JLabel instructionsLabel = new JLabel("Enter = Lägg till   Delete = Ta bort   Esc = Avbryt");
         instructionsLabel.setFont(instructionsLabel.getFont().deriveFont(Font.PLAIN, 11f));
         instructionsLabel.setForeground(AppColors.TEXT_MUTED);
-        instructionsPanel.add(instructionsLabel);
+        instructionsPanel.add(instructionsLabel, BorderLayout.WEST);
+
+        registerNameLabel = new JLabel();
+        registerNameLabel.setFont(registerNameLabel.getFont().deriveFont(Font.PLAIN, 11f));
+        registerNameLabel.setForeground(AppColors.TEXT_MUTED);
+        instructionsPanel.add(registerNameLabel, BorderLayout.EAST);
         inputPanel.add(instructionsPanel);
 
         return inputPanel;
@@ -293,14 +309,61 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         text2Label.setFont(text2Label.getFont().deriveFont(14f));
         text2Label.setForeground(AppColors.TEXT_MUTED);
         text2Label.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        registerNameEmptyLabel = new JLabel();
+        registerNameEmptyLabel.setFont(registerNameEmptyLabel.getFont().deriveFont(Font.BOLD, 15f));
+        registerNameEmptyLabel.setForeground(AppColors.TEXT_PRIMARY);
+        registerNameEmptyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        ensureOfflineWarningPanel();
         
         content.add(iconLabel);
         content.add(Box.createVerticalStrut(16));
         content.add(textLabel);
         content.add(text2Label);
+        content.add(Box.createVerticalStrut(12));
+        content.add(registerNameEmptyLabel);
         
         panel.add(content);
         return panel;
+    }
+
+    private JPanel createOfflineWarningContainer() {
+        JPanel container = new JPanel();
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setBackground(AppColors.WHITE);
+        container.setBorder(BorderFactory.createEmptyBorder(8, 16, 12, 16));
+        container.add(ensureOfflineWarningPanel());
+        return container;
+    }
+
+    private JPanel ensureOfflineWarningPanel() {
+        if (offlineWarningPanel != null) {
+            return offlineWarningPanel;
+        }
+        offlineWarningTitleLabel = new JLabel();
+        offlineWarningTitleLabel.setFont(offlineWarningTitleLabel.getFont().deriveFont(Font.BOLD, 12f));
+        offlineWarningTitleLabel.setForeground(AppColors.TEXT_PRIMARY);
+        offlineWarningTitleLabel.setText(LocalizationManager.tr("cashier.offline_empty.title"));
+
+        offlineWarningBodyLabel = new JLabel();
+        offlineWarningBodyLabel.setFont(offlineWarningBodyLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        offlineWarningBodyLabel.setForeground(AppColors.TEXT_SECONDARY);
+        offlineWarningBodyLabel.setText(LocalizationManager.tr("cashier.offline_empty.message"));
+
+        offlineWarningPanel = new JPanel();
+        offlineWarningPanel.setLayout(new BoxLayout(offlineWarningPanel, BoxLayout.Y_AXIS));
+        offlineWarningPanel.setBackground(new Color(255, 245, 230));
+        offlineWarningPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.WARNING, 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        offlineWarningPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        offlineWarningPanel.add(offlineWarningTitleLabel);
+        offlineWarningPanel.add(Box.createVerticalStrut(4));
+        offlineWarningPanel.add(offlineWarningBodyLabel);
+        offlineWarningPanel.setVisible(false);
+        return offlineWarningPanel;
     }
 
     /**
@@ -444,6 +507,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         if (controller instanceof se.goencoder.loppiskassan.controller.CashierTabController tabController) {
             tabController.onCashierViewSelected();
         }
+        updateRegisterName();
         SwingUtilities.invokeLater(this::setFocusToSellerField);
     }
 
@@ -487,7 +551,39 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         if (cashierTable.getColumnModel().getColumnCount() > 3) {
             cashierTable.removeColumn(cashierTable.getColumnModel().getColumn(3));
         }
+        if (offlineWarningTitleLabel != null) {
+            offlineWarningTitleLabel.setText(LocalizationManager.tr("cashier.offline_empty.title"));
+        }
+        if (offlineWarningBodyLabel != null) {
+            offlineWarningBodyLabel.setText(LocalizationManager.tr("cashier.offline_empty.message"));
+        }
+        updateRegisterName();
         updateSummary();
+    }
+
+    private void updateRegisterName() {
+        String configuredName = GlobalConfigurationStore.getCashierName();
+        String defaultName = LocalizationManager.tr("register.default_name");
+        String unnamed = LocalizationManager.tr("register.unnamed");
+        String name = configuredName == null ? "" : configuredName.trim();
+        boolean isPlaceholder = name.isBlank() || name.equalsIgnoreCase(defaultName);
+        String displayName = isPlaceholder ? unnamed : name;
+        String compactLabelText = LocalizationManager.tr("cashier.register_name", displayName);
+        String prominentLabelText = LocalizationManager.tr("cashier.active_register_name", displayName);
+        if (registerNameLabel != null) {
+            registerNameLabel.setText(compactLabelText);
+        }
+        if (registerNameEmptyLabel != null) {
+            registerNameEmptyLabel.setText(prominentLabelText);
+        }
+    }
+
+    @Override
+    public void setOfflineWarningVisible(boolean visible) {
+        if (offlineWarningPanel == null) {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> offlineWarningPanel.setVisible(visible));
     }
 
     // ------------------------------------------------------------------------

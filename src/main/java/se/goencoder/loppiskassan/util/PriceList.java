@@ -23,7 +23,9 @@ public final class PriceList {
         List<Integer> out = new ArrayList<>();
         for (String t : s.trim().split("\\s+")) {
             if (!TOKEN.matcher(t).matches()) throw new NumberFormatException(t);
-            out.add(Integer.parseInt(t));
+            int value = Integer.parseInt(t);
+            if (value <= 0) throw new NumberFormatException(t);
+            out.add(value);
         }
         return out;
     }

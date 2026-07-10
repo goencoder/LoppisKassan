@@ -12,24 +12,30 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 
 public class RejectedItemEditDialog extends JDialog {
-    private Integer resultSeller;
 
-    public static Integer show(Component parent, RejectedItemEntry entry) {
+    public record EditResult(int seller, int price) {}
+
+    private EditResult result;
+
+    public static EditResult show(Component parent, RejectedItemEntry entry) {
         RejectedItemEditDialog dialog = new RejectedItemEditDialog(parent, entry);
         dialog.setVisible(true);
-        return dialog.resultSeller;
+        return dialog.result;
     }
 
     private RejectedItemEditDialog(Component parent, RejectedItemEntry entry) {
@@ -57,6 +63,13 @@ public class RejectedItemEditDialog extends JDialog {
                 BorderFactory.createEmptyBorder(6, 8, 6, 8)
         ));
 
+        JTextField priceField = new JTextField(entry.getPrice() == null ? "" : String.valueOf(entry.getPrice()));
+        priceField.setBackground(AppColors.FIELD_BG);
+        priceField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AppColors.BORDER),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)
+        ));
+
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(AppColors.WHITE);
         form.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
@@ -77,7 +90,7 @@ public class RejectedItemEditDialog extends JDialog {
         addFormRow(form, label, field, 1,
                 LocalizationManager.tr("rejected.edit.item_id"), valueLabel(entry.getItemId()));
         addFormRow(form, label, field, 2,
-                LocalizationManager.tr("rejected.edit.price"), valueLabel(entry.getPrice() == null ? "" : entry.getPrice() + ""));
+                LocalizationManager.tr("rejected.edit.price"), priceField);
         addFormRow(form, label, field, 3,
                 LocalizationManager.tr("rejected.edit.payment"), valueLabel(entry.getPaymentMethod() == null ? "" :
                         (entry.getPaymentMethod() == se.goencoder.loppiskassan.V1PaymentMethod.Kontant
@@ -87,7 +100,7 @@ public class RejectedItemEditDialog extends JDialog {
                 LocalizationManager.tr("rejected.edit.sold_time"),
                 valueLabel(entry.getSoldTime() == null ? "" : SwedishDateFormatter.formatDateWithTime(entry.getSoldTime())));
         addFormRow(form, label, field, 5,
-                LocalizationManager.tr("rejected.edit.reason"), valueLabel(entry.getReason()));
+                LocalizationManager.tr("rejected.edit.reason"), reasonArea(entry.getReason()));
 
         add(form, BorderLayout.CENTER);
 
@@ -98,20 +111,30 @@ public class RejectedItemEditDialog extends JDialog {
         JButton save = AppButton.create(LocalizationManager.tr("button.save"),
                 AppButton.Variant.PRIMARY, AppButton.Size.MEDIUM);
         save.addActionListener(evt -> {
-            String text = sellerField.getText().trim();
+            int seller;
+            int price;
             try {
-                int seller = Integer.parseInt(text);
-                if (seller <= 0) {
-                    throw new NumberFormatException();
-                }
-                resultSeller = seller;
-                dispose();
+                seller = Integer.parseInt(sellerField.getText().trim());
+                if (seller <= 0) throw new NumberFormatException("seller");
             } catch (NumberFormatException ex) {
                 Popup.ERROR.showAndWait(
                         LocalizationManager.tr("cashier.invalid_seller.title"),
                         LocalizationManager.tr("cashier.invalid_seller.message")
                 );
+                return;
             }
+            try {
+                price = Integer.parseInt(priceField.getText().trim());
+                if (price <= 0) throw new NumberFormatException("price");
+            } catch (NumberFormatException ex) {
+                Popup.ERROR.showAndWait(
+                        LocalizationManager.tr("cashier.invalid_price.title"),
+                        LocalizationManager.tr("cashier.invalid_price.message")
+                );
+                return;
+            }
+            result = new EditResult(seller, price);
+            dispose();
         });
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 12));
@@ -121,7 +144,7 @@ public class RejectedItemEditDialog extends JDialog {
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
 
-        setSize(520, 420);
+        setSize(560, 500);
         setLocationRelativeTo(parent);
     }
 
@@ -145,5 +168,22 @@ public class RejectedItemEditDialog extends JDialog {
         label.setForeground(AppColors.TEXT_SECONDARY);
         label.setHorizontalAlignment(SwingConstants.LEFT);
         return label;
+    }
+
+    private JScrollPane reasonArea(String value) {
+        JTextArea area = new JTextArea(value == null ? "" : value);
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setForeground(AppColors.TEXT_SECONDARY);
+        area.setBackground(AppColors.FIELD_BG);
+        area.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        area.setFont(new JLabel().getFont());
+        JScrollPane scroll = new JScrollPane(area,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(BorderFactory.createLineBorder(AppColors.BORDER));
+        scroll.setPreferredSize(new Dimension(0, 72));
+        return scroll;
     }
 }

@@ -74,4 +74,11 @@ public interface CashierPanelInterface extends SelectabableTab, UiComponent {
      * @param totalAmount Total amount of the purchase
      */
     void showCheckoutSuccess(V1PaymentMethod paymentMethod, int totalAmount);
+
+    /**
+     * Show or hide the offline warning in the empty cashier view.
+     *
+     * @param visible {@code true} to show the warning, {@code false} to hide it
+     */
+    void setOfflineWarningVisible(boolean visible);
 }

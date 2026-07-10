@@ -1,8 +1,10 @@
 package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
+import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
+import se.goencoder.loppiskassan.service.RegisterSessionManager;
 import se.goencoder.loppiskassan.util.SwedishDateFormatter;
 
 import javax.swing.*;
@@ -72,19 +74,46 @@ public class AppShellStatusbar extends JPanel implements LocalizationAware {
     }
     
     private void updateStatus() {
+        String registerName = resolveRegisterName();
         if (AppModeManager.isLocalMode()) {
-            setStatusChip(statusLabel, AppColors.SUCCESS, LocalizationManager.tr("status.local_mode"));
+            setStatusChip(
+                    statusLabel,
+                    AppColors.SUCCESS,
+                    LocalizationManager.tr("status.local_mode_with_register", registerName)
+            );
             statusLabel.setCursor(Cursor.getDefaultCursor());
         } else {
             if (pendingCount > 0) {
                 setStatusChip(statusLabel, AppColors.WARNING,
-                        LocalizationManager.tr("status.offline_pending", pendingCount));
+                        LocalizationManager.tr("status.offline_pending_with_register", pendingCount, registerName));
                 statusLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             } else {
-                setStatusChip(statusLabel, AppColors.SUCCESS, LocalizationManager.tr("status.online_mode"));
+                setStatusChip(statusLabel, AppColors.SUCCESS,
+                        LocalizationManager.tr("status.online_mode_with_register", registerName));
                 statusLabel.setCursor(Cursor.getDefaultCursor());
             }
         }
+    }
+
+    private String resolveRegisterName() {
+        RegisterSessionManager.SessionData session =
+                RegisterSessionManager.getInstance().getCurrent();
+        String sessionRegister =
+                session != null ? session.registerId : null;
+        String defaultName = LocalizationManager.tr("register.default_name");
+        String unnamed = LocalizationManager.tr("register.unnamed");
+        if (sessionRegister != null && !sessionRegister.isBlank()) {
+            String trimmed = sessionRegister.trim();
+            if (!trimmed.equalsIgnoreCase(defaultName)) {
+                return trimmed;
+            }
+        }
+        String configuredName = GlobalConfigurationStore.getCashierName();
+        if (configuredName == null || configuredName.isBlank()) {
+            return unnamed;
+        }
+        String trimmed = configuredName.trim();
+        return trimmed.equalsIgnoreCase(defaultName) ? unnamed : trimmed;
     }
     
     /**

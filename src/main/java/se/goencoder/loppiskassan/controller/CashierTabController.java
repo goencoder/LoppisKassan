@@ -12,11 +12,13 @@ import se.goencoder.loppiskassan.service.LocalCashierStrategy;
 import se.goencoder.loppiskassan.service.IloppisCashierStrategy;
 import se.goencoder.loppiskassan.service.BackgroundSyncManager;
 import se.goencoder.loppiskassan.service.CashierHeartbeatService;
+import se.goencoder.loppiskassan.service.RegisterSessionManager;
 import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
 import se.goencoder.loppiskassan.ui.Popup;
 import se.goencoder.loppiskassan.utils.UlidGenerator;
 
+import javax.swing.SwingUtilities;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -98,7 +100,14 @@ public class CashierTabController implements CashierControllerInterface {
     public synchronized void onCashierViewSelected() {
         if (AppModeManager.isLocalMode()) {
             stopHeartbeat();
+            if (view != null) {
+                view.setOfflineWarningVisible(false);
+            }
             return;
+        }
+        if (view != null) {
+            boolean online = se.goencoder.loppiskassan.rest.ConnectivityChecker.isOnline();
+            view.setOfflineWarningVisible(!online);
         }
         refreshHeartbeatDisplayNameFromConfig();
         if (heartbeatExecutor == null || heartbeatExecutor.isShutdown()) {
@@ -210,12 +219,23 @@ public class CashierTabController implements CashierControllerInterface {
         LocalDateTime now = LocalDateTime.now();
         // Generate a ULID instead of UUID to match the server's expected format ^[0-9A-HJKMNP-TV-Z]{26}$
         String purchaseId = UlidGenerator.generate();
+        String eventId = AppModeManager.getEventId();
+        boolean online = !AppModeManager.isLocalMode();
+        int itemCount = items.size();
         prepareItemsForCheckout(items, purchaseId, paymentMethod, now);
         heartbeatSubmitting = true;
         sendHeartbeatNow();
         
         // Calculate total before clearing
         int totalAmount = getSum();
+        log.info(() -> String.format(
+            "cashier:checkout payment=%s items=%d total=%d event=%s mode=%s",
+            paymentMethod,
+            itemCount,
+            totalAmount,
+            eventId,
+            online ? "online" : "local"
+        ));
         
         // Use strategy pattern to persist items
         CashierStrategy strategy = getCashierStrategy();
@@ -270,6 +290,17 @@ public class CashierTabController implements CashierControllerInterface {
     }
 
     public void cancelCheckout() {
+        String eventId = AppModeManager.getEventId();
+        boolean online = !AppModeManager.isLocalMode();
+        int cancelledItems = items.size();
+        int cancelledTotal = getSum();
+        log.info(() -> String.format(
+            "cashier:cancel items=%d total=%d event=%s mode=%s",
+            cancelledItems,
+            cancelledTotal,
+            eventId,
+            online ? "online" : "local"
+        ));
         items.clear();
         view.clearView();
         state.reset();  // Reset state to initial values
@@ -332,9 +363,16 @@ public class CashierTabController implements CashierControllerInterface {
 
     private void sendHeartbeatSafely() {
         try {
-            sendHeartbeat();
+            CashierHeartbeatService.HeartbeatResult result = sendHeartbeat();
+            boolean success = result != null && result.success();
+            if (view != null) {
+                SwingUtilities.invokeLater(() -> view.setOfflineWarningVisible(!success));
+            }
         } catch (Exception e) {
             log.fine("cashier heartbeat failed: " + e.getMessage());
+            if (view != null) {
+                SwingUtilities.invokeLater(() -> view.setOfflineWarningVisible(true));
+            }
         }
     }
 
@@ -350,25 +388,41 @@ public class CashierTabController implements CashierControllerInterface {
         executor.submit(this::sendHeartbeatSafely);
     }
 
-    private void sendHeartbeat() throws Exception {
+    private CashierHeartbeatService.HeartbeatResult sendHeartbeat() {
         String eventId = AppModeManager.getEventId();
         if (eventId == null || eventId.isBlank()) {
-            return;
+            return null;
         }
 
         String clientState = heartbeatSubmitting
                 ? HEARTBEAT_STATE_SUBMITTING
                 : (heartbeatPendingPurchasesCount > 0 ? HEARTBEAT_STATE_ACTIVE : HEARTBEAT_STATE_IDLE);
 
-        CashierHeartbeatService.HeartbeatResult result = heartbeatService.sendHeartbeat(
-                eventId,
-                clientState,
-                heartbeatPendingPurchasesCount,
-                HEARTBEAT_CLIENT_TYPE_JAVA,
-                heartbeatDisplayName
-        );
+        RegisterSessionManager.SessionData session = RegisterSessionManager.getInstance().getCurrent();
+        CashierHeartbeatService.HeartbeatResult result;
+        if (session == null) {
+            result = heartbeatService.sendHeartbeat(
+                    eventId,
+                    clientState,
+                    heartbeatPendingPurchasesCount,
+                    HEARTBEAT_CLIENT_TYPE_JAVA,
+                    heartbeatDisplayName
+            );
+        } else {
+            result = heartbeatService.sendHeartbeat(
+                    eventId,
+                    clientState,
+                    heartbeatPendingPurchasesCount,
+                    HEARTBEAT_CLIENT_TYPE_JAVA,
+                    heartbeatDisplayName,
+                    "REGISTER_LIFECYCLE_EVENT_TYPE_SYNC",
+                    session.registerId,
+                    session.sessionId
+            );
+        }
 
         applyHeartbeatResult(result);
+        return result;
     }
 
     private synchronized void stopHeartbeat() {
@@ -384,7 +438,15 @@ public class CashierTabController implements CashierControllerInterface {
 
     static String readPersistedHeartbeatDisplayName() {
         String storedName = GlobalConfigurationStore.getCashierName();
-        return storedName == null ? "" : storedName;
+        if (storedName == null) {
+            return "";
+        }
+        String defaultName = LocalizationManager.tr("register.default_name");
+        if (defaultName != null && storedName.trim().equalsIgnoreCase(defaultName.trim())) {
+            // Treat the default placeholder as unset so the server assigns the name.
+            return "";
+        }
+        return storedName;
     }
 
     void refreshHeartbeatDisplayNameFromConfig() {
