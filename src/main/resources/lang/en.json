@@ -463,6 +463,8 @@
   "support_bundle.button": "\uD83D\uDCE6 Create data file…",
   "support_bundle.success.title": "Data file created!",
   "support_bundle.success.message": "\uD83D\uDCE6 {0}\n\uD83D\uDCC1 {1}\n\nThe file was created for cashier ''{2}''.\n\nSend it to iLoppis support for troubleshooting.",
+  "support_bundle.partial.title": "Data file created with a warning",
+  "support_bundle.partial.message": "\uD83D\uDCE6 {0}\n\uD83D\uDCC1 {1}\n\nThe file was created for cashier ''{2}'', but one or more logs could not be included. Details are available in the manifest.\n\nSend it to iLoppis support for troubleshooting.",
   "support_bundle.error.title": "Could not create data file",
 
   "register.default_name": "Register",
