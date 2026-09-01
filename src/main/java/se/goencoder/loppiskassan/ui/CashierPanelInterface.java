@@ -81,4 +81,7 @@ public interface CashierPanelInterface extends SelectabableTab, UiComponent {
      * @param visible {@code true} to show the warning, {@code false} to hide it
      */
     void setOfflineWarningVisible(boolean visible);
+
+    /** Refresh the displayed cashier/register name after it changes. */
+    void refreshRegisterName();
 }

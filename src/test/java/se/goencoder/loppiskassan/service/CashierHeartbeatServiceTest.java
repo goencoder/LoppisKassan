@@ -32,7 +32,7 @@ class CashierHeartbeatServiceTest {
                 .displayName("minty raven")
                 .registerId("register-a")
                 .sessionId("session-a")
-                .lifecycleEventType(V1RegisterLifecycleEventType.SYNC)
+                .lifecycleEventType(V1RegisterLifecycleEventType.REGISTER_LIFECYCLE_EVENT_TYPE_SYNC)
                 .toJson();
 
         server.createContext("/v1/events/evt-123/cashier-presence:heartbeat", exchange -> {

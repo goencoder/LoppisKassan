@@ -2,6 +2,7 @@ package se.goencoder.loppiskassan.ui;
 
 import se.goencoder.loppiskassan.config.AppModeManager;
 import se.goencoder.loppiskassan.config.GlobalConfigurationStore;
+import se.goencoder.loppiskassan.config.ILoppisConfigurationStore;
 import se.goencoder.loppiskassan.controller.CashierTabController;
 import se.goencoder.loppiskassan.localization.LocalizationAware;
 import se.goencoder.loppiskassan.localization.LocalizationManager;
@@ -288,8 +289,9 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
      * <p>If both conditions are absent the window closes normally.
      * If unsynced items exist the user must confirm before exit; the session is left as-is
      * so it can be recovered on next launch.
-     * If the session can be closed cleanly (no pending items) the close handshake is sent
-     * via the heartbeat before the JVM exits.</p>
+     * If the session can be closed cleanly (no pending items) and the cashier code is saved,
+     * the close handshake is sent without an extra confirmation. A non-persisted code requires
+     * confirmation because the session cannot be resumed after restart.</p>
      */
     private void handleWindowClose() {
         if (AppModeManager.isLocalMode()) {
@@ -305,13 +307,11 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         boolean sessionActive = RegisterSessionManager.getInstance().isSessionActive();
         Integer pendingCount = pendingCountCache;
         if (pendingCount == null) {
-            int choice = JOptionPane.showConfirmDialog(
-                    this,
+            boolean confirmed = showLocalizedYesNoDialog(
                     LocalizationManager.tr("exit.pending_sync.read_failed"),
                     LocalizationManager.tr("exit.pending_sync.read_failed_title"),
-                    JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
-            if (choice != JOptionPane.YES_OPTION) {
+            if (!confirmed) {
                 return;
             }
             exitApplication();
@@ -320,13 +320,11 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         int pending = pendingCount;
 
         if (pending > 0) {
-            int choice = JOptionPane.showConfirmDialog(
-                    this,
+            boolean confirmed = showLocalizedYesNoDialog(
                     LocalizationManager.tr("exit.pending_sync.message", pending),
                     LocalizationManager.tr("exit.pending_sync.title"),
-                    JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
-            if (choice != JOptionPane.YES_OPTION) {
+            if (!confirmed) {
                 return; // abort close
             }
             exitApplication();
@@ -334,13 +332,16 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
 
         if (sessionActive) {
-            int choice = JOptionPane.showConfirmDialog(
-                    this,
+            boolean hasSavedCashierCode = hasSavedCashierCode();
+            if (!shouldConfirmSessionClose(sessionActive, hasSavedCashierCode)) {
+                startCloseHandshakeAndExit(eventId, false);
+                return;
+            }
+            boolean confirmed = showLocalizedYesNoDialog(
                     LocalizationManager.tr("exit.session_open.message"),
                     LocalizationManager.tr("exit.session_open.title"),
-                    JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
-            if (choice != JOptionPane.YES_OPTION) {
+            if (!confirmed) {
                 return;
             }
             // Best-effort: fire close handshake heartbeats before exiting.
@@ -349,6 +350,33 @@ public class AppShellFrame extends JFrame implements LocalizationAware {
         }
 
         exitApplication();
+    }
+
+    private boolean showLocalizedYesNoDialog(String message, String title, int messageType) {
+        Object[] options = {
+                LocalizationManager.tr("common.no"),
+                LocalizationManager.tr("common.yes")
+        };
+        int choice = JOptionPane.showOptionDialog(
+                this,
+                message,
+                title,
+                JOptionPane.DEFAULT_OPTION,
+                messageType,
+                null,
+                options,
+                options[0]
+        );
+        return choice == 1;
+    }
+
+    private static boolean hasSavedCashierCode() {
+        String apiKey = ILoppisConfigurationStore.getApiKey();
+        return apiKey != null && !apiKey.isBlank();
+    }
+
+    static boolean shouldConfirmSessionClose(boolean sessionActive, boolean hasSavedCashierCode) {
+        return sessionActive && !hasSavedCashierCode;
     }
 
     private void exitApplication() {

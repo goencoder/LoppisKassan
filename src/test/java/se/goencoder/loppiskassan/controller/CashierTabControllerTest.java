@@ -16,6 +16,7 @@ import se.goencoder.loppiskassan.ui.CashierPanelInterface;
 import java.awt.Component;
 import java.nio.file.Path;
 import java.util.Map;
+import javax.swing.SwingUtilities;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,6 +28,7 @@ class CashierTabControllerTest {
 
     static class StubView implements CashierPanelInterface {
         int change;
+        int registerNameRefreshes;
         @Override public void setFocusToSellerField() {}
         @Override public void enableCheckoutButtons(boolean enable) {}
         @Override public void addSoldItem(V1SoldItem item) {}
@@ -36,6 +38,7 @@ class CashierTabControllerTest {
         @Override public void clearView() {}
         @Override public void showCheckoutSuccess(se.goencoder.loppiskassan.V1PaymentMethod paymentMethod, int totalAmount) {}
         @Override public void setOfflineWarningVisible(boolean visible) {}
+        @Override public void refreshRegisterName() { registerNameRefreshes++; }
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
     }
@@ -89,17 +92,21 @@ class CashierTabControllerTest {
     }
 
     @Test
-    void applyHeartbeatResultPersistsServerAlias() {
+    void applyHeartbeatResultPersistsServerAliasAndRefreshesView() throws Exception {
         CashierTabController controller = (CashierTabController) CashierTabController.getInstance();
+        StubView view = new StubView();
+        controller.registerView(view);
         String previousName = GlobalConfigurationStore.getCashierName();
 
         try {
             GlobalConfigurationStore.setCashierName("Gammalt namn");
 
             controller.applyHeartbeatResult(new CashierHeartbeatService.HeartbeatResult("Server Alias", true));
+            SwingUtilities.invokeAndWait(() -> { });
 
             assertEquals("Server Alias", controller.getHeartbeatDisplayName());
             assertEquals("Server Alias", GlobalConfigurationStore.getCashierName());
+            assertEquals(1, view.registerNameRefreshes);
         } finally {
             GlobalConfigurationStore.setCashierName(previousName);
             controller.refreshHeartbeatDisplayNameFromConfig();

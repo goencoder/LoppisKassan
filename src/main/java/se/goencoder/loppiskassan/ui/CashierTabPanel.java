@@ -579,6 +579,11 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
     }
 
     @Override
+    public void refreshRegisterName() {
+        updateRegisterName();
+    }
+
+    @Override
     public void setOfflineWarningVisible(boolean visible) {
         if (offlineWarningPanel == null) {
             return;

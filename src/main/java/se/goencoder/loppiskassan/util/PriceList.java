@@ -12,7 +12,7 @@ public final class PriceList {
     private PriceList() {}
 
     /**
-     * Parse a string of numbers separated by whitespace into a list of integers.
+     * Parse whitespace-separated whole-number prices. Zero is a valid price.
      *
      * @param s input string, may not be null or blank
      * @return list of parsed integers

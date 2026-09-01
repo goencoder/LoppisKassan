@@ -37,6 +37,7 @@ public class OfflineFlowTest {
         @Override public void clearView() {}
         @Override public void showCheckoutSuccess(V1PaymentMethod paymentMethod, int totalAmount) {}
         @Override public void setOfflineWarningVisible(boolean visible) {}
+        @Override public void refreshRegisterName() {}
         @Override public void selected() {}
         @Override public Component getComponent() { return null; }
     }

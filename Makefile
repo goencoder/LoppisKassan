@@ -4,12 +4,12 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 
 # ---- Local OpenAPI client ----
-CLIENT_JAR := lib/openapi-java-client-0.0.8.jar
+CLIENT_JAR := lib/openapi-java-client-0.0.9.jar
 GROUP_ID   := se.goencoder.iloppis
 ARTIFACT_ID:= iloppis-client
-VERSION    := 0.0.8
+VERSION    := 0.0.9
 
-JAR_NAME := target/LoppisKassan-v2.0.0-jar-with-dependencies.jar
+JAR_NAME := target/LoppisKassan-v3.0.0-jar-with-dependencies.jar
 
 .DEFAULT_GOAL := help
 MAVEN ?= mvn
@@ -45,9 +45,9 @@ ci: build-codex ## Run CI pipeline (build + test + verify)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) verify
 
 install-client: proxy
-	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:install-file \
-	  -Dfile=lib/openapi-java-client-0.0.8.jar \
-	  -DpomFile=lib/openapi-java-client-0.0.8.pom
+	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) org.apache.maven.plugins:maven-install-plugin:3.1.4:install-file \
+	  -Dfile=$(CLIENT_JAR) \
+	  -DpomFile=lib/openapi-java-client-$(VERSION).pom
 
 build-codex: install-client ## Build for Codex (no jpackage)
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests package
@@ -60,7 +60,7 @@ endif
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
 	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.LoadTestRunner \
-	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.6.3:java
 
 cashier-load-test: install-client ## Run cashier-flow load test (local file write + background upload) (ENV=path/to/env)
 ifeq ($(strip $(ENV)),)
@@ -70,7 +70,7 @@ endif
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
 	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.CashierFlowLoadTestRunner \
-	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.6.3:java
 
 setup-test: install-client ## Run market setup (creates market, event, vendors) (ENV=path/to/env)
 ifeq ($(strip $(ENV)),)
@@ -80,7 +80,7 @@ endif
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests test-compile; \
 	$(MAVEN) $(MFLAGS) $(MVN_PROXY_FLAGS) -DskipTests \
 	 -Dexec.mainClass=se.goencoder.loppiskassan.tools.SetupRunner \
-	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.5.0:java
+	 -Dexec.classpathScope=test org.codehaus.mojo:exec-maven-plugin:3.6.3:java
 
 ## Network chaos testing
 toxiproxy-up: ## Start toxiproxy container

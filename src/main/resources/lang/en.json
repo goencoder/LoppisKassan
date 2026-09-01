@@ -61,7 +61,7 @@
   "cashier.seller_not_approved.title": "Seller not approved",
   "cashier.seller_not_approved.message": "Seller is not approved for this event",
   "cashier.invalid_price.title": "Invalid price",
-  "cashier.invalid_price.message": "Enter whole numbers for prices",
+  "cashier.invalid_price.message": "Enter whole-number prices of 0 SEK or more",
   "history.table.seller": "Seller",
   "history.table.price": "Price",
   "history.table.sold": "Sold",
@@ -473,10 +473,10 @@
   "exit.pending_sync.message": "<html><b>The register has {0} unsynced sales.</b><br>If you close now these may be missing from the report.<br><br>Keep the register online until sync completes, then confirm close.<br><br>Close anyway?</html>",
   "exit.pending_sync.read_failed_title": "Could not verify unsynced sales",
   "exit.pending_sync.read_failed": "<html><b>Unsynced sales could not be checked due to a read error.</b><br>Unsynced purchases may still exist.<br><br>Exit anyway?</html>",
-  "exit.session_open.title": "Close register",
-  "exit.session_open.message": "<html><b>The register is still open.</b><br>Do you want to close the register and quit?</html>",
-  "exit.session_closing.title": "Closing register",
-  "exit.session_closing.message": "Closing register before exit...",
-  "exit.session_open.close_failed.title": "Could not close register",
-  "exit.session_open.close_failed.message": "<html><b>The register could not be closed on the server.</b><br>Try again when the connection is working so the register is not left open in web admin.</html>"
+  "exit.session_open.title": "Close the cash register",
+  "exit.session_open.message": "<html><b>The cash register is still open in iLoppis.</b><br>Do you want to close it and exit the application?</html>",
+  "exit.session_closing.title": "Closing the cash register",
+  "exit.session_closing.message": "Closing the cash register before exiting...",
+  "exit.session_open.close_failed.title": "Could not close the cash register",
+  "exit.session_open.close_failed.message": "<html><b>The cash register could not be closed in iLoppis.</b><br>Try again when the connection is working so it is not left open in web admin.</html>"
 }
