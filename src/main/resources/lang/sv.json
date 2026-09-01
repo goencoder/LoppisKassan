@@ -464,6 +464,8 @@
   "support_bundle.button": "\uD83D\uDCE6 Skapa datafil…",
   "support_bundle.success.title": "Datafil skapad!",
   "support_bundle.success.message": "\uD83D\uDCE6 {0}\n\uD83D\uDCC1 {1}\n\nFilen skapades för kassa ''{2}''.\n\nSkicka filen till iLoppis support för felsökning.",
+  "support_bundle.partial.title": "Datafil skapad med varning",
+  "support_bundle.partial.message": "\uD83D\uDCE6 {0}\n\uD83D\uDCC1 {1}\n\nFilen skapades för kassa ''{2}'', men en eller flera loggar kunde inte tas med. Detaljer finns i manifestet.\n\nSkicka filen till iLoppis support för felsökning.",
   "support_bundle.error.title": "Kunde inte skapa datafil",
 
   "register.default_name": "Kassan",

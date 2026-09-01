@@ -14,8 +14,11 @@ import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -24,6 +27,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -35,6 +41,7 @@ public class DataBundleExporter {
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss");
     private static final String DEFAULT_CASHIER_SLUG = "kassa";
+    private static final String LOG_FILE_BASENAME = "loppiskassan.log";
 
     /**
      * Export a support bundle for the selected iLoppis event.
@@ -63,15 +70,26 @@ public class DataBundleExporter {
                 return;
             }
 
-            createBundle(destination.toPath(), eventId, eventName, cashierName);
+            BundleCreationResult result = createBundle(
+                    destination.toPath(), eventId, eventName, cashierName);
 
-            Popup.INFORMATION.showAndWait(
-                    LocalizationManager.tr("support_bundle.success.title"),
-                    LocalizationManager.tr("support_bundle.success.message",
-                            destination.getName(),
-                            destination.getParent(),
-                            cashierName)
-            );
+            if (result.isPartial()) {
+                Popup.WARNING.showAndWait(
+                        LocalizationManager.tr("support_bundle.partial.title"),
+                        LocalizationManager.tr("support_bundle.partial.message",
+                                destination.getName(),
+                                destination.getParent(),
+                                cashierName)
+                );
+            } else {
+                Popup.INFORMATION.showAndWait(
+                        LocalizationManager.tr("support_bundle.success.title"),
+                        LocalizationManager.tr("support_bundle.success.message",
+                                destination.getName(),
+                                destination.getParent(),
+                                cashierName)
+                );
+            }
         } catch (Exception e) {
             Popup.ERROR.showAndWait(
                     LocalizationManager.tr("support_bundle.error.title"),
@@ -106,21 +124,27 @@ public class DataBundleExporter {
         return trimmed;
     }
 
-    static void createBundle(Path zipPath, String eventId, String eventName,
-                             String cashierName) throws IOException {
-        createBundle(zipPath, eventId, eventName, cashierName,
+    static BundleCreationResult createBundle(Path zipPath, String eventId, String eventName,
+                                             String cashierName) throws IOException {
+        return createBundle(zipPath, eventId, eventName, cashierName,
                 LocalEventPaths.getEventDir(eventId),
                 AppPaths.getConfigDir(),
                 AppPaths.getLogsDir());
     }
 
-    static void createBundle(Path zipPath, String eventId, String eventName,
-                             String cashierName, Path eventDir, Path configDir,
-                             Path logsDir) throws IOException {
-        Path parent = zipPath.getParent();
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
+    static BundleCreationResult createBundle(Path zipPath, String eventId, String eventName,
+                                             String cashierName, Path eventDir, Path configDir,
+                                             Path logsDir) throws IOException {
+        return createBundle(zipPath, eventId, eventName, cashierName,
+                eventDir, configDir, logsDir, Files::readAllBytes);
+    }
+
+    static BundleCreationResult createBundle(Path zipPath, String eventId, String eventName,
+                                             String cashierName, Path eventDir, Path configDir,
+                                             Path logsDir, LogFileReader logFileReader) throws IOException {
+        Path absoluteZipPath = zipPath.toAbsolutePath();
+        Path parent = absoluteZipPath.getParent();
+        Files.createDirectories(parent);
 
         List<Path> eventFiles = collectExistingFiles(eventDir,
                 "pending_items.jsonl",
@@ -130,33 +154,52 @@ public class DataBundleExporter {
         List<Path> configFiles = collectExistingFiles(configDir,
                 "global.json",
                 "iloppis-mode.json");
-        List<Path> logFiles = collectLogFiles(logsDir);
+        flushActiveFileHandlers();
+        LogCollection logs = snapshotLogFiles(logsDir, logFileReader);
+        Path temporaryZip = Files.createTempFile(parent,
+                "." + absoluteZipPath.getFileName() + "-", ".tmp");
 
-        try (ZipOutputStream zos = new ZipOutputStream(
-                Files.newOutputStream(zipPath), StandardCharsets.UTF_8)) {
-            JSONObject manifest = new JSONObject();
-            manifest.put("cashierName", cashierName);
-            manifest.put("eventId", eventId);
-            manifest.put("eventName", eventName != null ? eventName : "");
-            manifest.put("exportTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-            manifest.put("format", "iloppis-support-bundle-v1");
-            manifest.put("purpose", "support");
-            manifest.put("eventFiles", toRelativeNames(eventFiles, eventDir));
-            manifest.put("configFiles", toRelativeNames(configFiles, configDir));
-            manifest.put("logFiles", toRelativeNames(logFiles, logsDir));
+        try {
+            try (ZipOutputStream zos = new ZipOutputStream(
+                    Files.newOutputStream(temporaryZip), StandardCharsets.UTF_8)) {
+                JSONObject manifest = new JSONObject();
+                manifest.put("cashierName", cashierName);
+                manifest.put("eventId", eventId);
+                manifest.put("eventName", eventName != null ? eventName : "");
+                manifest.put("exportTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                manifest.put("format", "iloppis-support-bundle-v1");
+                manifest.put("purpose", "support");
+                manifest.put("eventFiles", toRelativeNames(eventFiles, eventDir));
+                manifest.put("configFiles", toRelativeNames(configFiles, configDir));
+                manifest.put("logFiles", logs.snapshots().stream()
+                        .map(LogSnapshot::fileName)
+                        .toList());
+                manifest.put("skippedLogFiles", logs.skipped().stream()
+                        .map(skipped -> new JSONObject()
+                                .put("file", skipped.fileName())
+                                .put("reason", skipped.reason()))
+                        .toList());
+                manifest.put("logCollectionStatus", logs.status());
 
-            addTextEntry(zos, "manifest.json", manifest.toString(2));
+                addTextEntry(zos, "manifest.json", manifest.toString(2));
 
-            for (Path file : eventFiles) {
-                addBundleFileEntry(zos, "event/" + file.getFileName(), file);
+                for (Path file : eventFiles) {
+                    addBundleFileEntry(zos, "event/" + file.getFileName(), file);
+                }
+                for (Path file : configFiles) {
+                    addBundleFileEntry(zos, "config/" + file.getFileName(), file);
+                }
+                for (LogSnapshot snapshot : logs.snapshots()) {
+                    addBytesEntry(zos, "logs/" + snapshot.fileName(), snapshot.content());
+                }
             }
-            for (Path file : configFiles) {
-                addBundleFileEntry(zos, "config/" + file.getFileName(), file);
-            }
-            for (Path file : logFiles) {
-                addFileEntry(zos, "logs/" + file.getFileName(), file);
-            }
+
+            moveCompletedBundle(temporaryZip, absoluteZipPath);
+        } finally {
+            Files.deleteIfExists(temporaryZip);
         }
+
+        return new BundleCreationResult(logs.snapshots().size(), logs.skipped().size());
     }
 
     private static int getBundleEntryCount(String eventId) throws IOException {
@@ -192,16 +235,79 @@ public class DataBundleExporter {
     }
 
     private static List<Path> collectLogFiles(Path logsDir) throws IOException {
-        if (Files.notExists(logsDir) || !Files.isDirectory(logsDir)) {
+        if (Files.notExists(logsDir)) {
             return List.of();
+        }
+        if (!Files.isDirectory(logsDir)) {
+            throw new IOException("Log path is not an accessible directory");
         }
 
         try (var stream = Files.list(logsDir)) {
             return stream
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().startsWith("loppiskassan.log"))
-                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                    .filter(path -> isLogDataFileName(path.getFileName().toString()))
+                    .sorted(Comparator
+                            .comparingInt(DataBundleExporter::logReadPriority)
+                            .thenComparing(path -> path.getFileName().toString()))
                     .toList();
+        }
+    }
+
+    private static int logReadPriority(Path path) {
+        String fileName = path.getFileName().toString();
+        return LOG_FILE_BASENAME.equals(fileName) || (LOG_FILE_BASENAME + ".0").equals(fileName)
+                ? 1
+                : 0;
+    }
+
+    static boolean isLogDataFileName(String fileName) {
+        if (LOG_FILE_BASENAME.equals(fileName)) {
+            return true;
+        }
+        if (!fileName.startsWith(LOG_FILE_BASENAME + ".")) {
+            return false;
+        }
+
+        String suffix = fileName.substring(LOG_FILE_BASENAME.length() + 1);
+        if (suffix.isEmpty()) {
+            return false;
+        }
+        for (String part : suffix.split("\\.", -1)) {
+            if (part.isEmpty() || !part.chars().allMatch(Character::isDigit)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static LogCollection snapshotLogFiles(Path logsDir, LogFileReader logFileReader)
+            throws IOException {
+        List<LogSnapshot> snapshots = new ArrayList<>();
+        List<SkippedLog> skipped = new ArrayList<>();
+        for (Path file : collectLogFiles(logsDir)) {
+            try {
+                snapshots.add(new LogSnapshot(file.getFileName().toString(), logFileReader.read(file)));
+            } catch (IOException e) {
+                String reason = e instanceof AccessDeniedException ? "access_denied" : "io_error";
+                skipped.add(new SkippedLog(file.getFileName().toString(), reason));
+            }
+        }
+        String status;
+        if (snapshots.isEmpty()) {
+            status = "no_logs_included";
+        } else if (!skipped.isEmpty()) {
+            status = "partial";
+        } else {
+            status = "complete";
+        }
+        return new LogCollection(List.copyOf(snapshots), List.copyOf(skipped), status);
+    }
+
+    private static void flushActiveFileHandlers() {
+        Logger rootLogger = Logger.getAnonymousLogger().getParent();
+        for (Handler handler : rootLogger.getHandlers()) {
+            if (handler instanceof FileHandler) {
+                handler.flush();
+            }
         }
     }
 
@@ -214,8 +320,12 @@ public class DataBundleExporter {
     }
 
     private static void addTextEntry(ZipOutputStream zos, String name, String content) throws IOException {
+        addBytesEntry(zos, name, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void addBytesEntry(ZipOutputStream zos, String name, byte[] content) throws IOException {
         zos.putNextEntry(new ZipEntry(name));
-        zos.write(content.getBytes(StandardCharsets.UTF_8));
+        zos.write(content);
         zos.closeEntry();
     }
 
@@ -231,6 +341,36 @@ public class DataBundleExporter {
         zos.putNextEntry(new ZipEntry(name));
         Files.copy(file, zos);
         zos.closeEntry();
+    }
+
+    private static void moveCompletedBundle(Path source, Path destination) throws IOException {
+        try {
+            Files.move(source, destination,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    @FunctionalInterface
+    interface LogFileReader {
+        byte[] read(Path path) throws IOException;
+    }
+
+    record BundleCreationResult(int includedLogCount, int skippedLogCount) {
+        boolean isPartial() {
+            return includedLogCount == 0 || skippedLogCount > 0;
+        }
+    }
+
+    private record LogSnapshot(String fileName, byte[] content) {
+    }
+
+    private record SkippedLog(String fileName, String reason) {
+    }
+
+    private record LogCollection(List<LogSnapshot> snapshots, List<SkippedLog> skipped, String status) {
     }
 
     private static boolean shouldSanitizeJson(Path file) {

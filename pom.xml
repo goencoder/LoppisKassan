@@ -35,6 +35,18 @@
             <groupId>se.goencoder.iloppis</groupId>
             <artifactId>iloppis-client</artifactId>
             <version>0.0.9</version>
+            <exclusions>
+                <!-- Generated client bytecode uses neither dependency. Exclude stale
+                     OpenAPI-generator boilerplate and its vulnerable transitive chain. -->
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-lang3</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.openapitools</groupId>
+                    <artifactId>jackson-databind-nullable</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
