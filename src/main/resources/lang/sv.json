@@ -61,7 +61,7 @@
   "cashier.seller_not_approved.title": "Säljare ej godkänd",
   "cashier.seller_not_approved.message": "Säljaren är inte godkänd för detta evenemang",
   "cashier.invalid_price.title": "Felaktigt pris",
-  "cashier.invalid_price.message": "Ange korrekta heltal för priser",
+  "cashier.invalid_price.message": "Ange heltalspriser på 0 kr eller mer",
   "history.table.seller": "Säljare",
   "history.table.price": "Pris",
   "history.table.sold": "Sålt",

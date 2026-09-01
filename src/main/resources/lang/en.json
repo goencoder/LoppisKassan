@@ -61,7 +61,7 @@
   "cashier.seller_not_approved.title": "Seller not approved",
   "cashier.seller_not_approved.message": "Seller is not approved for this event",
   "cashier.invalid_price.title": "Invalid price",
-  "cashier.invalid_price.message": "Enter whole numbers for prices",
+  "cashier.invalid_price.message": "Enter whole-number prices of 0 SEK or more",
   "history.table.seller": "Seller",
   "history.table.price": "Price",
   "history.table.sold": "Sold",
