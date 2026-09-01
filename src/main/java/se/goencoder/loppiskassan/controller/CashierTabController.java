@@ -465,6 +465,9 @@ public class CashierTabController implements CashierControllerInterface {
         if (!normalized.equals(GlobalConfigurationStore.getCashierName())) {
             GlobalConfigurationStore.setCashierName(normalized);
         }
+        if (view != null) {
+            SwingUtilities.invokeLater(view::refreshRegisterName);
+        }
     }
 
     String getHeartbeatDisplayName() {

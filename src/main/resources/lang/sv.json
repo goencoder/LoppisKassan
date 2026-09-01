@@ -474,10 +474,10 @@
   "exit.pending_sync.message": "<html><b>Kassan har {0} osynkade försäljningar.</b><br>Om du stänger nu kan dessa saknas i rapporten.<br><br>Håll kassan uppkopplad tills synken är klar, bekräfta sedan stängning.<br><br>Vill du ändå stänga?</html>",
   "exit.pending_sync.read_failed_title": "Kunde inte kontrollera osynkade försäljningar",
   "exit.pending_sync.read_failed": "<html><b>Osynkade försäljningar kunde inte kontrolleras på grund av läsfel.</b><br>Osynkade köp kan fortfarande finnas.<br><br>Vill du avsluta ändå?</html>",
-  "exit.session_open.title": "Stäng register",
-  "exit.session_open.message": "<html><b>Registret är fortfarande öppet.</b><br>Vill du stänga registret och avsluta?</html>",
-  "exit.session_closing.title": "Stänger register",
-  "exit.session_closing.message": "Stänger register innan avslut...",
-  "exit.session_open.close_failed.title": "Kunde inte stänga registret",
-  "exit.session_open.close_failed.message": "<html><b>Registret kunde inte stängas mot servern.</b><br>Försök igen när anslutningen fungerar så att kassan inte lämnas öppen i webbadmin.</html>"
+  "exit.session_open.title": "Stäng kassan",
+  "exit.session_open.message": "<html><b>Kassan är fortfarande öppen i iLoppis.</b><br>Vill du stänga kassan och avsluta programmet?</html>",
+  "exit.session_closing.title": "Stänger kassan",
+  "exit.session_closing.message": "Stänger kassan innan programmet avslutas...",
+  "exit.session_open.close_failed.title": "Kunde inte stänga kassan",
+  "exit.session_open.close_failed.message": "<html><b>Kassan kunde inte stängas i iLoppis.</b><br>Försök igen när anslutningen fungerar så att kassan inte lämnas öppen i webbadmin.</html>"
 }
