@@ -298,10 +298,10 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     private String formatState(LiveCashierStatusState state) {
         if (state == null) return "—";
         return switch (state) {
-            case OPEN -> LocalizationManager.tr("livestats.state.open");
-            case PROCESSING -> LocalizationManager.tr("livestats.state.processing");
-            case STALLED -> LocalizationManager.tr("livestats.state.stalled");
-            case OFFLINE -> LocalizationManager.tr("livestats.state.offline");
+            case STATE_OPEN -> LocalizationManager.tr("livestats.state.open");
+            case STATE_PROCESSING -> LocalizationManager.tr("livestats.state.processing");
+            case STATE_STALLED -> LocalizationManager.tr("livestats.state.stalled");
+            case STATE_OFFLINE -> LocalizationManager.tr("livestats.state.offline");
             default -> state.toString();
         };
     }
@@ -309,10 +309,10 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     private Color stateColor(LiveCashierStatusState state) {
         if (state == null) return AppColors.TEXT_MUTED;
         return switch (state) {
-            case OPEN -> AppColors.STATE_OPEN;
-            case PROCESSING -> AppColors.STATE_PROCESSING;
-            case STALLED -> AppColors.STATE_STALLED;
-            case OFFLINE -> AppColors.TEXT_MUTED;
+            case STATE_OPEN -> AppColors.STATE_OPEN;
+            case STATE_PROCESSING -> AppColors.STATE_PROCESSING;
+            case STATE_STALLED -> AppColors.STATE_STALLED;
+            case STATE_OFFLINE -> AppColors.TEXT_MUTED;
             default -> AppColors.TEXT_MUTED;
         };
     }
@@ -320,10 +320,10 @@ public class LiveStatsPanel extends JPanel implements SelectabableTab, Localizat
     private Color stateBackgroundColor(LiveCashierStatusState state) {
         if (state == null) return AppColors.SURFACE;
         return switch (state) {
-            case OPEN -> AppColors.STATE_OPEN_BG;
-            case PROCESSING -> AppColors.STATE_PROCESSING_BG;
-            case STALLED -> AppColors.STATE_STALLED_BG;
-            case OFFLINE -> AppColors.SURFACE;
+            case STATE_OPEN -> AppColors.STATE_OPEN_BG;
+            case STATE_PROCESSING -> AppColors.STATE_PROCESSING_BG;
+            case STATE_STALLED -> AppColors.STATE_STALLED_BG;
+            case STATE_OFFLINE -> AppColors.SURFACE;
             default -> AppColors.SURFACE;
         };
     }

@@ -17,9 +17,9 @@
 - Always ask the user when information is missing or uncertain; never introduce defaults, fallbacks, or inferred values that could be wrong. If data is absent or unclear, fail fast and surface the ambiguity instead of guessing.
 
 ## Dependencies
-- Install local API client from `lib/openapi-java-client-0.0.8.jar` using the sidecar POM:
+- Install local API client from `lib/openapi-java-client-0.0.9.jar` using the sidecar POM:
   `make install-client`
-- The Makefile `install-client` target installs `0.0.8`. Always use the version in `pom.xml` and `install-client` as source of truth.
+- The Makefile `install-client` target installs `0.0.9`. Always use the version in `pom.xml` and `install-client` as source of truth.
 
 ## Architecture
 This is a Java Swing desktop application for managing a flea market cash register system.
