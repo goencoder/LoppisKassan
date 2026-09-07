@@ -3,12 +3,10 @@ package se.goencoder.loppiskassan.storage;
 import org.json.JSONObject;
 import se.goencoder.loppiskassan.V1PaymentMethod;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -16,11 +14,12 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Stream;
 
 public class RejectedItemsStore {
-    private static final Logger log = Logger.getLogger(RejectedItemsStore.class.getName());
+    private static final Object FILE_LOCK = new Object();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     private final String eventId;
@@ -30,19 +29,19 @@ public class RejectedItemsStore {
     }
 
     public List<RejectedItemEntry> readAll() throws IOException {
+        synchronized (FILE_LOCK) {
+            return readSnapshot();
+        }
+    }
+
+    private List<RejectedItemEntry> readSnapshot() throws IOException {
         Path path = LocalEventPaths.getRejectedPurchasesPath(eventId);
         if (Files.notExists(path)) {
             return List.of();
         }
         List<RejectedItemEntry> entries = new ArrayList<>();
         try (Stream<String> lines = Files.lines(path, StandardCharsets.UTF_8)) {
-            lines.filter(line -> !line.isBlank()).forEach(line -> {
-                try {
-                    entries.add(fromJsonLine(line));
-                } catch (Exception ex) {
-                    log.warning("Failed to parse rejected item: " + ex.getMessage());
-                }
-            });
+            lines.filter(line -> !line.isBlank()).forEach(line -> entries.add(fromJsonLine(line)));
         } catch (RuntimeException ex) {
             throw new IOException("Failed to parse rejected items file: " + path, ex);
         }
@@ -53,41 +52,36 @@ public class RejectedItemsStore {
         if (entries == null || entries.isEmpty()) {
             return;
         }
-        Path path = LocalEventPaths.getRejectedPurchasesPath(eventId);
-        if (path.getParent() != null) {
-            Files.createDirectories(path.getParent());
-        }
-        try (BufferedWriter writer = Files.newBufferedWriter(
-                path,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND)) {
-            for (RejectedItemEntry entry : entries) {
-                writer.write(toJsonLine(entry));
-                writer.newLine();
-            }
+        synchronized (FILE_LOCK) {
+            List<RejectedItemEntry> combined = new ArrayList<>(readSnapshot());
+            combined.addAll(entries);
+            saveSnapshot(combined);
         }
     }
 
     public void saveAll(List<RejectedItemEntry> entries) throws IOException {
-        Path path = LocalEventPaths.getRejectedPurchasesPath(eventId);
-        if (path.getParent() != null) {
-            Files.createDirectories(path.getParent());
+        synchronized (FILE_LOCK) {
+            saveSnapshot(entries == null ? List.of() : entries);
         }
-        try (BufferedWriter writer = Files.newBufferedWriter(
-                path,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE)) {
-            if (entries == null || entries.isEmpty()) {
-                return;
-            }
-            for (RejectedItemEntry entry : entries) {
-                writer.write(toJsonLine(entry));
-                writer.newLine();
+    }
+
+    private void saveSnapshot(List<RejectedItemEntry> entries) throws IOException {
+        // Replaying a cycle after rejection persistence must not create duplicate review rows.
+        // Retain legacy entries without IDs individually; never infer an identity for them.
+        List<RejectedItemEntry> unique = new ArrayList<>();
+        Map<String, Integer> positions = new HashMap<>();
+        for (RejectedItemEntry entry : entries) {
+            String id = entry.getItemId();
+            if (id == null || id.isBlank()) {
+                unique.add(entry);
+            } else {
+                Integer position = positions.putIfAbsent(id, unique.size());
+                if (position == null) unique.add(entry);
+                else unique.set(position, entry);
             }
         }
+        JsonlHelper.writeLines(LocalEventPaths.getRejectedPurchasesPath(eventId),
+                unique.stream().map(RejectedItemsStore::toJsonLine).toList());
     }
 
     public int count() {
@@ -104,7 +98,7 @@ public class RejectedItemsStore {
         String errorCode = obj.optString("errorCode", "");
         String reason = obj.optString("reason", "");
 
-        JSONObject item = obj.optJSONObject("item");
+        JSONObject item = obj.getJSONObject("item");
         String itemId = null;
         String purchaseId = null;
         Integer seller = null;

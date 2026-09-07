@@ -21,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -64,7 +65,7 @@ public class BackgroundSyncManager {
     private static BackgroundSyncManager instance;
 
     /**
-     * The single-threaded executor that performs ALL file I/O and uploads.
+     * The single-threaded executor for uploads and coordinated pending-file rewrites.
      */
     private ScheduledExecutorService syncExecutor;
     private ScheduledFuture<?> periodicTask;
@@ -100,8 +101,19 @@ public class BackgroundSyncManager {
         }
     }
 
+    @FunctionalInterface
+    interface PurchaseUploader {
+        V1CreateSoldItemsResponse upload(String eventId, List<V1SoldItem> items) throws ApiException;
+    }
+
+    private final PurchaseUploader uploader;
+
     private BackgroundSyncManager() {
-        // Private constructor for singleton
+        this(BackgroundSyncManager::uploadItemsToApi);
+    }
+
+    BackgroundSyncManager(PurchaseUploader uploader) {
+        this.uploader = java.util.Objects.requireNonNull(uploader);
     }
 
     public static synchronized BackgroundSyncManager getInstance() {
@@ -115,7 +127,7 @@ public class BackgroundSyncManager {
 
     /**
      * Start background sync for the given event.
-     * Creates a single-threaded executor that owns all file I/O + upload.
+     * Creates a single-threaded executor for uploads; enqueue persists under pendingFileLock.
      *
      * @param eventId the event ID to sync pending items for
      */
@@ -371,10 +383,14 @@ public class BackgroundSyncManager {
      * 1) Flush queued items to disk (local-first)
      * 2) Read pending items
      * 3) Upload + classify + retry collateral
-     * 4) Update pending file, append rejected
+     * 4) Persist rejected items, then update pending file
      */
     private SyncResult syncOnceInternal() throws IOException {
-        String eventId = activeEventId;
+        return syncOnce(activeEventId);
+    }
+
+    // Runs synchronously; production calls this only from its single sync executor.
+    SyncResult syncOnce(String eventId) throws IOException {
         if (eventId == null || eventId.isBlank()) {
             return SyncResult.empty();
         }
@@ -403,7 +419,7 @@ public class BackgroundSyncManager {
                         item.setPurchaseId(purchaseId);
                     }
                     return purchaseId;
-                }));
+                }, LinkedHashMap::new, Collectors.toList()));
 
         HashSet<String> acceptedIds = new HashSet<>();
         HashSet<String> duplicateIds = new HashSet<>();
@@ -423,9 +439,12 @@ public class BackgroundSyncManager {
                     AuthErrorHandler.handleAuthStatus(e.getCode());
                     authError = true;
                     break; // auth failures affect all groups - abort cycle
-                } else if (ApiHelper.isLikelyNetworkError(e)) {
+                } else if (ApiHelper.isLikelyNetworkError(e) || e.getCode() >= 500
+                        || e.getCode() == 408 || e.getCode() == 429) {
                     networkError = true;
-                    break; // network failures affect all groups - abort cycle
+                    // Retain this purchase for retry, but still attempt every other purchase.
+                    // A transient response does not prove that the whole API is unavailable.
+                    continue;
                 } else {
                     // Non-recoverable API error for this purchase group only. Synthesise per-item
                     // rejections so these items are moved out of pending and shown in the review UI.
@@ -610,7 +629,7 @@ public class BackgroundSyncManager {
     }
 
     private SoldItemsResponseClassifier.UploadOutcome uploadPurchaseGroupWithRetry(String eventId, List<V1SoldItem> purchaseItems) throws ApiException {
-        V1CreateSoldItemsResponse response = uploadItemsToApi(eventId, purchaseItems);
+        V1CreateSoldItemsResponse response = uploader.upload(eventId, purchaseItems);
         SoldItemsResponseClassifier.UploadOutcome outcome = SoldItemsResponseClassifier.classify(response);
 
         List<se.goencoder.iloppis.model.V1RejectedItem> rejected = new ArrayList<>(outcome.rejectedItems());
@@ -645,7 +664,7 @@ public class BackgroundSyncManager {
             return itemId != null && collateralIds.contains(itemId);
         });
 
-        V1CreateSoldItemsResponse retryResponse = uploadItemsToApi(eventId, retryItems);
+        V1CreateSoldItemsResponse retryResponse = uploader.upload(eventId, retryItems);
         SoldItemsResponseClassifier.UploadOutcome retryOutcome = SoldItemsResponseClassifier.classify(retryResponse);
 
         accepted.addAll(retryOutcome.acceptedItemIds());
@@ -655,7 +674,7 @@ public class BackgroundSyncManager {
         return new SoldItemsResponseClassifier.UploadOutcome(accepted, duplicates, rejected);
     }
 
-    private V1CreateSoldItemsResponse uploadItemsToApi(String eventId, List<V1SoldItem> items) throws ApiException {
+    private static V1CreateSoldItemsResponse uploadItemsToApi(String eventId, List<V1SoldItem> items) throws ApiException {
         SoldItemsServiceCreateSoldItemsBody requestBody = new SoldItemsServiceCreateSoldItemsBody();
         for (V1SoldItem item : items) {
             se.goencoder.iloppis.model.V1SoldItem apiItem = se.goencoder.loppiskassan.utils.SoldItemUtils.toApiSoldItem(item);
