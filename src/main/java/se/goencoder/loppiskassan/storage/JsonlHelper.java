@@ -80,10 +80,15 @@ public final class JsonlHelper {
     }
 
     public static void writeItems(Path path, List<V1SoldItem> items) throws IOException {
+        writeLines(path, items == null ? List.of() : items.stream().map(JsonlHelper::toJsonLine).toList());
+    }
+
+    /** Atomically replace a JSONL snapshot after forcing its contents to storage. */
+    static void writeLines(Path path, List<String> lines) throws IOException {
         if (path.getParent() != null) {
             Files.createDirectories(path.getParent());
         }
-        Path tempPath = path.resolveSibling(path.getFileName() + ".tmp");
+        Path tempPath = Files.createTempFile(path.toAbsolutePath().getParent(), path.getFileName() + ".", ".tmp");
         boolean moved = false;
         try {
             // Write to temp file, fsync, then move into place. This reduces the risk of partial
@@ -94,11 +99,9 @@ public final class JsonlHelper {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE)) {
-                if (items != null) {
-                    for (V1SoldItem item : items) {
-                        writer.write(toJsonLine(item));
-                        writer.newLine();
-                    }
+                for (String line : lines) {
+                    writer.write(line);
+                    writer.newLine();
                 }
             }
             fsync(tempPath);

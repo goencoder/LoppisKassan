@@ -6,6 +6,7 @@ import se.goencoder.loppiskassan.service.RejectedItemsManager;
 import se.goencoder.loppiskassan.storage.RejectedItemEntry;
 import se.goencoder.loppiskassan.storage.RejectedItemsStore;
 
+import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -27,7 +28,7 @@ public class RejectedItemsHelper {
      * @param eventId the event ID
      * @param rejectedItems list of rejected items from API response
      */
-    public static void saveRejectedItems(String eventId, List<V1RejectedItem> rejectedItems) {
+    public static void saveRejectedItems(String eventId, List<V1RejectedItem> rejectedItems) throws IOException {
         if (eventId == null || eventId.isBlank() || rejectedItems == null || rejectedItems.isEmpty()) {
             return;
         }
@@ -84,8 +85,10 @@ public class RejectedItemsHelper {
                 RejectedItemsManager.getInstance().notifyRejectedCountChanged(eventId);
                 log.info(() -> String.format("Saved %d rejected items for event %s", entries.size(), eventId));
             }
-        } catch (Exception e) {
-            log.warning("Failed to save rejected items: " + e.getMessage());
+        } catch (IOException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new IOException("Failed to save rejected items", e);
         }
     }
     
