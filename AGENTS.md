@@ -81,8 +81,8 @@ This is a Java Swing desktop application for managing a flea market cash registe
 - **Duplicate prevention:** Client generates ULIDs for `itemId` and `purchaseId`; backend deduplicates via unique index on `(event_id, item_id)`, returning `DUPLICATE_RECEIPT` error code for idempotent retries.
 - **Rejected items:** API rejections (e.g., `INVALID_SELLER`) are logged to `rejected_items.jsonl` via `RejectedItemsHelper` and can be edited/retried via UI dialogs (`RejectedItemEditDialog`).
 - **Connectivity checks:** `ConnectivityChecker` probes API health with lightweight requests; status reflected in UI via `AppShellStatusbar`.
-- **Single-writer guarantee:** All file I/O and API uploads run on the sync thread to prevent race conditions. The UI never writes to `pending_items.jsonl` directly.
-- **Chaos testing:** Use `make toxiproxy-up` and `make toxiproxy-scenario SCENARIO=<name>` (e.g., `slow-3g`, `unstable`, `timeout`) to simulate network conditions. See `docs/technical/NETWORK_CHAOS.md` and `docs/technical/PERSISTENCE_STRATEGY_COMPARISON.md` for details.
+- **Durable enqueue:** `enqueueItems` appends to the pending file under `pendingFileLock` before triggering background sync. Preserve locking and persist-before-acknowledgement; file I/O is not exclusively confined to the sync thread.
+- **Chaos testing:** Use `make toxiproxy-up` and `make toxiproxy-scenario SCENARIO=<name>` (e.g., `slow-3g`, `unstable`, `timeout`) to simulate network conditions. See [`docs/technical/NETWORK_CHAOS.md`](../../../goencoder-dev-team/teams/iloppis/docs/guides/testing.md) and [`docs/technical/PERSISTENCE_STRATEGY_COMPARISON.md`](../../../goencoder-dev-team/teams/iloppis/docs/decisions/sales-and-reconciliation.md) for details.
 
 ## API Client & Authentication (CRITICAL)
 
@@ -221,3 +221,12 @@ When generating code:
   1. Exact diffs with file paths under `src/main/java` or `src/main/resources`.
   2. Full `import` statements.
   3. Assume Maven project structure.
+
+## Team-owned documentation
+
+Read the [iLoppis team instructions](../../../goencoder-dev-team/teams/iloppis/AGENTS.md) for shared system context.
+Create issues, bugs, guides and durable team knowledge in `goencoder-dev-team/teams/iloppis/`,
+not in this product repository. [Documentation index](../../../goencoder-dev-team/teams/iloppis/docs/README.md) includes current
+team IDs and the migration map for old repo-local numbers. These links are relative
+to the existing local checkout; if unavailable, locate that team directory explicitly.
+Product-local build, test and code instructions still apply.

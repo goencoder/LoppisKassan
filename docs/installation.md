@@ -1,27 +1,9 @@
-# Installationsmanual för LoppisKassan
+# Dokumentet har flyttats till iLoppis-teamet
 
-Den här guiden hjälper dig att installera LoppisKassan på din dator.
+[Dokumentet — öppna teamets dokument](../../../../goencoder-dev-team/teams/iloppis/docs/guides/development.md).
 
-## Installation med `.jar`-fil
+Kanonisk sökväg i `goencoder-dev-team`: `teams/iloppis/docs/guides/development.md`.
 
-### Förutsättningar
-- **Java 21** måste vara installerat på din dator.
-
-### Installation
-1. Ladda ner den senaste versionen av `.jar`-filen från vår [releasesida](https://github.com/goencoder/loppiskassan/releases).
-2. Navigera till den katalog där du har laddat ner `.jar`-filen.
-3. Öppna en terminal (kommandotolk) och kör följande kommando:
-
-    ```bash
-    java -jar LoppisKassan-v3.0.0-jar-with-dependencies.jar
-    ```
-
-4. Programmet bör nu starta. Om du får problem, se till att du har rätt version av Java installerad.
-
-## Vanliga problem och lösningar
-
-- **Problem:** Programmet startar inte när jag kör `.jar`-filen.
-  **Lösning:** Kontrollera att du har Java 21 installerat och att du kör kommandot från rätt katalog.
-
-
-Om du stöter på andra problem, tveka inte att kontakta oss via vår [bughantering](https://github.com/goencoder/loppiskassan/issues).
+Den relativa länken fungerar i den befintliga lokala arbetsytan. I en annan
+checkout, öppna sökvägen ovan i teamrepot. Ändra och skapa dokument där.
+Den här filen är endast en hänvisning för gamla länkar och nummer.
