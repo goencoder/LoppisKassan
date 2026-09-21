@@ -4,12 +4,12 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 
 # ---- Local OpenAPI client ----
-CLIENT_JAR := lib/openapi-java-client-0.0.9.jar
+CLIENT_JAR := lib/openapi-java-client-0.0.10.jar
 GROUP_ID   := se.goencoder.iloppis
 ARTIFACT_ID:= iloppis-client
-VERSION    := 0.0.9
+VERSION    := 0.0.10
 
-JAR_NAME := target/LoppisKassan-v3.0.0-jar-with-dependencies.jar
+JAR_NAME := target/LoppisKassan-v3.1.0-jar-with-dependencies.jar
 
 .DEFAULT_GOAL := help
 MAVEN ?= mvn

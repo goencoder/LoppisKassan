@@ -900,7 +900,7 @@ public class DiscoveryTabPanel extends JPanel implements DiscoveryPanelInterface
         connection.setInstanceFollowRedirects(false);
         connection.setConnectTimeout(IMAGE_CONNECT_TIMEOUT_MS);
         connection.setReadTimeout(IMAGE_READ_TIMEOUT_MS);
-        connection.setRequestProperty("User-Agent", "LoppisKassan/2.0");
+        connection.setRequestProperty("User-Agent", "LoppisKassan/3.1.0");
 
         int status = connection.getResponseCode();
         if (status < 200 || status >= 300) {

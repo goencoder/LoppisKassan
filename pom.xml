@@ -6,35 +6,31 @@
 
     <groupId>se.teddy</groupId>
     <artifactId>LoppisKassan</artifactId>
-    <version>v3.0.0</version>
+    <version>v3.1.0</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
+        <app.version>3.1.0</app.version>
     </properties>
 
     <dependencies>
         <!-- Dependency on iloppis-client -->
         <!-- To update the version of this dependency:
              1. Generate and build new version in iloppis/backend:
-                  cd /Users/goranengdahl/GolandProjects/iloppis/backend
-                   - Update ARTIFACT_VERSION in Makefile to next patch (e.g. 0.0.9)
-                  - Run: make build-java-client
-             2. Copy JAR and POM to LoppisKassan:
-                  cp gen/java-client/target/iloppis-client-X.X.X.jar \
-                     ../../IntellijProjects/LoppisKassan/lib/openapi-java-client-X.X.X.jar
-                  cp gen/java-client/pom.xml \
-                     ../../IntellijProjects/LoppisKassan/lib/openapi-java-client-X.X.X.pom
-             3. In LoppisKassan:
-                  - Update Makefile: install-client target to use new version
+                  cd ../iloppis/backend
+                   - Update ARTIFACT_VERSION in Makefile to the next version
+                  - Run: make install-java-client
+             2. In LoppisKassan:
+                  - Update Makefile: CLIENT_JAR and VERSION to use the new version
                   - Run: make install-client
                   - Update version in dependency below to match
-             4. Recompile: mvn clean compile
+             3. Recompile: mvn clean compile
         -->
         <dependency>
             <groupId>se.goencoder.iloppis</groupId>
             <artifactId>iloppis-client</artifactId>
-            <version>0.0.9</version>
+            <version>0.0.10</version>
             <exclusions>
                 <!-- Generated client bytecode uses neither dependency. Exclude stale
                      OpenAPI-generator boilerplate and its vulnerable transitive chain. -->
@@ -199,6 +195,8 @@
                                         <argument>${project.build.finalName}-jar-with-dependencies.jar</argument>
                                         <argument>--main-class</argument>
                                         <argument>se.goencoder.loppiskassan.Main</argument>
+                                        <argument>--app-version</argument>
+                                        <argument>${app.version}</argument>
                                         <argument>--dest</argument>
                                         <argument>${project.build.directory}/installer/macos</argument>
                                     </arguments>

@@ -266,7 +266,7 @@ public final class CashierFlowLoadTestRunner {
         FixedApiClient client = new FixedApiClient();
         client.setBasePath(apiBaseUrl);
         client.addDefaultHeader("Authorization", "Bearer " + apiKey);
-        client.setUserAgent("LoppisKassan/3.0.0 cashier-flow-load-test");
+        client.setUserAgent("LoppisKassan/3.1.0 cashier-flow-load-test");
         return client;
     }
 
