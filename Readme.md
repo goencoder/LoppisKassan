@@ -53,7 +53,7 @@ mvn clean package
     Efter att ha byggt projektet, kör följande kommando för att starta applikationen:
     
 ```bash
-$JAVA_HOME/bin/java -jar target/LoppisKassan-v3.0.0-jar-with-dependencies.jar
+$JAVA_HOME/bin/java -jar target/LoppisKassan-v3.1.0-jar-with-dependencies.jar
 ```
 ## Licens
 

@@ -29,7 +29,7 @@ public enum ApiHelper {
         this.apiClient = new FixedApiClient();
         String baseUrl = ILoppisConfigurationStore.getApiBaseUrl();
         this.apiClient.setBasePath(baseUrl);
-        this.apiClient.setUserAgent("LoppisKassan/2.0.0");
+        this.apiClient.setUserAgent("LoppisKassan/3.1.0");
 
         this.apiClient.setConnectTimeout(5000);
         this.apiClient.setReadTimeout(5000);

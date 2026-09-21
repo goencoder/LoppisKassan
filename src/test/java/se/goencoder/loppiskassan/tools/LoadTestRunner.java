@@ -189,7 +189,7 @@ public final class LoadTestRunner {
             this.eventId = cfg.eventId;
             FixedApiClient client = new FixedApiClient();
             client.setBasePath(cfg.apiBaseUrl);
-            client.setUserAgent("LoppisKassan/2.0.0 load-test");
+            client.setUserAgent("LoppisKassan/3.1.0 load-test");
 
             String token = cfg.apiKey;
             if (isBlank(token)) {
