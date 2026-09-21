@@ -137,6 +137,7 @@ public class CashierTabPanel extends JPanel implements CashierPanelInterface, Lo
         checkoutSwishButton.addActionListener(e -> controller.onCheckout(V1PaymentMethod.Swish));
         checkoutCashButton.addActionListener(e -> controller.onCheckout(V1PaymentMethod.Kontant));
         cancelCheckoutButton.addActionListener(e -> controller.onCancelCheckout());
+        sellerField.addActionListener(e -> pricesField.requestFocusInWindow());
         pricesField.addActionListener(e -> controller.onPricesSubmitted());
         
         // Register global keyboard shortcuts (after root pane is available)
