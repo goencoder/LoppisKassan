@@ -82,7 +82,7 @@ This is a Java Swing desktop application for managing a flea market cash registe
 - **Rejected items:** API rejections (e.g., `INVALID_SELLER`) are logged to `rejected_items.jsonl` via `RejectedItemsHelper` and can be edited/retried via UI dialogs (`RejectedItemEditDialog`).
 - **Connectivity checks:** `ConnectivityChecker` probes API health with lightweight requests; status reflected in UI via `AppShellStatusbar`.
 - **Durable enqueue:** `enqueueItems` appends to the pending file under `pendingFileLock` before triggering background sync. Preserve locking and persist-before-acknowledgement; file I/O is not exclusively confined to the sync thread.
-- **Chaos testing:** Use `make toxiproxy-up` and `make toxiproxy-scenario SCENARIO=<name>` (e.g., `slow-3g`, `unstable`, `timeout`) to simulate network conditions. See [`docs/technical/NETWORK_CHAOS.md`](../../../goencoder-dev-team/teams/iloppis/docs/guides/testing.md) and [`docs/technical/PERSISTENCE_STRATEGY_COMPARISON.md`](../../../goencoder-dev-team/teams/iloppis/docs/decisions/sales-and-reconciliation.md) for details.
+- **Chaos testing:** Use `make toxiproxy-up` and `make toxiproxy-scenario SCENARIO=<name>` (e.g., `slow-3g`, `unstable`, `timeout`) to simulate network conditions. See [`../../../goencoder-dev-team/teams/iloppis/docs/guides/testing.md`](../../../goencoder-dev-team/teams/iloppis/docs/guides/testing.md) and [`../../../goencoder-dev-team/teams/iloppis/docs/decisions/sales-and-reconciliation.md`](../../../goencoder-dev-team/teams/iloppis/docs/decisions/sales-and-reconciliation.md) for details.
 
 ## API Client & Authentication (CRITICAL)
 

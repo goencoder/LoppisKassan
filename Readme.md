@@ -63,6 +63,7 @@ Detta projekt är licensierat under MIT-licensen – se [LICENSE](../../../goenc
 
 Issues, buggar, guider och gemensam kunskap för alla iLoppis-repos förvaltas i
 [goencoder-dev-team / iLoppis](../../../goencoder-dev-team/teams/iloppis/docs/README.md). Skapa och uppdatera dokument där.
-Gamla dokumentplatser innehåller flytthänvisningar med nya teamnummer.
+Gamla flytthänvisningar är borttagna. Ursprungliga filnamn och teamnummer finns
+i teamets `docs/migrations/2026-09-07-document-consolidation.json`.
 Länken gäller den lokala arbetsytan; i andra checkouts finns ingången på
 `goencoder-dev-team/teams/iloppis/docs/README.md`.
