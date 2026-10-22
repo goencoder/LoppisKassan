@@ -19,7 +19,7 @@ Manual: [LoppisKassan v3.0](../../../goencoder-dev-team/teams/iloppis/docs/guide
 ## Bygga LoppisKassan från källkod
 För att bygga och köra detta projekt krävs följande 
 - [Git](https://git-scm.com/download/mac)
-- [Java 21](https://www.oracle.com/java/technologies/downloads/)
+- [Java 25](https://www.oracle.com/java/technologies/downloads/)
 - [Maven (mvn)](https://maven.apache.org/download.cgi)
 
 ## Klona projektet
@@ -39,7 +39,7 @@ cd LoppisKassan
    Öppna en terminal och kör följande kommando (uppdatera sökvägen till din lokala javainstallation):
 
 ```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home
 ```
 
 3. **Bygg projektet**:

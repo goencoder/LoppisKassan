@@ -9,7 +9,7 @@
 - `mvn -P mac-installer -DskipTests package` produces a DMG via jpackage.
 
 ## JDK
-- Target: Java 21 (Temurin).
+- Target: Java 25 (Temurin).
 - No JPMS modules; plain classpath build.
 - Build tool: Maven 3.9+.
 
@@ -25,7 +25,7 @@
 This is a Java Swing desktop application for managing a flea market cash register system.
 - Uses OpenAPI client to communicate with iLoppis service.
 - GUI is written in Swing only (no JavaFX).
-- Requires Java 21.
+- Requires Java 25.
 - GUI components will fail in headless environments (Codex/CI).
 
 ## UI Rules
@@ -209,7 +209,7 @@ The Makefile automatically detects Codex vs local environment:
 
 ## Codex Prompt Scaffold
 When generating code:
-- Language: Java 21, Swing UI.
+- Language: Java 25, Swing UI.
 - Project: iLoppis Cash Register desktop app.
 - Constraints:
   - Must compile with `mvn verify`.
